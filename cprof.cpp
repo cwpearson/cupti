@@ -1,3 +1,6 @@
+#include <vector>
+#include <cassert>
+
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -23,75 +26,75 @@
       exit(-1);                                                         \
     }
 
-// Structure to hold data collected by callback
-typedef struct RuntimeApiTrace_st {
-  const char *functionName;
-  uint64_t startTimestamp;
-  uint64_t endTimestamp;
-  size_t memcpy_bytes;
-  enum cudaMemcpyKind memcpy_kind;
-} RuntimeApiTrace_t;
+class Record {
+ public:
+  uint32_t id_; // correlation id
+};
 
-enum launchOrder{ MEMCPY_H2D1, MEMCPY_H2D2, MEMCPY_D2H, KERNEL, THREAD_SYNC, LAUNCH_LAST};
+class MemcpyRecord : public Record {
+ public:
+  uint64_t start_;
+  uint64_t end_;
+  uint64_t bytes_;
+  enum cudaMemcpyKind kind_;
+};
+
+
+typedef std::vector<Record*> Records;
+typedef uint64_t Time;
+
+Time getTimestamp(const CUpti_CallbackData *cbInfo) {
+  uint64_t time;
+  CUptiResult cuptiErr = cuptiDeviceGetTimestamp(cbInfo->context, &time);
+  CHECK_CUPTI_ERROR(cuptiErr, "cuptiDeviceGetTimestamp");
+  return Time(time);
+}
+
+void handleMemcpy(Records &records, const CUpti_CallbackData *cbInfo) {
+
+  MemcpyRecord *record = nullptr;
+
+  // Create a new record on entrance, or look up an existing record on exit
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    record = new MemcpyRecord();
+
+    record->bytes_ = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams))->count;
+    record->kind_  = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams))->kind;
+        
+    record->start_ = getTimestamp(cbInfo);
+    } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+      // Find the existing record
+      for (auto r : records) {
+        if (cbInfo->correlationId == r->id_) {
+          record = static_cast<MemcpyRecord*>(r);
+        }
+      }
+      assert(record);
+    record->end_ = getTimestamp(cbInfo);
+    } else {
+      assert(0 && "How did we get here?");
+    }
+}
+
+
 
 void CUPTIAPI
 getTimestampCallback(void *userdata, CUpti_CallbackDomain domain,
-                     CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo)
-{
+                     CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo) {
   static int memTransCount = 0;
   uint64_t startTimestamp;
   uint64_t endTimestamp;
-  RuntimeApiTrace_t *traceData = (RuntimeApiTrace_t*)userdata;
+  auto records = reinterpret_cast<Records*>(userdata);
   CUptiResult cuptiErr;
       
-  // Data is collected only for the following API
-  if ((cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020) || 
-      (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020) || 
-      (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020))  { 
-     
-    // Set pointer depending on API
-    if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020)
-      traceData = traceData + KERNEL;
-    else if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020) 
-      traceData = traceData + THREAD_SYNC;
-    else if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020)
-      traceData = traceData + MEMCPY_H2D1 + memTransCount;
-                 
-    if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-      // for a kernel launch report the kernel name, otherwise use the API
-      // function name.
-      if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020) {
-        traceData->functionName = cbInfo->symbolName;
-      }
-      else {
-        traceData->functionName = cbInfo->functionName;
-      }
-
-      // Store parameters passed to cudaMemcpy
-      if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020) {
-        traceData->memcpy_bytes = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams))->count;
-        traceData->memcpy_kind = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams))->kind;
-      }
-        
-      // Collect timestamp for API start
-      cuptiErr = cuptiDeviceGetTimestamp(cbInfo->context, &startTimestamp);
-      CHECK_CUPTI_ERROR(cuptiErr, "cuptiDeviceGetTimestamp");
-            
-      traceData->startTimestamp = startTimestamp;
-    }
-
-    if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-      // Collect timestamp for API exit
-      cuptiErr = cuptiDeviceGetTimestamp(cbInfo->context, &endTimestamp);
-      CHECK_CUPTI_ERROR(cuptiErr, "cuptiDeviceGetTimestamp");
-            
-      traceData->endTimestamp = endTimestamp;
-     
-      // Advance to the next memory transfer operation
-      if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020) {
-        memTransCount++;
-      }
-    } 
+  // Data is collected for the following APIs
+  switch (cbid) {
+    CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
+      handleMemcpy(*records, cbInfo);
+      break;
+    default:
+      printf("Skipping...\n");
+      break;
   }
 }
 
@@ -110,36 +113,11 @@ memcpyKindStr(enum cudaMemcpyKind kind)
   return "<unknown>";
 }
 
-static void 
-displayTimestamps(RuntimeApiTrace_t *trace)
-{
-  // Calculate timestamp of kernel based on timestamp from
-  // cudaDeviceSynchronize() call
-  trace[KERNEL].endTimestamp = trace[THREAD_SYNC].endTimestamp;
-
-  printf("startTimeStamp/gpuTime reported in nano-seconds\n\n");
-  printf("Name\t\tStart Time\t\tGPU Time\tBytes\tKind\n");
-  printf("%s\t%llu\t%llu\t\t%llu\t%s\n", trace[MEMCPY_H2D1].functionName,
-         (unsigned long long)trace[MEMCPY_H2D1].startTimestamp, 
-         (unsigned long long)trace[MEMCPY_H2D1].endTimestamp - trace[MEMCPY_H2D1].startTimestamp,
-         (unsigned long long)trace[MEMCPY_H2D1].memcpy_bytes,
-         memcpyKindStr(trace[MEMCPY_H2D1].memcpy_kind));
-  printf("%s\t%llu\t%llu\t\t%llu\t%s\n", trace[MEMCPY_H2D2].functionName,
-         (unsigned long long)trace[MEMCPY_H2D2].startTimestamp,
-         (unsigned long long)trace[MEMCPY_H2D2].endTimestamp - trace[MEMCPY_H2D2].startTimestamp, 
-         (unsigned long long)trace[MEMCPY_H2D2].memcpy_bytes,
-         memcpyKindStr(trace[MEMCPY_H2D2].memcpy_kind)); 
-  printf("%s\t%llu\t%llu\t\tNA\tNA\n", trace[KERNEL].functionName,
-         (unsigned long long)trace[KERNEL].startTimestamp,
-         (unsigned long long)trace[KERNEL].endTimestamp - trace[KERNEL].startTimestamp);
-  printf("%s\t%llu\t%llu\t\t%llu\t%s\n", trace[MEMCPY_D2H].functionName,
-         (unsigned long long)trace[MEMCPY_D2H].startTimestamp,
-         (unsigned long long)trace[MEMCPY_D2H].endTimestamp - trace[MEMCPY_D2H].startTimestamp, 
-         (unsigned long long)trace[MEMCPY_D2H].memcpy_bytes,
-         memcpyKindStr(trace[MEMCPY_D2H].memcpy_kind)); 
-}
 
 int main(int argc, char **argv) {
+
+  Records records;
+
 
   CUcontext context = 0;
   CUdevice device = 0;
@@ -147,7 +125,6 @@ int main(int argc, char **argv) {
   CUptiResult cuptierr;
 
   CUpti_SubscriberHandle subscriber;
-  RuntimeApiTrace_t trace[LAUNCH_LAST];
     
   cuerr = cuInit(0);
   CHECK_CU_ERROR(cuerr, "cuInit");
@@ -155,7 +132,7 @@ int main(int argc, char **argv) {
   cuerr = cuCtxCreate(&context, 0, device);
   CHECK_CU_ERROR(cuerr, "cuCtxCreate");
 
-  cuptierr = cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)getTimestampCallback , &trace);
+  cuptierr = cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)getTimestampCallback , &records);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
 
   cuptierr = cuptiEnableDomain(1, subscriber, CUPTI_CB_DOMAIN_RUNTIME_API);
@@ -168,4 +145,8 @@ int main(int argc, char **argv) {
     }
     printf("Executing %s\n", cmd.c_str());
     int status = system(cmd.c_str());
+    printf("Done executing %s\n", cmd.c_str());
+
+  cuptierr = cuptiUnsubscribe(subscriber);
+  CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
 }
