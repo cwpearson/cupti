@@ -6,13 +6,13 @@
 #include <dlfcn.h>
 
 #include "callbacks.hpp"
+#include "data.hpp"
 
 typedef cudaError_t (*cudaMallocFunc)(void**,size_t);
 static cudaMallocFunc real_cudaMalloc = NULL;
 
 extern "C"
 cudaError_t cudaMalloc(void **devPtr, size_t size) {
-  fprintf(stderr, "[cudaMalloc] called\n");
   lazyInitCallbacks();
 
   if (real_cudaMalloc == nullptr) {
@@ -53,3 +53,24 @@ cudaError_t cudaConfigureCall(
   assert(realCudaConfigureCall != NULL && "cudaConfigureCall is null");
   return realCudaConfigureCall(gridDim,blockDim,sharedMem,stream);
 }
+
+/*
+typedef void* (*mallocFunc)(size_t);
+static mallocFunc real_malloc = nullptr;
+
+void* malloc(size_t size) {
+  if(!real_malloc) {
+    real_malloc = (mallocFunc) dlsym(RTLD_NEXT, "malloc");
+  }
+  assert(real_malloc && "Will the real malloc please stand up");
+
+  void *p = real_malloc(size);
+
+  Value newValue;
+  newValue.pos_ = (uintptr_t) p;
+  newValue.size_ = size;
+
+  Data::instance().values_.push_back(newValue);
+  return p;
+}
+*/

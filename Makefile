@@ -9,11 +9,14 @@ LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -ldl
 query: deviceQuery.cpp
 	nvcc $(NVCC_FLAGS) $^ -o $@
 
-prof.so: prof.cpp callbacks.cpp
-	g++ -Wall -Wextra -std=c++11 $(INC) $(LIB) -shared -fPIC $^ -o $@
+%.o : %.cpp
+	g++ -g -Wall -Wextra -std=c++11 -fPIC $(INC) $^ -c -o $@	
+
+prof.so: data.o prof.o callbacks.o
+	g++ -g -Wall -Wextra -std=c++11 -shared -fPIC $^ $(LIB) -o $@
 
 vec: vectorAdd.cu
 	nvcc $(NVCC_FLAGS) $^ -o $@
 
 clean:
-	rm -f query cprof vec prof.so
+	rm -f *.o query cprof vec prof.so

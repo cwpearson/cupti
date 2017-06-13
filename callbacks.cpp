@@ -12,6 +12,8 @@
 #include <cuda.h>
 #include <cupti.h>
 
+#include "data.hpp"
+
 #define CHECK_CU_ERROR(err, cufunc)                                     \
   if (err != CUDA_SUCCESS)                                              \
     {                                                                   \
@@ -31,50 +33,7 @@
     }
 
 
-
-
-class Record {
- public:
-  uint32_t id_; // correlation id
-};
-
-class MemcpyRecord : public Record {
- public:
-  uint64_t start_;
-  uint64_t end_;
-  uint64_t bytes_;
-  enum cudaMemcpyKind kind_;
-};
-
-
-
-typedef std::vector<Record*> Records;
 typedef uint64_t Time;
-
-
-class Allocation {
- public:
-  int type_;
-  uintptr_t pos_;
-  size_t size_;
-};
-
-
-class Value {
- public:
-  uintptr_t pos_;
-  size_t size_;
-};
-
-typedef std::vector<Allocation> Allocations;
-typedef std::vector<Value> Values;
-
-typedef struct {
-  Values values;
-  Allocations allocations;
-} Data;
-
-static Data data;
 
 Time getTimestamp(const CUpti_CallbackData *cbInfo) {
   uint64_t time;
@@ -83,33 +42,81 @@ Time getTimestamp(const CUpti_CallbackData *cbInfo) {
   return Time(time);
 }
 
-void handleMemcpy(Allocations &allocations, const CUpti_CallbackData *cbInfo) {
+void handleMemcpy(Allocations &allocations, Values &values, const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
-    const void *dst = params->dst;
-    const void *src = params->src;
-    //const size_t count = params->count;
-    //const cudaMemcpyKind kind = params->kind;
-    printf("%p -> %p\n", src, dst);
-    } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    } else {
-      assert(0 && "How did we get here?");
+    const uintptr_t dst = (uintptr_t) params->dst;
+    const uintptr_t src = (uintptr_t) params->src;
+    const cudaMemcpyKind kind = params->kind;
+      //const size_t count = params->count;
+
+
+    if (cudaMemcpyHostToDevice == kind) {
+      printf("%lu --[h2d]--> %lu\n", src, dst);
+
+      // h2d always creates a new dst value
+      auto dstIdx = values.size();
+      values.push_back(Value());
+      
+      // See if there is a value for the source, or create one
+      bool found = false;
+      for (size_t i = 0; i < values.size(); ++i) {
+        if (src == values[i].pos_) {
+          values[dstIdx].dependsOnIdx_.push_back(i);
+          found = true;
+        }
+      }
+      if (!found) {
+        size_t srcIdx = values.size();
+        values.push_back(Value());
+        values[srcIdx].pos_ = src;
+        values[dstIdx].dependsOnIdx_.push_back(srcIdx);
+      }
+    } else if (cudaMemcpyDeviceToHost == kind) {
+      printf("%lu --[d2h]--> %lu\n", src, dst);
+
+      // h2d always creates a new dst value
+      auto dstIdx = values.size();
+      values.push_back(Value());
+      
+      // See if there is a value for the source, or create one
+      bool found = false;
+      for (size_t i = 0; i < values.size(); ++i) {
+        if (src == values[i].pos_) {
+          values[dstIdx].dependsOnIdx_.push_back(i);
+          found = true;
+        }
+      }
+      if (!found) {
+        size_t srcIdx = values.size();
+        values.push_back(Value());
+        values[srcIdx].pos_ = src;
+        values[dstIdx].dependsOnIdx_.push_back(srcIdx);
+      }
     }
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  } else {
+    assert(0 && "How did we get here?");
+  }
 }
 
-void handleMalloc(Allocations &allocations, const CUpti_CallbackData *cbInfo) {
+void handleMalloc(Allocations &allocations, Values &values, const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
   void **devPtr = params->devPtr;
   const size_t size = params->size;
-  printf("[malloc] %p[%lu]\n", *devPtr, size);
+  printf("[malloc] %lu[%lu]\n", (uintptr_t)(*devPtr), size);
 
   Allocation a;
   a.pos_ = (uintptr_t) *devPtr;
   a.size_ = size;
   allocations.push_back(a);
 
+  Value newValue;
+  newValue.allocationIdx_ = allocations.size() - 1;
+  newValue.pos_ = (uintptr_t) *devPtr;
+  values.push_back(newValue);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -128,10 +135,10 @@ callback(void *userdata, CUpti_CallbackDomain domain,
     case CUPTI_CB_DOMAIN_RUNTIME_API:
       switch (cbid) {
         case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-          handleMemcpy(data.allocations, cbInfo);
+          handleMemcpy(data.allocations_, data.values_,  cbInfo);
           break;
         case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
-          handleMalloc(data.allocations, cbInfo);
+          handleMalloc(data.allocations_, data.values_, cbInfo);
           break;
         default:
           break;
@@ -227,7 +234,7 @@ int initCallbacks() {
   CUptiResult cuptierr;
 
   CUpti_SubscriberHandle runtimeSubscriber;
-  cuptierr = cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)callback , &data);
+  cuptierr = cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)callback , &Data::instance());
   CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
   cuptierr = cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_RUNTIME_API);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
@@ -236,6 +243,8 @@ int initCallbacks() {
 
   //cuptierr = cuptiUnsubscribe(runtimeSubscriber);
   //CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
+
+  return 0;
 }
 
 
