@@ -7,13 +7,19 @@
 
 #include "callbacks.hpp"
 
-extern "C"
-cudaError_t cudaMalloc	(void **devPtr, size_t size) {
-  fprintf(stderr, "[cudaMalloc] called\n");
+typedef cudaError_t (*cudaMallocFunc)(void**,size_t);
+static cudaMallocFunc real_cudaMalloc = NULL;
 
+extern "C"
+cudaError_t cudaMalloc(void **devPtr, size_t size) {
+  fprintf(stderr, "[cudaMalloc] called\n");
   lazyInitCallbacks();
 
-  return cudaSuccess; 
+  if (real_cudaMalloc == nullptr) {
+    real_cudaMalloc = (cudaMallocFunc)dlsym(RTLD_NEXT,"cudaMalloc");
+  }
+  assert(real_cudaMalloc && "Will the real cudaMalloc please stand up?");
+  return real_cudaMalloc(devPtr, size); 
 }
 
 typedef cudaError_t (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);

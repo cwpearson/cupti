@@ -59,6 +59,8 @@ Time getTimestamp(const CUpti_CallbackData *cbInfo) {
 
 void handleMemcpy(Records &records, const CUpti_CallbackData *cbInfo) {
 
+  printf("handleMemcpy\n");
+
   MemcpyRecord *record = nullptr;
 
   // Create a new record on entrance, or look up an existing record on exit
@@ -99,7 +101,6 @@ runtimeCallback(void *userdata, CUpti_CallbackDomain domain,
       handleMemcpy(*records, cbInfo);
       break;
     default:
-      printf("Skipping...\n");
       break;
   }
 }
