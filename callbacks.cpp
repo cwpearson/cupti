@@ -1,5 +1,9 @@
 #include <vector>
 #include <cassert>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <array>
 
 #include <cstdio>
 #include <cstdlib>
@@ -25,6 +29,9 @@
               __FILE__, __LINE__, errstr, cuptifunc);                   \
       exit(-1);                                                         \
     }
+
+
+
 
 class Record {
  public:
@@ -79,9 +86,8 @@ void handleMemcpy(Records &records, const CUpti_CallbackData *cbInfo) {
 
 
 void CUPTIAPI
-getTimestampCallback(void *userdata, CUpti_CallbackDomain domain,
+runtimeCallback(void *userdata, CUpti_CallbackDomain domain,
                      CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo) {
-  static int memTransCount = 0;
   uint64_t startTimestamp;
   uint64_t endTimestamp;
   auto records = reinterpret_cast<Records*>(userdata);
@@ -113,7 +119,19 @@ memcpyKindStr(enum cudaMemcpyKind kind)
   return "<unknown>";
 }
 
+std::string myexec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) throw std::runtime_error("popen() failed!");
+    while (!feof(pipe.get())) {
+        if (fgets(buffer.data(), 128, pipe.get()) != NULL)
+            result += buffer.data();
+    }
+    return result;
+}
 
+/*
 int main(int argc, char **argv) {
 
   Records records;
@@ -124,7 +142,6 @@ int main(int argc, char **argv) {
   CUresult cuerr;
   CUptiResult cuptierr;
 
-  CUpti_SubscriberHandle subscriber;
     
   cuerr = cuInit(0);
   CHECK_CU_ERROR(cuerr, "cuInit");
@@ -132,13 +149,15 @@ int main(int argc, char **argv) {
   cuerr = cuCtxCreate(&context, 0, device);
   CHECK_CU_ERROR(cuerr, "cuCtxCreate");
 
-  cuptierr = cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)getTimestampCallback , &records);
+  CUpti_SubscriberHandle runtimeSubscriber;
+  cuptierr = cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)runtimeCallback , &records);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
-
-  cuptierr = cuptiEnableDomain(1, subscriber, CUPTI_CB_DOMAIN_RUNTIME_API);
+  cuptierr = cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_RUNTIME_API);
+  CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
+  cuptierr = cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_DRIVER_API);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
 
-
+  cudaSetDevice(0);
     std::string cmd;
     for (int i = 1; i < argc; ++i) {
         cmd += std::string(argv[i]) + std::string(" ");
@@ -147,6 +166,47 @@ int main(int argc, char **argv) {
     int status = system(cmd.c_str());
     printf("Done executing %s\n", cmd.c_str());
 
-  cuptierr = cuptiUnsubscribe(subscriber);
+  cuptierr = cuptiUnsubscribe(runtimeSubscriber);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
+
+
+  printf("%lu\n", records.size());
+  for (auto &r : records) {
+    printf("%d\n", r->id_);
+  }
 }
+*/
+
+
+int initCallbacks() {
+
+  Records records;
+
+  CUdevice device = 0;
+  CUresult cuerr;
+  CUptiResult cuptierr;
+
+  CUpti_SubscriberHandle runtimeSubscriber;
+  cuptierr = cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)runtimeCallback , &records);
+  CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
+  cuptierr = cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_RUNTIME_API);
+  CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
+  cuptierr = cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_DRIVER_API);
+  CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
+
+  //cuptierr = cuptiUnsubscribe(runtimeSubscriber);
+  //CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
+}
+
+
+void lazyInitCallbacks() {
+  static int initialized = 0;
+  if (!initialized) {
+    printf("registering callbacks...\n");
+    initCallbacks();
+    initialized = 1;
+  } else {
+  }
+  return;
+}
+
