@@ -47,8 +47,34 @@ class MemcpyRecord : public Record {
 };
 
 
+
 typedef std::vector<Record*> Records;
 typedef uint64_t Time;
+
+
+class Allocation {
+ public:
+  int type_;
+  uintptr_t pos_;
+  size_t size_;
+};
+
+
+class Value {
+ public:
+  uintptr_t pos_;
+  size_t size_;
+};
+
+typedef std::vector<Allocation> Allocations;
+typedef std::vector<Value> Values;
+
+typedef struct {
+  Values values;
+  Allocations allocations;
+} Data;
+
+static Data data;
 
 Time getTimestamp(const CUpti_CallbackData *cbInfo) {
   uint64_t time;
@@ -57,50 +83,65 @@ Time getTimestamp(const CUpti_CallbackData *cbInfo) {
   return Time(time);
 }
 
-void handleMemcpy(Records &records, const CUpti_CallbackData *cbInfo) {
-
-  printf("handleMemcpy\n");
-
-  MemcpyRecord *record = nullptr;
-
-  // Create a new record on entrance, or look up an existing record on exit
+void handleMemcpy(Allocations &allocations, const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    record = new MemcpyRecord();
-
-    record->bytes_ = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams))->count;
-    record->kind_  = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams))->kind;
-        
-    record->start_ = getTimestamp(cbInfo);
+    auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
+    const void *dst = params->dst;
+    const void *src = params->src;
+    //const size_t count = params->count;
+    //const cudaMemcpyKind kind = params->kind;
+    printf("%p -> %p\n", src, dst);
     } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-      // Find the existing record
-      for (auto r : records) {
-        if (cbInfo->correlationId == r->id_) {
-          record = static_cast<MemcpyRecord*>(r);
-        }
-      }
-      assert(record);
-    record->end_ = getTimestamp(cbInfo);
     } else {
       assert(0 && "How did we get here?");
     }
 }
 
+void handleMalloc(Allocations &allocations, const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
+  void **devPtr = params->devPtr;
+  const size_t size = params->size;
+  printf("[malloc] %p[%lu]\n", *devPtr, size);
 
+  Allocation a;
+  a.pos_ = (uintptr_t) *devPtr;
+  a.size_ = size;
+  allocations.push_back(a);
+
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
 
 void CUPTIAPI
-runtimeCallback(void *userdata, CUpti_CallbackDomain domain,
-                     CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo) {
+callback(void *userdata, CUpti_CallbackDomain domain,
+         CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo) {
   uint64_t startTimestamp;
   uint64_t endTimestamp;
-  auto records = reinterpret_cast<Records*>(userdata);
+  auto &data = *(reinterpret_cast<Data*>(userdata));
   CUptiResult cuptiErr;
       
   // Data is collected for the following APIs
-  switch (cbid) {
-    CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-      handleMemcpy(*records, cbInfo);
+  switch (domain) {
+    case CUPTI_CB_DOMAIN_RUNTIME_API:
+      switch (cbid) {
+        case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
+          handleMemcpy(data.allocations, cbInfo);
+          break;
+        case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
+          handleMalloc(data.allocations, cbInfo);
+          break;
+        default:
+          break;
+      }
+      break;
+    case CUPTI_CB_DOMAIN_DRIVER_API:
+      //printf("Callback domain: driver\n");
       break;
     default:
+      //printf("Callback domain: other\n");
       break;
   }
 }
@@ -181,14 +222,12 @@ int main(int argc, char **argv) {
 
 int initCallbacks() {
 
-  Records records;
-
   CUdevice device = 0;
   CUresult cuerr;
   CUptiResult cuptierr;
 
   CUpti_SubscriberHandle runtimeSubscriber;
-  cuptierr = cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)runtimeCallback , &records);
+  cuptierr = cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)callback , &data);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
   cuptierr = cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_RUNTIME_API);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
