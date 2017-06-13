@@ -95,9 +95,16 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
       }
     }
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    for (size_t i = 0; i < values.size(); ++i) {
+      auto &v = values[i];
+      for (const auto &d : v.dependsOnIdx_) {
+        printf("%lu <- %lu\n", i, d);
+      }
+    }
   } else {
     assert(0 && "How did we get here?");
   }
+
 }
 
 void handleMalloc(Allocations &allocations, Values &values, const CUpti_CallbackData *cbInfo) {
