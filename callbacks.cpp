@@ -49,49 +49,30 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
     const uintptr_t dst = (uintptr_t) params->dst;
     const uintptr_t src = (uintptr_t) params->src;
     const cudaMemcpyKind kind = params->kind;
-      //const size_t count = params->count;
+    const size_t count = params->count;
 
+    // always creates a new dst value
+    auto dstIdx = values.push_back(Value(dst, count));
 
     if (cudaMemcpyHostToDevice == kind) {
       printf("%lu --[h2d]--> %lu\n", src, dst);
-
-      // h2d always creates a new dst value
-      auto dstIdx = values.size();
-      values.push_back(Value());
-      
-      // See if there is a value for the source, or create one
-      size_t srcIdx;
-      bool found;
-      std::tie(found, srcIdx) = values.get_value(src, 1);
-      if (found) {
-        values[dstIdx].depends_on(srcIdx);
-      } else {
-        size_t srcIdx = values.size();
-        values.push_back(Value());
-        values[srcIdx].pos_ = src;
-        values[dstIdx].depends_on(srcIdx);
-      }
     } else if (cudaMemcpyDeviceToHost == kind) {
       printf("%lu --[d2h]--> %lu\n", src, dst);
-
-      // h2d always creates a new dst value
-      auto dstIdx = values.size();
-      values.push_back(Value());
-      
-      // See if there is a value for the source, or create one
-      bool found = false;
-      for (size_t i = 0; i < values.size(); ++i) {
-        if (src == values[i].pos_) {
-          values[dstIdx].depends_on(i);
-          found = true;
-        }
+    }
+    // See if there is a value for the source, or create one
+    size_t srcIdx;
+    bool found;
+    std::tie(found, srcIdx) = values.get_value(src, count);
+    if (found) {
+      values[dstIdx].depends_on(srcIdx);
+      if (!values[srcIdx].is_known_size()) {
+        printf("WARN: source is unknown size. Setting by memcpy count\n");
+        values[srcIdx].size_ = count;
       }
-      if (!found) {
-        size_t srcIdx = values.size();
-        values.push_back(Value());
-        values[srcIdx].pos_ = src;
-        values[dstIdx].depends_on(srcIdx);
-      }
+      printf("found existing srcId %lu for %lu\n", srcIdx, src);
+    } else {
+      size_t srcIdx = values.push_back(Value(src, count));
+      values[dstIdx].depends_on(srcIdx);
     }
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     for (size_t i = 0; i < values.size(); ++i) {
@@ -111,19 +92,16 @@ void handleMalloc(Allocations &allocations, Values &values, const CUpti_Callback
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
-  void **devPtr = params->devPtr;
+  uintptr_t devPtr = (uintptr_t)(*(params->devPtr));
   const size_t size = params->size;
-  printf("[malloc] %lu[%lu]\n", (uintptr_t)(*devPtr), size);
+  printf("[cudaMalloc] %lu[%lu]\n", devPtr, size);
 
   Allocation a;
-  a.pos_ = (uintptr_t) *devPtr;
+  a.pos_ = devPtr;
   a.size_ = size;
   allocations.push_back(a);
 
-  Value newValue;
-  newValue.allocationIdx_ = allocations.size() - 1;
-  newValue.pos_ = (uintptr_t) *devPtr;
-  values.push_back(newValue);
+  values.push_back(Value(a.pos_, size));
   } else {
     assert(0 && "How did we get here?");
   }
@@ -202,8 +180,7 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // create a new value for each argument. All of these depend on all the argument values
     for (size_t i = 0; i < ConfiguredCall().args.size(); ++i) {
       const auto &arg = ConfiguredCall().args[i];
-      Value newValue;
-      newValue.pos_ = arg;
+      Value newValue(arg, 0);
       for (const auto &id : argValIds) {
         newValue.depends_on(id);
       }

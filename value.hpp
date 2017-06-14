@@ -18,6 +18,10 @@ class Value {
   const std::vector<size_t>& depends_on() const {
     return dependsOnIdx_;
   }
+  bool is_known_size() const {
+    return size_ != 0;
+  }
+  Value(uintptr_t pos, size_t size) : pos_(pos), size_(size) {}
  private:
   std::vector<size_t> dependsOnIdx_; // values this value depends on
 };
@@ -25,8 +29,10 @@ class Value {
 class Values {
  public:
   std::pair<bool, size_t> get_value(uintptr_t pos, size_t size) const;
-  void push_back(const Value &v) {
-    return values_.push_back(v);
+  size_t push_back(const Value &v) {
+    size_t ret = size();
+    values_.push_back(v);
+    return ret;
   }
   size_t size() const {
     return values_.size();
