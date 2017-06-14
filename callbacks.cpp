@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+#include <map>
 
 #include <cstdio>
 #include <cstdlib>
@@ -107,6 +108,7 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
 
 }
 
+
 void handleMalloc(Allocations &allocations, Values &values, const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
@@ -129,6 +131,93 @@ void handleMalloc(Allocations &allocations, Values &values, const CUpti_Callback
   }
 }
 
+
+
+typedef struct {
+  dim3 gridDim;
+  dim3 blockDim;
+  size_t sharedMem;
+  cudaStream_t stream;
+  std::vector<uintptr_t> args;
+  bool valid = false;
+} ConfiguredCall_t;
+
+ConfiguredCall_t &ConfiguredCall() {
+  static ConfiguredCall_t cc;
+}
+
+void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaConfigureCall entry\n");
+
+    if (ConfiguredCall().valid) {
+      printf("ERROR: Call is already configured?\n");
+    }
+
+    auto params = ((cudaConfigureCall_v3020_params *)(cbInfo->functionParams));
+    ConfiguredCall().gridDim = params->gridDim;
+    ConfiguredCall().blockDim = params->blockDim;
+    ConfiguredCall().sharedMem = params->sharedMem;
+    ConfiguredCall().stream = params->stream;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+
+void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaSetupArgument entry\n");
+    const auto params = ((cudaSetupArgument_v3020_params *)(cbInfo->functionParams));
+    const uintptr_t arg = (uintptr_t) params->arg;
+    //const size_t size     = params->size;
+    //const size_t offset   = params->offset;
+
+    ConfiguredCall().args.push_back(arg);
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+
+void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    const auto params = ((cudaLaunch_v3020_params *)(cbInfo->functionParams));
+    const uintptr_t func = (uintptr_t) params->func;
+
+    // Find all values that are used by arguments
+    std::vector<size_t> argValIds;
+    for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size(); ++argIdx) { // for each kernel argument
+      for (size_t valIdx = 0; valIdx < values.size(); ++valIdx) {
+        if (values[valIdx].pos_ == ConfiguredCall().args[argIdx]) {
+          argValIds.push_back(valIdx);
+          break;
+        }
+      }
+    }
+
+    for (const auto id : argValIds) {
+      printf("%lu ", id);
+    }
+    printf("\n");
+
+    // create a new value for each argument. All of these depend on all the argument values
+    for (size_t i = 0; i < ConfiguredCall().args.size(); ++i) {
+      const auto &arg = ConfiguredCall().args[i];
+      Value newValue;
+      newValue.pos_ = arg;
+      values.push_back(newValue);
+    }
+
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+
 void CUPTIAPI
 callback(void *userdata, CUpti_CallbackDomain domain,
          CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo) {
@@ -146,6 +235,15 @@ callback(void *userdata, CUpti_CallbackDomain domain,
           break;
         case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
           handleMalloc(data.allocations_, data.values_, cbInfo);
+          break;
+        case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
+          handleCudaConfigureCall(cbInfo);
+          break;
+        case CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020:
+          handleCudaSetupArgument(cbInfo);
+          break;
+        case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
+          handleCudaLaunch(data.values_, cbInfo);
           break;
         default:
           break;
