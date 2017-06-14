@@ -60,18 +60,16 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
       values.push_back(Value());
       
       // See if there is a value for the source, or create one
-      bool found = false;
-      for (size_t i = 0; i < values.size(); ++i) {
-        if (src == values[i].pos_) {
-          values[dstIdx].dependsOnIdx_.push_back(i);
-          found = true;
-        }
-      }
-      if (!found) {
+      size_t srcIdx;
+      bool found;
+      std::tie(found, srcIdx) = values.get_value(src, 1);
+      if (found) {
+        values[dstIdx].depends_on(srcIdx);
+      } else {
         size_t srcIdx = values.size();
         values.push_back(Value());
         values[srcIdx].pos_ = src;
-        values[dstIdx].dependsOnIdx_.push_back(srcIdx);
+        values[dstIdx].depends_on(srcIdx);
       }
     } else if (cudaMemcpyDeviceToHost == kind) {
       printf("%lu --[d2h]--> %lu\n", src, dst);
@@ -84,7 +82,7 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
       bool found = false;
       for (size_t i = 0; i < values.size(); ++i) {
         if (src == values[i].pos_) {
-          values[dstIdx].dependsOnIdx_.push_back(i);
+          values[dstIdx].depends_on(i);
           found = true;
         }
       }
@@ -92,13 +90,13 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
         size_t srcIdx = values.size();
         values.push_back(Value());
         values[srcIdx].pos_ = src;
-        values[dstIdx].dependsOnIdx_.push_back(srcIdx);
+        values[dstIdx].depends_on(srcIdx);
       }
     }
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     for (size_t i = 0; i < values.size(); ++i) {
       auto &v = values[i];
-      for (const auto &d : v.dependsOnIdx_) {
+      for (const auto &d : v.depends_on()) {
         printf("%lu <- %lu\n", i, d);
       }
     }
@@ -144,6 +142,7 @@ typedef struct {
 
 ConfiguredCall_t &ConfiguredCall() {
   static ConfiguredCall_t cc;
+  return cc;
 }
 
 void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
@@ -170,7 +169,7 @@ void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaSetupArgument entry\n");
     const auto params = ((cudaSetupArgument_v3020_params *)(cbInfo->functionParams));
-    const uintptr_t arg = (uintptr_t) params->arg;
+    const uintptr_t arg = (uintptr_t) *static_cast<const void * const*>(params->arg); // arg is a pointer to the arg.
     //const size_t size     = params->size;
     //const size_t offset   = params->offset;
 
@@ -184,13 +183,15 @@ void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
 
 void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    const auto params = ((cudaLaunch_v3020_params *)(cbInfo->functionParams));
-    const uintptr_t func = (uintptr_t) params->func;
+    printf("callback: cudaLaunch entry\n");
+    //const auto params = ((cudaLaunch_v3020_params *)(cbInfo->functionParams));
+    //const uintptr_t func = (uintptr_t) params->func;
 
     // Find all values that are used by arguments
     std::vector<size_t> argValIds;
     for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size(); ++argIdx) { // for each kernel argument
       for (size_t valIdx = 0; valIdx < values.size(); ++valIdx) {
+        //printf("arg %lu, val %lu\n", argIdx, valIdx);
         if (values[valIdx].pos_ == ConfiguredCall().args[argIdx]) {
           argValIds.push_back(valIdx);
           break;
@@ -198,16 +199,14 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       }
     }
 
-    for (const auto id : argValIds) {
-      printf("%lu ", id);
-    }
-    printf("\n");
-
     // create a new value for each argument. All of these depend on all the argument values
     for (size_t i = 0; i < ConfiguredCall().args.size(); ++i) {
       const auto &arg = ConfiguredCall().args[i];
       Value newValue;
       newValue.pos_ = arg;
+      for (const auto &id : argValIds) {
+        newValue.depends_on(id);
+      }
       values.push_back(newValue);
     }
 
