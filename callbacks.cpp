@@ -77,8 +77,12 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     for (size_t i = 0; i < values.size(); ++i) {
       auto &v = values[i];
-      for (const auto &d : v.depends_on()) {
-        printf("%lu <- %lu\n", i, d);
+      if (v.depends_on().size() > 0) {
+        printf("%lu <- ", i);
+        for (const auto &d : v.depends_on()) {
+          printf("%lu ", d);
+        }
+        printf("\n");
       }
     }
   } else {
@@ -168,12 +172,12 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // Find all values that are used by arguments
     std::vector<size_t> argValIds;
     for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size(); ++argIdx) { // for each kernel argument
-      for (size_t valIdx = 0; valIdx < values.size(); ++valIdx) {
-        //printf("arg %lu, val %lu\n", argIdx, valIdx);
-        if (values[valIdx].pos_ == ConfiguredCall().args[argIdx]) {
-          argValIds.push_back(valIdx);
-          break;
-        }
+      //printf("arg %lu, val %lu\n", argIdx, valIdx);
+      bool found;
+      size_t valIdx;
+      std::tie(found, valIdx) = values.get_value(ConfiguredCall().args[argIdx], 1);
+      if (found) {
+        argValIds.push_back(valIdx);
       }
     }
 
