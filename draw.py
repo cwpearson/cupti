@@ -29,6 +29,22 @@ class Allocation(Node):
     def __str__(self):
        return str(self.ID) + ";" 
 
+class Subgraph():
+    def __init__(self, name):
+        self.name = name
+        self.nodes = []
+    def __str__(self):
+        s = "subgraph " + self.name + " {\n"
+        s += "style=filled;\n"
+        s += "color=lightgrey;\n"
+        s += 'label="' + self.name+ '";\n'
+        for n in self.nodes:
+            s += str(n) + "\n"
+        s += "}"
+        return s
+class AllocationCluster(Subgraph):
+    def __init__(self, location):
+        Subgraph.__init__(self, location)
 
 class DirectedEdge(Edge):
     def __init__(self, src, dst):
@@ -44,7 +60,7 @@ class DottedEdge(Edge):
 
 Edges = []
 Values = {}
-Allocations = {}
+AllocationClusters = {}
 
 
 def write_header(dotfile):
@@ -52,8 +68,8 @@ def write_header(dotfile):
     dotfile.write(header)
 
 def write_body(dotfile):
-    for a in Allocations:
-        dotfile.write(str(a))
+    for a in AllocationClusters:
+        dotfile.write(str(AllocationClusters[a]))
         dotfile.write("\n")
     for k in Values:
         dotfile.write(str(Values[k]))
@@ -70,26 +86,31 @@ args = sys.argv[1:]
 
 with open(args[0], 'r') as f:
     for line in f:
-      j = json.loads(line)
-      print j
-      if "val" in j:
-         val = j["val"]
-         ID = val["id"]
-         newValue = Value(val["id"])
-         Values[ID] = newValue
-         Edges += [DottedEdge(newValue.dot_ID(), val["allocation_id"])]
+        j = json.loads(line)
+        print j
+        if "val" in j:
+            val = j["val"]
+            ID = val["id"]
+            newValue = Value(val["id"])
+            Values[ID] = newValue
+            Edges += [DottedEdge(newValue.dot_ID(), val["allocation_id"])]
 
-      elif "dep" in j:
-         dep = j["dep"]
-         Edges += [DirectedEdge(dep["src_id"], dep["dst_id"])]
+        elif "dep" in j:
+            dep = j["dep"]
+            Edges += [DirectedEdge(dep["src_id"], dep["dst_id"])]
 
-      elif "allocation" in j:
-         alloc = j["allocation"]
-         ID = alloc["id"]
-         newAllocation = Allocation(ID)
-         Allocations[ID] = newAllocation
-      else:
-         print "Skipping", j
+        elif "allocation" in j:
+            alloc = j["allocation"]
+            ID = alloc["id"]
+            newAllocation = Allocation(ID)
+
+            loc = alloc["loc"]
+            if loc not in AllocationClusters:
+                AllocationClusters[loc] = AllocationCluster(loc)
+            AllocationClusters[loc].nodes += [newAllocation]
+
+        else:
+            print "Skipping", j
 
 
 with open("cprof.dot", 'w') as dotfile:

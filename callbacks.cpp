@@ -106,7 +106,7 @@ void handleMalloc(Allocations &allocations, Values &values, const CUpti_Callback
   const size_t size = params->size;
   printf("[cudaMalloc] %lu[%lu]\n", devPtr, size);
 
-  std::shared_ptr<Allocation> a(new Allocation(devPtr, size));
+  std::shared_ptr<Allocation> a(new Allocation(devPtr, size, Allocation::Location::Device));
   allocations.insert(a);
 
   values.insert(std::shared_ptr<Value>(new Value(devPtr, size)));

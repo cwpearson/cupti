@@ -9,17 +9,18 @@
 
 
 class Allocation {
- private:
-  typedef uintptr_t id_type;
  public:
-  friend std::ostream &operator<<(std::ostream &os, const Allocation &v);
   enum class Location {Host, Device};
   enum class Type {Pinned, Pageable};
-  Location location_;
-  size_t deviceId_;
+ private:
+  typedef uintptr_t id_type;
   uintptr_t pos_;
   size_t size_;
-  Allocation(uintptr_t pos, size_t size) : pos_(pos), size_(size) {}
+  Location location_;
+ public:
+  friend std::ostream &operator<<(std::ostream &os, const Allocation &v);
+  size_t deviceId_;
+  Allocation(uintptr_t pos, size_t size, Location loc) : pos_(pos), size_(size), location_(loc) {}
 
   id_type Id() const {
     return reinterpret_cast<id_type>(this);
