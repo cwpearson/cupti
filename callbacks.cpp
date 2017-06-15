@@ -198,6 +198,27 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
 }
 
 
+std::string getCallbackName(CUpti_CallbackDomain domain, CUpti_CallbackId cbid) {
+  switch (domain) {
+    case CUPTI_CB_DOMAIN_RUNTIME_API:
+      switch (cbid) {
+        case CUPTI_RUNTIME_TRACE_CBID_cudaStreamDestroy_v3020:
+          return std::string("cudaStreamDestroy_v3020");
+        default: return std::string("<unknown runtime api: ") + std::to_string(cbid) + std::string(">");
+      }
+      break;
+    case CUPTI_CB_DOMAIN_DRIVER_API:
+    {
+      switch(cbid) {
+        default: return std::string("<unknown driver api: ") + std::to_string(cbid) + std::string(">");
+      }
+    }
+    default:
+      return std::string("<unknown domain>");
+  }
+}
+
+
 void CUPTIAPI
 callback(void *userdata, CUpti_CallbackDomain domain,
          CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo) {
@@ -209,31 +230,37 @@ callback(void *userdata, CUpti_CallbackDomain domain,
   // Data is collected for the following APIs
   switch (domain) {
     case CUPTI_CB_DOMAIN_RUNTIME_API:
-      switch (cbid) {
-        case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-          handleMemcpy(data.allocations_, data.values_,  cbInfo);
-          break;
-        case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
-          handleMalloc(data.allocations_, data.values_, cbInfo);
-          break;
-        case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
-          handleCudaConfigureCall(cbInfo);
-          break;
-        case CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020:
-          handleCudaSetupArgument(cbInfo);
-          break;
-        case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
-          handleCudaLaunch(data.values_, cbInfo);
-          break;
-        default:
-          break;
+      {
+        switch (cbid) {
+          case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
+            handleMemcpy(data.allocations_, data.values_,  cbInfo);
+            break;
+          case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
+            handleMalloc(data.allocations_, data.values_, cbInfo);
+            break;
+          case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
+            handleCudaConfigureCall(cbInfo);
+            break;
+          case CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020:
+            handleCudaSetupArgument(cbInfo);
+            break;
+          case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
+            handleCudaLaunch(data.values_, cbInfo);
+            break;
+          default:
+            auto name = getCallbackName(domain, cbid);
+            printf("skipping runtime call %s...\n", name.c_str());
+            break;
+        }
       }
       break;
     case CUPTI_CB_DOMAIN_DRIVER_API:
-      //printf("Callback domain: driver\n");
-      break;
+      {
+        auto name = getCallbackName(domain, cbid);
+        printf("skipping driver call %s...\n", name.c_str());
+        break;
+      }
     default:
-      //printf("Callback domain: other\n");
       break;
   }
 }
