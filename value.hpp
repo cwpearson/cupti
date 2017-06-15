@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 
+const std::string output_path("cprof.txt");
+
 class Value {
  public:
   typedef uintptr_t id_type;
@@ -26,6 +28,7 @@ class Value {
   id_type Id() const {
     return reinterpret_cast<id_type>(this);
   }
+  std::string str() const;
 
   Value(uintptr_t pos, size_t size) : pos_(pos), size_(size) {}
  private:
@@ -52,7 +55,6 @@ class Values {
   }
   map_type::iterator begin() {return values_.begin();}
   map_type::iterator end() {return values_.end();}
-
 
   static Values &instance();
 

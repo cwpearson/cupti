@@ -29,8 +29,23 @@ void Value::depends_on(size_t id) {
   dependsOnIdx_.push_back(id);
 
   ptree pt;
-  pt.put(std::to_string(Id()), std::to_string(id));
+  pt.put("dep.src_id", std::to_string(Id()));
+  pt.put("dep.dst_id", std::to_string(id));
+  std::ofstream buf(output_path, std::ofstream::app); 
+  write_json (buf, pt, false);
+  buf.flush();
+}
 
+
+std::string Value::str() const {
+  ptree pt;
+  pt.put("val.id", std::to_string(Id()));
+  pt.put("val.pos", std::to_string(pos_));
+  pt.put("val.size", std::to_string(size_));
+  pt.put("val.allocation_id", std::to_string(allocationIdx_));
+  std::ostringstream buf;
+  write_json (buf, pt, false);
+  return buf.str();
 }
 
 std::pair<bool, Values::key_type> Values::get_last_overlapping_value(uintptr_t pos, size_t size) {
@@ -52,6 +67,12 @@ std::pair<bool, Values::key_type> Values::get_last_overlapping_value(uintptr_t p
 std::pair<Values::map_type::iterator, bool> Values::insert(const value_type &v) {
   const auto &valIdx = reinterpret_cast<key_type>(v.get());
   value_order_.push_back(valIdx);
+
+  auto json = v->str() ;
+  std::ofstream buf(output_path, std::ofstream::app);
+  buf << json;
+  buf.flush();
+
   return values_.insert(std::make_pair(valIdx, v));
 }
 
