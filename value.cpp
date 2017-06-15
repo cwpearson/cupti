@@ -29,8 +29,8 @@ void Value::depends_on(size_t id) {
   dependsOnIdx_.push_back(id);
 
   ptree pt;
-  pt.put("dep.src_id", std::to_string(Id()));
-  pt.put("dep.dst_id", std::to_string(id));
+  pt.put("dep.dst_id", std::to_string(Id()));
+  pt.put("dep.src_id", std::to_string(id));
   std::ofstream buf(output_path, std::ofstream::app); 
   write_json (buf, pt, false);
   buf.flush();
