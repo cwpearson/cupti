@@ -6,7 +6,6 @@
 #include <dlfcn.h>
 
 #include "callbacks.hpp"
-#include "data.hpp"
 
 typedef cudaError_t (*cudaMallocFunc)(void**,size_t);
 static cudaMallocFunc real_cudaMalloc = NULL;
@@ -22,8 +21,8 @@ cudaError_t cudaMalloc(void **devPtr, size_t size) {
   return real_cudaMalloc(devPtr, size); 
 }
 
-typedef cudaError_t (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
-static cudaConfigureCall_t realCudaConfigureCall = NULL;
+//typedef cudaError_t (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
+//static cudaConfigureCall_t realCudaConfigureCall = NULL;
 
 /*
 typedef CUresult (*cuInitFunc)(unsigned int);

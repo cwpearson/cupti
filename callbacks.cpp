@@ -13,7 +13,8 @@
 #include <cuda.h>
 #include <cupti.h>
 
-#include "data.hpp"
+#include "allocation.hpp"
+#include "value.hpp"
 
 #define CHECK_CU_ERROR(err, cufunc)                                     \
   if (err != CUDA_SUCCESS)                                              \
@@ -52,7 +53,9 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
     const size_t count = params->count;
 
     // always creates a new dst value
-    auto dstIdx = values.push_back(Value(dst, count));
+    auto dstVal = std::shared_ptr<Value>(new Value(dst, count));
+    values.insert(dstVal);
+    auto dstIdx = dstVal->Id();
 
     if (cudaMemcpyHostToDevice == kind) {
       printf("%lu --[h2d]--> %lu\n", src, dst);
@@ -60,26 +63,30 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
       printf("%lu --[d2h]--> %lu\n", src, dst);
     }
     // See if there is a value for the source, or create one
-    size_t srcIdx;
+    uintptr_t srcIdx;
     bool found;
-    std::tie(found, srcIdx) = values.get_value(src, count);
+    std::tie(found, srcIdx) = values.get_last_overlapping_value(src, count);
+    fprintf(stderr, "here\n");
     if (found) {
-      values[dstIdx].depends_on(srcIdx);
-      if (!values[srcIdx].is_known_size()) {
+      values[dstIdx]->depends_on(srcIdx);
+      if (!values[srcIdx]->is_known_size()) {
         printf("WARN: source is unknown size. Setting by memcpy count\n");
-        values[srcIdx].size_ = count;
+        values[srcIdx]->size_ = count;
       }
       printf("found existing srcId %lu for %lu\n", srcIdx, src);
     } else {
-      size_t srcIdx = values.push_back(Value(src, count));
-      values[dstIdx].depends_on(srcIdx);
+      auto srcVal = std::shared_ptr<Value>(new Value(src, count));
+      values.insert(srcVal);
+      auto srcIdx = srcVal->Id();
+      values[dstIdx]->depends_on(srcIdx);
     }
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    for (size_t i = 0; i < values.size(); ++i) {
-      auto &v = values[i];
-      if (v.depends_on().size() > 0) {
-        printf("%lu <- ", i);
-        for (const auto &d : v.depends_on()) {
+    for (auto kv : values) {
+      const auto &valIdx = kv.first;
+      const auto &val = kv.second;
+      if (val->depends_on().size() > 0) {
+        printf("%lu <- ", valIdx);
+        for (const auto &d : val->depends_on()) {
           printf("%lu ", d);
         }
         printf("\n");
@@ -88,7 +95,6 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
   } else {
     assert(0 && "How did we get here?");
   }
-
 }
 
 
@@ -100,12 +106,10 @@ void handleMalloc(Allocations &allocations, Values &values, const CUpti_Callback
   const size_t size = params->size;
   printf("[cudaMalloc] %lu[%lu]\n", devPtr, size);
 
-  Allocation a;
-  a.pos_ = devPtr;
-  a.size_ = size;
-  allocations.push_back(a);
+  std::shared_ptr<Allocation> a(new Allocation(devPtr, size));
+  allocations.insert(a);
 
-  values.push_back(Value(a.pos_, size));
+  values.insert(std::shared_ptr<Value>(new Value(devPtr, size)));
   } else {
     assert(0 && "How did we get here?");
   }
@@ -174,8 +178,8 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size(); ++argIdx) { // for each kernel argument
       //printf("arg %lu, val %lu\n", argIdx, valIdx);
       bool found;
-      size_t valIdx;
-      std::tie(found, valIdx) = values.get_value(ConfiguredCall().args[argIdx], 1);
+      uintptr_t valIdx;
+      std::tie(found, valIdx) = values.get_last_overlapping_value(ConfiguredCall().args[argIdx], 1);
       if (found) {
         argValIds.push_back(valIdx);
       }
@@ -184,11 +188,11 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // create a new value for each argument. All of these depend on all the argument values
     for (size_t i = 0; i < ConfiguredCall().args.size(); ++i) {
       const auto &arg = ConfiguredCall().args[i];
-      Value newValue(arg, 0);
+      std::shared_ptr<Value> newValue( new Value(arg, 0));
       for (const auto &id : argValIds) {
-        newValue.depends_on(id);
+        newValue->depends_on(id);
       }
-      values.push_back(newValue);
+      values.insert(newValue);
     }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
@@ -222,10 +226,9 @@ std::string getCallbackName(CUpti_CallbackDomain domain, CUpti_CallbackId cbid) 
 void CUPTIAPI
 callback(void *userdata, CUpti_CallbackDomain domain,
          CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo) {
-  uint64_t startTimestamp;
-  uint64_t endTimestamp;
-  auto &data = *(reinterpret_cast<Data*>(userdata));
-  CUptiResult cuptiErr;
+  //uint64_t startTimestamp;
+  //uint64_t endTimestamp;
+  (void) userdata;
       
   // Data is collected for the following APIs
   switch (domain) {
@@ -233,10 +236,10 @@ callback(void *userdata, CUpti_CallbackDomain domain,
       {
         switch (cbid) {
           case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-            handleMemcpy(data.allocations_, data.values_,  cbInfo);
+            handleMemcpy(Allocations::instance(), Values::instance(),  cbInfo);
             break;
           case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
-            handleMalloc(data.allocations_, data.values_, cbInfo);
+            handleMalloc(Allocations::instance(), Values::instance(), cbInfo);
             break;
           case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
             handleCudaConfigureCall(cbInfo);
@@ -245,7 +248,7 @@ callback(void *userdata, CUpti_CallbackDomain domain,
             handleCudaSetupArgument(cbInfo);
             break;
           case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
-            handleCudaLaunch(data.values_, cbInfo);
+            handleCudaLaunch(Values::instance(), cbInfo);
             break;
           default:
             auto name = getCallbackName(domain, cbid);
@@ -341,12 +344,12 @@ int main(int argc, char **argv) {
 
 int initCallbacks() {
 
-  CUdevice device = 0;
-  CUresult cuerr;
+  //CUdevice device = 0;
+  //CUresult cuerr;
   CUptiResult cuptierr;
 
   CUpti_SubscriberHandle runtimeSubscriber;
-  cuptierr = cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)callback , &Data::instance());
+  cuptierr = cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)callback , nullptr);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
   cuptierr = cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_RUNTIME_API);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
