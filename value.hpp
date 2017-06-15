@@ -4,16 +4,19 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <iostream>
 
 const std::string output_path("cprof.txt");
 
 class Value {
+ private:
+  size_t size_;
+  size_t allocation_id_; // allocation that this value lives in
  public:
+  friend std::ostream &operator<<(std::ostream &os, const Value &v);
   typedef uintptr_t id_type;
 
   uintptr_t pos_;
-  size_t size_;
-  size_t allocationIdx_; // allocation that this value lives in
 
   bool contains(const uintptr_t pos) const;
   bool overlaps(const Value &other) const;
@@ -28,9 +31,10 @@ class Value {
   id_type Id() const {
     return reinterpret_cast<id_type>(this);
   }
-  std::string str() const;
+  std::string json() const;
+  void set_size(size_t size);
 
-  Value(uintptr_t pos, size_t size) : pos_(pos), size_(size) {}
+  Value(uintptr_t pos, size_t size) : size_(size), pos_(pos) {}
  private:
   std::vector<id_type> dependsOnIdx_; // values this value depends on
 };

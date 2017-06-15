@@ -37,16 +37,30 @@ void Value::depends_on(size_t id) {
 }
 
 
-std::string Value::str() const {
+std::string Value::json() const {
   ptree pt;
   pt.put("val.id", std::to_string(Id()));
   pt.put("val.pos", std::to_string(pos_));
   pt.put("val.size", std::to_string(size_));
-  pt.put("val.allocation_id", std::to_string(allocationIdx_));
+  pt.put("val.allocation_id", std::to_string(allocation_id_));
   std::ostringstream buf;
   write_json (buf, pt, false);
   return buf.str();
 }
+
+
+void Value::set_size(size_t size) {
+  size_ = size;
+  std::ofstream buf(output_path, std::ofstream::app);
+  buf << *this;
+  buf.flush();
+}
+
+std::ostream &operator<<(std::ostream &os, const Value &v) {
+  os << v.json();
+  return os;
+}
+
 
 std::pair<bool, Values::key_type> Values::get_last_overlapping_value(uintptr_t pos, size_t size) {
   if (values_.empty()) return std::make_pair(false, -1);
@@ -68,9 +82,8 @@ std::pair<Values::map_type::iterator, bool> Values::insert(const value_type &v) 
   const auto &valIdx = reinterpret_cast<key_type>(v.get());
   value_order_.push_back(valIdx);
 
-  auto json = v->str() ;
   std::ofstream buf(output_path, std::ofstream::app);
-  buf << json;
+  buf << *v;
   buf.flush();
 
   return values_.insert(std::make_pair(valIdx, v));

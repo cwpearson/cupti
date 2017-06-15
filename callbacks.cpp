@@ -71,7 +71,7 @@ void handleMemcpy(Allocations &allocations, Values &values, const CUpti_Callback
       values[dstIdx]->depends_on(srcIdx);
       if (!values[srcIdx]->is_known_size()) {
         printf("WARN: source is unknown size. Setting by memcpy count\n");
-        values[srcIdx]->size_ = count;
+        values[srcIdx]->set_size(count);
       }
       printf("found existing srcId %lu for %lu\n", srcIdx, src);
     } else {
