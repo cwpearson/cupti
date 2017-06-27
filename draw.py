@@ -2,6 +2,7 @@
 
 import sys
 import json
+import subprocess
 
 class Node():
     def __init__(self, ID):
@@ -29,15 +30,19 @@ class Allocation(Node):
     def __str__(self):
        return str(self.ID) + ";" 
 
+num_subgraphs=0
 class Subgraph():
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, label):
+        self.label = label
         self.nodes = []
+        global num_subgraphs
+        self.name = "cluster_"+str(num_subgraphs)
+        num_subgraphs += 1
     def __str__(self):
         s = "subgraph " + self.name + " {\n"
         s += "style=filled;\n"
         s += "color=lightgrey;\n"
-        s += 'label="' + self.name+ '";\n'
+        s += 'label = "' + self.label+ '";\n'
         for n in self.nodes:
             s += str(n) + "\n"
         s += "}"
@@ -117,3 +122,7 @@ with open("cprof.dot", 'w') as dotfile:
     write_header(dotfile)
     write_body(dotfile)
     write_footer(dotfile)
+
+
+#subprocess.check_output(['ls','-l']) #all that is technically needed...
+print subprocess.check_output(['dot','-Tpdf', '-o', 'cprof.pdf', 'cprof.dot'])
