@@ -54,20 +54,31 @@ void handleMemcpy(Allocations &allocations, Values &values,
 
     // Look for existing src / dst allocations
     bool srcFound, dstFound;
-    uintptr_t srcAlloc, dstAlloc;
-    std::tie(srcFound, srcAlloc) = allocations.find_live(src, count);
-    std::tie(dstFound, dstAlloc) = allocations.find_live(dst, count);
+    Allocations::key_type srcAlloc, dstAlloc;
+    Allocation::Location srcLoc, dstLoc;
+    if (cudaMemcpyHostToDevice == kind) {
+      printf("%lu --[h2d]--> %lu\n", src, dst);
+      srcLoc = Allocation::Location::Host;
+      dstLoc = Allocation::Location::Device;
+    } else if (cudaMemcpyDeviceToHost == kind) {
+      printf("%lu --[d2h]--> %lu\n", src, dst);
+      srcLoc = Allocation::Location::Device;
+      dstLoc = Allocation::Location::Host;
+    } else if (cudaMemcpyDeviceToDevice == kind) {
+      srcLoc = Allocation::Location::Device;
+      dstLoc = Allocation::Location::Device;
+    } else {
+      assert(0 && "Unsupported cudaMemcpy kind");
+    }
+
+    std::tie(srcFound, srcAlloc) = allocations.find_live(src, count, srcLoc);
+    std::tie(dstFound, dstAlloc) = allocations.find_live(dst, count, dstLoc);
 
     // always creates a new dst value
     auto dstVal = std::shared_ptr<Value>(new Value(dst, count));
     values.insert(dstVal);
     auto dstIdx = dstVal->Id();
 
-    if (cudaMemcpyHostToDevice == kind) {
-      printf("%lu --[h2d]--> %lu\n", src, dst);
-    } else if (cudaMemcpyDeviceToHost == kind) {
-      printf("%lu --[d2h]--> %lu\n", src, dst);
-    }
     // See if there is a value for the source, or create one
     uintptr_t srcIdx;
     bool found;

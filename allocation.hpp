@@ -37,9 +37,11 @@ public:
 };
 
 class Allocations {
-private:
+public:
   typedef uintptr_t key_type;
   typedef std::shared_ptr<Allocation> value_type;
+
+private:
   typedef std::map<key_type, value_type> map_type;
   map_type allocations_;
 
