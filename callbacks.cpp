@@ -44,11 +44,19 @@ Time getTimestamp(const CUpti_CallbackData *cbInfo) {
 void handleMemcpy(Allocations &allocations, Values &values,
                   const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+
+    // extract API call parameters
     auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
     const uintptr_t dst = (uintptr_t)params->dst;
     const uintptr_t src = (uintptr_t)params->src;
     const cudaMemcpyKind kind = params->kind;
     const size_t count = params->count;
+
+    // Look for existing src / dst allocations
+    bool srcFound, dstFound;
+    uintptr_t srcAlloc, dstAlloc;
+    std::tie(srcFound, srcAlloc) = allocations.find_live(src, count);
+    std::tie(dstFound, dstAlloc) = allocations.find_live(dst, count);
 
     // always creates a new dst value
     auto dstVal = std::shared_ptr<Value>(new Value(dst, count));
@@ -78,6 +86,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
       auto srcIdx = srcVal->Id();
       values[dstIdx]->depends_on(srcIdx);
     }
+
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     for (auto kv : values) {
       const auto &valIdx = kv.first;

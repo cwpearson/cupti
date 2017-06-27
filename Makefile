@@ -12,7 +12,7 @@ query: deviceQuery.cpp
 %.o : %.cpp
 	g++ -g -Wall -Wextra -std=c++11 -fPIC $(INC) $^ -c -o $@	
 
-prof.so: prof.o callbacks.o value.o allocation.o
+prof.so: prof.o callbacks.o value.o allocation.o extent.o
 	g++ -g -Wall -Wextra -std=c++11 -shared -fPIC $^ $(LIB) -o $@
 
 vec: vectorAdd.cu
