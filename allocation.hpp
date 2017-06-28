@@ -8,21 +8,24 @@
 #include <memory>
 
 #include "extent.hpp"
+#include "location.hpp"
 
 class Allocation : public Extent {
 public:
-  enum class Location { Host, Device };
   enum class Type { Pinned, Pageable };
+  typedef uintptr_t id_type;
 
 private:
-  typedef uintptr_t id_type;
+  bool is_unknown_;
+  bool is_not_allocation_;
   Location location_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const Allocation &v);
   size_t deviceId_;
   Allocation(uintptr_t pos, size_t size, Location loc)
-      : Extent(pos, size), location_(loc) {}
+      : is_unknown_(false), is_not_allocation_(false), Extent(pos, size),
+        location_(loc) {}
 
   id_type Id() const { return reinterpret_cast<id_type>(this); }
   std::string json() const;
@@ -34,6 +37,9 @@ public:
   bool contains(const Allocation &other) {
     return (location_ == other.location_) && Extent::contains(other);
   }
+
+  static Allocation &UnknownAllocation();
+  static Allocation &NoAllocation();
 };
 
 class Allocations {
@@ -48,7 +54,7 @@ private:
 public:
   std::pair<map_type::iterator, bool> insert(const value_type &v);
   std::tuple<bool, key_type> find_live(uintptr_t pos, size_t size,
-                                       Allocation::Location location);
+                                       Location location);
 
   static Allocations &instance();
 

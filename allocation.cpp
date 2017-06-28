@@ -29,6 +29,18 @@ std::string Allocation::json() const {
   return buf.str();
 }
 
+Allocation &Allocation::UnknownAllocation() {
+  static Allocation unknown(0 /*pos*/, 0 /*size*/, Allocation::Location::Host);
+  unknown.is_unknown_ = true;
+  return unknown;
+}
+
+Allocation &Allocation::NoAllocation() {
+  static Allocation not(0 /*pos*/, 0 /*size*/, Allocation::Location::Host);
+  not.is_not_allocation_ = true;
+  return not;
+}
+
 std::ostream &operator<<(std::ostream &os, const Allocation &v) {
   os << v.json();
   return os;

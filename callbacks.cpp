@@ -54,62 +54,61 @@ void handleMemcpy(Allocations &allocations, Values &values,
 
     // Look for existing src / dst allocations
     bool srcFound, dstFound;
-    Allocations::key_type srcAlloc, dstAlloc;
-    Allocation::Location srcLoc, dstLoc;
+    Allocations::key_type srcAllocId, dstAllocId;
+    Location srcLoc, dstLoc;
     if (cudaMemcpyHostToDevice == kind) {
       printf("%lu --[h2d]--> %lu\n", src, dst);
-      srcLoc = Allocation::Location::Host;
-      dstLoc = Allocation::Location::Device;
+      srcLoc = Location::Host;
+      dstLoc = Location::Device;
     } else if (cudaMemcpyDeviceToHost == kind) {
       printf("%lu --[d2h]--> %lu\n", src, dst);
-      srcLoc = Allocation::Location::Device;
-      dstLoc = Allocation::Location::Host;
+      srcLoc = Location::Device;
+      dstLoc = Location::Host;
     } else if (cudaMemcpyDeviceToDevice == kind) {
-      srcLoc = Allocation::Location::Device;
-      dstLoc = Allocation::Location::Device;
+      srcLoc = Location::Device;
+      dstLoc = Location::Device;
     } else {
       assert(0 && "Unsupported cudaMemcpy kind");
     }
 
-    std::tie(srcFound, srcAlloc) = allocations.find_live(src, count, srcLoc);
-    std::tie(dstFound, dstAlloc) = allocations.find_live(dst, count, dstLoc);
+    std::tie(srcFound, srcAllocId) = allocations.find_live(src, count, srcLoc);
+    std::tie(dstFound, dstAllocId) = allocations.find_live(dst, count, dstLoc);
 
     // always creates a new dst value
-    auto dstVal = std::shared_ptr<Value>(new Value(dst, count));
+    auto dstVal = std::shared_ptr<Value>(new Value(dst, count, dstAllocId));
     values.insert(dstVal);
-    auto dstIdx = dstVal->Id();
+    auto dstId = dstVal->Id();
 
     // See if there is a value for the source, or create one
-    uintptr_t srcIdx;
+    Value::id_type srcId;
     bool found;
-    std::tie(found, srcIdx) = values.get_last_overlapping_value(src, count);
-    fprintf(stderr, "here\n");
+    std::tie(found, srcId) = values.get_last_overlapping_value(src, count);
     if (found) {
-      values[dstIdx]->depends_on(srcIdx);
-      if (!values[srcIdx]->is_known_size()) {
+      values[dstId]->add_depends_on(srcId);
+      if (!values[srcId]->is_known_size()) {
         printf("WARN: source is unknown size. Setting by memcpy count\n");
-        values[srcIdx]->set_size(count);
+        values[srcId]->set_size(count);
       }
-      printf("found existing srcId %lu for %lu\n", srcIdx, src);
+      printf("found existing srcId %lu for %lu\n", srcId, src);
     } else {
-      auto srcVal = std::shared_ptr<Value>(new Value(src, count));
+      auto srcVal = std::shared_ptr<Value>(new Value(src, count, srcAllocId));
       values.insert(srcVal);
       auto srcIdx = srcVal->Id();
-      values[dstIdx]->depends_on(srcIdx);
+      values[dstId]->add_depends_on(srcId);
     }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    for (auto kv : values) {
-      const auto &valIdx = kv.first;
-      const auto &val = kv.second;
-      if (val->depends_on().size() > 0) {
-        printf("%lu <- ", valIdx);
-        for (const auto &d : val->depends_on()) {
-          printf("%lu ", d);
-        }
-        printf("\n");
-      }
-    }
+    // for (auto kv : values) {
+    //   const auto &valIdx = kv.first;
+    //   const auto &val = kv.second;
+    //   if (val->depends_on().size() > 0) {
+    //     printf("%lu <- ", valIdx);
+    //     for (const auto &d : val->depends_on()) {
+    //       printf("%lu ", d);
+    //     }
+    //     printf("\n");
+    //   }
+    // }
   } else {
     assert(0 && "How did we get here?");
   }
@@ -128,7 +127,7 @@ void handleMalloc(Allocations &allocations, Values &values,
         new Allocation(devPtr, size, Allocation::Location::Device));
     allocations.insert(a);
 
-    values.insert(std::shared_ptr<Value>(new Value(devPtr, size)));
+    values.insert(std::shared_ptr<Value>(new Value(devPtr, size, a->Id())));
   } else {
     assert(0 && "How did we get here?");
   }
@@ -193,26 +192,25 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // const uintptr_t func = (uintptr_t) params->func;
 
     // Find all values that are used by arguments
-    std::vector<size_t> argValIds;
+    std::vector<Values::value_type> argVals;
     for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size();
          ++argIdx) { // for each kernel argument
-      // printf("arg %lu, val %lu\n", argIdx, valIdx);
-      bool found;
-      uintptr_t valIdx;
-      std::tie(found, valIdx) =
-          values.get_last_overlapping_value(ConfiguredCall().args[argIdx], 1);
-      if (found) {
-        argValIds.push_back(valIdx);
-      }
-    }
+                     // printf("arg %lu, val %lu\n", argIdx, valIdx);
 
-    // create a new value for each argument. All of these depend on all the
-    // argument values
-    for (size_t i = 0; i < ConfiguredCall().args.size(); ++i) {
-      const auto &arg = ConfiguredCall().args[i];
-      std::shared_ptr<Value> newValue(new Value(arg, 0));
-      for (const auto &id : argValIds) {
-        newValue->depends_on(id);
+      Values::value_type argVal = values.find_live(
+          ConfiguredCall().args[argIdx], 1 /*size*/, Location::Device);
+      argVals.push_back(argVal);
+    }
+    assert(argVals.size() == ConfiguredCall().args.size());
+
+    // Assume that the kernel can modify each argument.
+    // Therefore, create a new value for each argument.
+    // All of these new values depend on all of the argument values.
+    for (size_t i = 0; i < argVals.size(); ++i) {
+      const auto &callArg = ConfiguredCall().args[i];
+      const auto &newValue = argVals[i];
+      for (const auto &argVal : argVals) {
+        newValue->add_depends_on(argVal.Id());
       }
       values.insert(newValue);
     }
