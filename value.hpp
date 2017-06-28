@@ -31,6 +31,8 @@ public:
   std::string json() const;
   void set_size(size_t size);
 
+  id_type Id() const { return reinterpret_cast<id_type>(this); }
+
   Value(uintptr_t pos, size_t size, Allocation::id_type allocation)
       : Extent(pos, size), is_unknown_(false), is_not_value_(false),
         allocation_id_(allocation) {}

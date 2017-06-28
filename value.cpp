@@ -10,7 +10,7 @@ using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
 
-void Value::add_depends_on(size_t id) {
+void Value::add_depends_on(id_type id) {
   dependsOnIdx_.push_back(id);
 
   ptree pt;

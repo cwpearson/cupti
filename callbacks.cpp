@@ -46,7 +46,7 @@ Time getTimestamp(const CUpti_CallbackData *cbInfo) {
 void handleMemcpy(Allocations &allocations, Values &values,
                   const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-
+    printf("callback: cudaMemcpy entry\n");
     // extract API call parameters
     auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
     const uintptr_t dst = (uintptr_t)params->dst;
@@ -54,7 +54,6 @@ void handleMemcpy(Allocations &allocations, Values &values,
     const cudaMemcpyKind kind = params->kind;
     const size_t count = params->count;
 
-    // Look for existing src / dst allocations
     Location srcLoc, dstLoc;
     if (cudaMemcpyHostToDevice == kind) {
       printf("%lu --[h2d]--> %lu\n", src, dst);
@@ -65,24 +64,46 @@ void handleMemcpy(Allocations &allocations, Values &values,
       srcLoc = Location::Device;
       dstLoc = Location::Host;
     } else if (cudaMemcpyDeviceToDevice == kind) {
+      printf("%lu --[d2d]--> %lu\n", src, dst);
       srcLoc = Location::Device;
       dstLoc = Location::Device;
     } else {
       assert(0 && "Unsupported cudaMemcpy kind");
     }
 
+    // Look for existing src / dst allocations
     bool srcFound, dstFound;
     Allocations::key_type srcAllocId, dstAllocId;
     std::tie(srcFound, srcAllocId) = allocations.find_live(src, count, srcLoc);
     std::tie(dstFound, dstAllocId) = allocations.find_live(dst, count, dstLoc);
+
+    // Destination or source allocation may be on the host, and might not have
+    // been recorded.
+    if (!dstFound) {
+      assert(dstLoc == Location::Host && "How did we miss this value");
+      printf("WARN: creating implicit host dst allocation during memcpy\n");
+      std::shared_ptr<Allocation> a(new Allocation(dst, count, dstLoc));
+      allocations.insert(a);
+      dstAllocId = a->Id();
+      dstFound = true;
+    }
+    if (!srcFound) {
+      assert(srcLoc == Location::Host);
+      printf("WARN: creating implicit host src allocation during memcpy\n");
+      std::shared_ptr<Allocation> a(new Allocation(src, count, srcLoc));
+      allocations.insert(a);
+      srcAllocId = a->Id();
+      srcFound = true;
+    }
 
     // always creates a new dst value
     auto dstVal = std::shared_ptr<Value>(new Value(dst, count, dstAllocId));
     auto dstPair = values.insert(dstVal);
     assert(dstPair.second && "Should have been a new value");
 
-    // See if there is a value for the source, or create one
-    Value::id_type srcId;
+    // There may not be a source value, because it may have been initialized on
+    // the host
+    Values::key_type srcId;
     bool found;
     std::tie(found, srcId) =
         values.get_last_overlapping_value(src, count, dstVal->location());
@@ -96,6 +117,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
     } else {
       auto srcVal = std::shared_ptr<Value>(new Value(src, count, srcAllocId));
       values.insert(srcVal);
+      srcId = srcVal->Id();
       dstVal->add_depends_on(srcId);
     }
 
@@ -200,21 +222,26 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
          ++argIdx) { // for each kernel argument
                      // printf("arg %lu, val %lu\n", argIdx, valIdx);
 
-      auto kv = values.find_live(ConfiguredCall().args[argIdx], 1 /*size*/,
-                                 Location::Device);
-      kernelArgKeys.push_back(kv.first);
-    }
-    assert(kernelArgKeys.size() == ConfiguredCall().args.size());
+      const auto &kv = values.find_live(ConfiguredCall().args[argIdx],
+                                        1 /*size*/, Location::Device);
 
-    // Assume that the kernel can modify each argument.
-    // Therefore, create a new value for each argument.
-    // All of these new values depend on all of the argument values.
+      const auto &key = kv.first;
+      if (key != uintptr_t(nullptr)) {
+        kernelArgKeys.push_back(kv.first);
+        printf("found val for kernel arg\n");
+      }
+    }
+
+    // Assume that the kernel can modify each argument value.
+    // Therefore, each modifiable argument generates a new value.
+    // All of these new values depend on the previous argument values.
     for (const auto &argKey : kernelArgKeys) {
       const auto &argValue = values[argKey];
       const auto newValue =
           std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
       for (const auto &depKey : kernelArgKeys) {
         newValue->add_depends_on(depKey);
+        printf("launch: %d deps on %d\n", newValue.get(), depKey);
       }
       values.insert(newValue);
     }
