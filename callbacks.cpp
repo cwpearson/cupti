@@ -14,7 +14,9 @@
 #include <cupti.h>
 
 #include "allocation.hpp"
+#include "allocations.hpp"
 #include "value.hpp"
+#include "values.hpp"
 
 #define CHECK_CU_ERROR(err, cufunc)                                            \
   if (err != CUDA_SUCCESS) {                                                   \
@@ -53,8 +55,6 @@ void handleMemcpy(Allocations &allocations, Values &values,
     const size_t count = params->count;
 
     // Look for existing src / dst allocations
-    bool srcFound, dstFound;
-    Allocations::key_type srcAllocId, dstAllocId;
     Location srcLoc, dstLoc;
     if (cudaMemcpyHostToDevice == kind) {
       printf("%lu --[h2d]--> %lu\n", src, dst);
@@ -71,20 +71,23 @@ void handleMemcpy(Allocations &allocations, Values &values,
       assert(0 && "Unsupported cudaMemcpy kind");
     }
 
+    bool srcFound, dstFound;
+    Allocations::key_type srcAllocId, dstAllocId;
     std::tie(srcFound, srcAllocId) = allocations.find_live(src, count, srcLoc);
     std::tie(dstFound, dstAllocId) = allocations.find_live(dst, count, dstLoc);
 
     // always creates a new dst value
     auto dstVal = std::shared_ptr<Value>(new Value(dst, count, dstAllocId));
-    values.insert(dstVal);
-    auto dstId = dstVal->Id();
+    auto dstPair = values.insert(dstVal);
+    assert(dstPair.second && "Should have been a new value");
 
     // See if there is a value for the source, or create one
     Value::id_type srcId;
     bool found;
-    std::tie(found, srcId) = values.get_last_overlapping_value(src, count);
+    std::tie(found, srcId) =
+        values.get_last_overlapping_value(src, count, dstVal->location());
     if (found) {
-      values[dstId]->add_depends_on(srcId);
+      dstVal->add_depends_on(srcId);
       if (!values[srcId]->is_known_size()) {
         printf("WARN: source is unknown size. Setting by memcpy count\n");
         values[srcId]->set_size(count);
@@ -93,8 +96,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
     } else {
       auto srcVal = std::shared_ptr<Value>(new Value(src, count, srcAllocId));
       values.insert(srcVal);
-      auto srcIdx = srcVal->Id();
-      values[dstId]->add_depends_on(srcId);
+      dstVal->add_depends_on(srcId);
     }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
@@ -123,8 +125,9 @@ void handleMalloc(Allocations &allocations, Values &values,
     const size_t size = params->size;
     printf("[cudaMalloc] %lu[%lu]\n", devPtr, size);
 
+    // Create the new allocation
     std::shared_ptr<Allocation> a(
-        new Allocation(devPtr, size, Allocation::Location::Device));
+        new Allocation(devPtr, size, Location::Device));
     allocations.insert(a);
 
     values.insert(std::shared_ptr<Value>(new Value(devPtr, size, a->Id())));
@@ -192,25 +195,26 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // const uintptr_t func = (uintptr_t) params->func;
 
     // Find all values that are used by arguments
-    std::vector<Values::value_type> argVals;
+    std::vector<Values::key_type> kernelArgKeys;
     for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size();
          ++argIdx) { // for each kernel argument
                      // printf("arg %lu, val %lu\n", argIdx, valIdx);
 
-      Values::value_type argVal = values.find_live(
-          ConfiguredCall().args[argIdx], 1 /*size*/, Location::Device);
-      argVals.push_back(argVal);
+      auto kv = values.find_live(ConfiguredCall().args[argIdx], 1 /*size*/,
+                                 Location::Device);
+      kernelArgKeys.push_back(kv.first);
     }
-    assert(argVals.size() == ConfiguredCall().args.size());
+    assert(kernelArgKeys.size() == ConfiguredCall().args.size());
 
     // Assume that the kernel can modify each argument.
     // Therefore, create a new value for each argument.
     // All of these new values depend on all of the argument values.
-    for (size_t i = 0; i < argVals.size(); ++i) {
-      const auto &callArg = ConfiguredCall().args[i];
-      const auto &newValue = argVals[i];
-      for (const auto &argVal : argVals) {
-        newValue->add_depends_on(argVal.Id());
+    for (const auto &argKey : kernelArgKeys) {
+      const auto &argValue = values[argKey];
+      const auto newValue =
+          std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
+      for (const auto &depKey : kernelArgKeys) {
+        newValue->add_depends_on(depKey);
       }
       values.insert(newValue);
     }
