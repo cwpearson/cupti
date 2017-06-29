@@ -1,2 +1,4 @@
 *.o
 vec
+*.so
+examples/vec

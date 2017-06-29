@@ -1,4 +1,4 @@
-TARGETS = query vec prof.so
+TARGETS = query prof.so
 
 all: $(TARGETS)
 
@@ -14,9 +14,6 @@ query: deviceQuery.cpp
 
 prof.so: prof.o callbacks.o value.o values.o allocation.o allocations.o extent.o
 	g++ -g -Wall -Wextra -std=c++11 -shared -fPIC $^ $(LIB) -o $@
-
-vec: vectorAdd.cu
-	nvcc $(NVCC_FLAGS) $^ -o $@
 
 clean:
 	rm -f *.o query cprof vec prof.so
