@@ -34,9 +34,6 @@ class Value(Node):
                " | pos: "  + str(self.pos) + \
                " } "
 
-
-
-
 num_subgraphs=0
 class Subgraph():
     def __init__(self, label):
@@ -70,7 +67,9 @@ class Allocation(Subgraph):
         s = "subgraph " + self.name + " {\n"
         s += "style=filled;\n"
         s += "color=grey;\n"
-        s += 'label = "' + self.label+ '";\n'
+        s += 'label = "id: ' + self.label + "\n" + \
+                      "pos: " + self.pos + "\n" + \
+                      "size: " + self.size + '";\n'
         for Id in self.value_ids:
             s += str(Id) + ';\n'
         s += "}"
@@ -92,7 +91,6 @@ Edges = []
 Values = {}
 Locations = {}
 Allocations = {}
-
 
 def write_header(dotfile):
     header = "digraph graphname {\n"
@@ -161,6 +159,4 @@ with open("cprof.dot", 'w') as dotfile:
     write_body(dotfile)
     write_footer(dotfile)
 
-
-#subprocess.check_output(['ls','-l']) #all that is technically needed...
 print subprocess.check_output(['dot','-Tpdf', '-o', 'cprof.pdf', 'cprof.dot'])
