@@ -7,7 +7,7 @@ import subprocess
 class Node():
     def __init__(self, ID):
         self.ID = ID
-    def dot_ID(self):
+    def dot_Id(self):
         return str(self.ID)
 
 
@@ -18,10 +18,17 @@ class Edge():
 
 
 class Value(Node):
-    def __init__(self, ID):
+    def __init__(self, ID, pos, size):
         Node.__init__(self, ID)
+        self.size = size
+        self.pos = pos
     def __str__(self):
-       return str(self.ID) + ";" 
+       return self.dot_Id() + ' [shape=record,label="' + self.dot_label() + '" ] ;' 
+    def dot_label(self):
+        return "{ id: " + self.dot_Id() + \
+               " | size: " + str(self.size) + \
+               " | pos: "  + str(self.pos) + \
+               " } "
 
 
 class Allocation(Node):
@@ -95,10 +102,12 @@ with open(args[0], 'r') as f:
         print j
         if "val" in j:
             val = j["val"]
-            ID = val["id"]
-            newValue = Value(val["id"])
-            Values[ID] = newValue
-            Edges += [DottedEdge(newValue.dot_ID(), val["allocation_id"])]
+            Id = val["id"]
+            size = val["size"]
+            pos = val["pos"]
+            newValue = Value(Id, pos, size)
+            Values[Id] = newValue
+            Edges += [DottedEdge(newValue.dot_Id(), val["allocation_id"])]
 
         elif "dep" in j:
             dep = j["dep"]
