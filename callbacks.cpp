@@ -106,8 +106,9 @@ void handleMemcpy(Allocations &allocations, Values &values,
     Values::key_type srcId;
     bool found;
     std::tie(found, srcId) =
-        values.get_last_overlapping_value(src, count, dstVal->location());
+        values.get_last_overlapping_value(src, count, srcLoc);
     if (found) {
+      printf("memcpy: found src %d\n", srcId);
       dstVal->add_depends_on(srcId);
       if (!values[srcId]->is_known_size()) {
         printf("WARN: source is unknown size. Setting by memcpy count\n");
