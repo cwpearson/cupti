@@ -22,20 +22,31 @@ class Value(Node):
         Node.__init__(self, ID)
         self.size = size
         self.pos = pos
+    def dot_shape(self):
+        return "record"
     def __str__(self):
-       return self.dot_Id() + ' [shape=record,label="' + self.dot_label() + '" ] ;' 
+       return self.dot_Id() + ' [shape='+self.dot_shape()+',label="'+ self.dot_label() +'" ] ;' 
     def dot_label(self):
-        return "{ id: " + self.dot_Id() + \
+        return "{ value: " + self.dot_Id() + \
                " | size: " + str(self.size) + \
                " | pos: "  + str(self.pos) + \
                " } "
 
 
 class Allocation(Node):
-    def __init__(self, ID):
+    def __init__(self, ID, pos, size):
         Node.__init__(self, ID)
+        self.pos = pos
+        self.size = size
+    def dot_shape(self):
+        return "Mrecord"
     def __str__(self):
-       return str(self.ID) + ";" 
+       return self.dot_Id() + ' [shape='+self.dot_shape()+',label="'+ self.dot_label() +'" ] ;' 
+    def dot_label(self):
+        return "{ alloc: " + self.dot_Id() + \
+               " | size: " + str(self.size) + \
+               " | pos: "  + str(self.pos) + \
+               " } "
 
 num_subgraphs=0
 class Subgraph():
@@ -115,8 +126,10 @@ with open(args[0], 'r') as f:
 
         elif "allocation" in j:
             alloc = j["allocation"]
-            ID = alloc["id"]
-            newAllocation = Allocation(ID)
+            Id = alloc["id"]
+            size = alloc["size"]
+            pos = alloc["pos"]
+            newAllocation = Allocation(Id, pos, size)
 
             loc = alloc["loc"]
             if loc not in AllocationClusters:
