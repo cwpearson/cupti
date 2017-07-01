@@ -22,7 +22,6 @@ private:
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const Allocation &v);
-  size_t deviceId_;
   Allocation(uintptr_t pos, size_t size, Location loc)
       : Extent(pos, size), is_unknown_(false), is_not_allocation_(false),
         location_(loc) {}

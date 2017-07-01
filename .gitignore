@@ -1,4 +1,6 @@
 *.o
 vec
 *.so
-examples/vec
+examples/matrixMul/mm
+examples/vectorAdd/vec
+examples/deviceQuery/query

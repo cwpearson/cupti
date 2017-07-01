@@ -14,8 +14,7 @@ std::string Allocation::json() const {
   pt.put("allocation.id", std::to_string(uintptr_t(this)));
   pt.put("allocation.pos", std::to_string(pos_));
   pt.put("allocation.size", std::to_string(size_));
-  pt.put("allocation.loc", location_.str());
-  pt.put("allocation.device_id", std::to_string(deviceId_));
+  pt.put("allocation.mem", location_.json());
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();

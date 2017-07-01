@@ -3,6 +3,14 @@
 
 #include <string>
 
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <map>
+#include <sstream>
+
+using boost::property_tree::ptree;
+using boost::property_tree::write_json;
+
 #include "set_device.hpp"
 
 class Location {
@@ -25,17 +33,26 @@ public:
     return type_ == rhs.type_ && device_ == rhs.device_;
   }
 
-  std::string str() const {
-    if (Location_t::Host == type_)
-      return std::string("host");
-    if (Location_t::Device == type_)
-      return std::string("device");
-    if (Location_t::Unified == type_)
-      return std::string("unified");
-    return std::string("<unexpected location>");
+  std::string json() const {
+    ptree pt;
+    pt.put("type", to_string(type_));
+    pt.put("id", std::to_string(device_));
+    std::ostringstream buf;
+    write_json(buf, pt, false);
+    return buf.str();
   }
 
 private:
+  std::string to_string(const Location_t &l) const {
+    if (Location_t::Host == l)
+      return std::string("host");
+    if (Location_t::Device == l)
+      return std::string("device");
+    if (Location_t::Unified == l)
+      return std::string("unified");
+    assert(0 && "unhandled Location_t");
+  }
+
   Location_t type_;
   int device_;
 };

@@ -36,26 +36,46 @@ class Value(Node):
 
 num_subgraphs=0
 class Subgraph():
-    def __init__(self, label):
-        self.label = label
-        self.nodes = {}
+    def __init__(self, dot_label):
         global num_subgraphs
         self.name = "cluster_"+str(num_subgraphs)
+        self.dot_label_ = dot_label
         num_subgraphs += 1
+    ## FIXME: how to say this must be overridden
+    def dot_label(self):
+        return self.dot_label_
 
-class Location(Subgraph):
-    def __init__(self, location):
-        Subgraph.__init__(self, location)
-        self.allocation_ids = []
+
+class Memory(Subgraph):
+    def __init__(self, ty):
+        self.ty = ty
+        Subgraph.__init__(self, str(self.ty))
+        self.regions = {}
     def __str__(self):
         s = "subgraph " + self.name + " {\n"
         s += "style=filled;\n"
         s += "color=lightgrey;\n"
-        s += 'label = "' + self.label+ '";\n'
-        for Id in self.allocation_ids:
+        s += 'label = "' + self.dot_label()+ '";\n'
+        for region_id in self.regions:
+            s += str(self.regions[region_id]) + '\n'
+        s += "}"
+        return s
+
+class Region(Subgraph):
+    def __init__(self, Id):
+        self.Id = Id
+        Subgraph.__init__(self, str(self.Id))
+        self.allocations = []
+    def __str__(self):
+        s = "subgraph " + self.name + " {\n"
+        s += "style=filled;\n"
+        s += "color=lightgrey;\n"
+        s += 'label = "' + self.dot_label()+ '";\n'
+        for Id in self.allocations:
             s += str(Allocations[Id]) + '\n'
         s += "}"
         return s
+
 
 class Allocation(Subgraph):
     def __init__(self, Id, pos, size):
@@ -67,7 +87,7 @@ class Allocation(Subgraph):
         s = "subgraph " + self.name + " {\n"
         s += "style=filled;\n"
         s += "color=grey;\n"
-        s += 'label = "id: ' + self.label + "\n" + \
+        s += 'label = "id: ' + self.dot_label() + "\n" + \
                       "pos: " + self.pos + "\n" + \
                       "size: " + self.size + '";\n'
         for Id in self.value_ids:
@@ -89,16 +109,17 @@ class DottedEdge(Edge):
 
 Edges = []
 Values = {}
-Locations = {}
+Locations = []
 Allocations = {}
+Memories = {}
 
 def write_header(dotfile):
     header = "digraph graphname {\n"
     dotfile.write(header)
 
 def write_body(dotfile):
-    for l in Locations:
-        dotfile.write(str(Locations[l]))
+    for m in Memories:
+        dotfile.write(str(Memories[m]))
         dotfile.write("\n")
     for k in Values:
         dotfile.write(str(Values[k]))
@@ -113,7 +134,7 @@ def write_footer(dotfile):
 
 args = sys.argv[1:]
 
-## first pass - set up allocations
+## first pass - handle allocation statements
 with open(args[0], 'r') as f:
     for line in f:
         j = json.loads(line)
@@ -122,14 +143,20 @@ with open(args[0], 'r') as f:
             Id = alloc["id"]
             size = alloc["size"]
             pos = alloc["pos"]
-            
-            loc = alloc["loc"]
-            if loc not in Locations:
-                print "adding new location", loc
-                Locations[loc] = Location(loc)
+            mem = json.loads(alloc["mem"])
 
-            print "adding allocation", Id, "to", loc
-            Locations[loc].allocation_ids += [Id]
+            mem_type = mem["type"]
+            mem_id = mem["id"]
+            if mem_type not in Memories:
+                print "found new mem_type", mem_type
+                Memories[mem_type] = Memory(mem_type)
+            if mem_id not in Memories[mem_type].regions:
+                print "found new mem_id", mem_id
+                Memories[mem_type].regions[mem_id] = Region(mem_id)
+
+
+            print "adding allocation", Id
+            Memories[mem_type].regions[mem_id].allocations += [Id]
             newAllocation = Allocation(Id, pos, size)
             Allocations[Id] = newAllocation
 

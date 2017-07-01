@@ -2,7 +2,7 @@
 #define SET_DEVICE_HPP
 
 typedef struct {
-  int device_ = -1;
+  int device_ = 0;
   int current_device() const { return device_; }
 } SetDevice_t;
 
