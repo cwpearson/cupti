@@ -2,18 +2,18 @@ TARGETS = query prof.so
 
 all: $(TARGETS)
 
-NVCC_FLAGS=--cudart=shared
+OBJECTS = prof.o callbacks.o value.o values.o allocation.o allocations.o extent.o set_device.o
+
+CXX=g++
+CXXFLAGS= -std=c++11 -g -Wall -Wextra -Wshadow -Wpedantic -fPIC
 INC = -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
 LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -ldl
 
-query: deviceQuery.cpp
-	nvcc $(NVCC_FLAGS) $^ -o $@
-
 %.o : %.cpp
-	g++ -g -Wall -Wextra -std=c++11 -fPIC $(INC) $^ -c -o $@	
+	$(CXX) $(CXXFLAGS) $(INC) $^ -c -o $@	
 
-prof.so: prof.o callbacks.o value.o values.o allocation.o allocations.o extent.o
-	g++ -g -Wall -Wextra -std=c++11 -shared -fPIC $^ $(LIB) -o $@
+prof.so: $(OBJECTS)
+	$(CXX) -shared $^ $(LIB) -o $@
 
 clean:
-	rm -f *.o query cprof vec prof.so
+	rm -f *.o cprof prof.so

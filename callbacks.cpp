@@ -15,6 +15,7 @@
 
 #include "allocation.hpp"
 #include "allocations.hpp"
+#include "set_device.hpp"
 #include "value.hpp"
 #include "values.hpp"
 
@@ -33,6 +34,17 @@
            __LINE__, errstr, cuptifunc);                                       \
     exit(-1);                                                                  \
   }
+
+void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaSetDevice entry\n");
+    auto params = ((cudaSetDevice_v3020_params *)(cbInfo->functionParams));
+    SetDevice().device_ = params->device;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  } else {
+    assert(0 && "unexpected callbackSite");
+  }
+}
 
 typedef uint64_t Time;
 
@@ -154,6 +166,25 @@ void handleMalloc(Allocations &allocations, Values &values,
     allocations.insert(a);
 
     values.insert(std::shared_ptr<Value>(new Value(devPtr, size, a->Id())));
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+void handleCudaFree(Allocations &allocations, Values &values,
+                    const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaFree entry\n");
+    auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
+    auto devPtr = params->devPtr;
+
+    // Find the live matching allocation
+    auto pair = allocations.find_live(devPtr);
+    if (pair.first) { // found
+    } else {
+    }
+
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
   }
@@ -331,68 +362,6 @@ static const char *memcpyKindStr(enum cudaMemcpyKind kind) {
 
   return "<unknown>";
 }
-
-std::string myexec(const char *cmd) {
-  std::array<char, 128> buffer;
-  std::string result;
-  std::shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
-  if (!pipe)
-    throw std::runtime_error("popen() failed!");
-  while (!feof(pipe.get())) {
-    if (fgets(buffer.data(), 128, pipe.get()) != NULL)
-      result += buffer.data();
-  }
-  return result;
-}
-
-/*
-int main(int argc, char **argv) {
-
-  Records records;
-
-
-  CUcontext context = 0;
-  CUdevice device = 0;
-  CUresult cuerr;
-  CUptiResult cuptierr;
-
-
-  cuerr = cuInit(0);
-  CHECK_CU_ERROR(cuerr, "cuInit");
-
-  cuerr = cuCtxCreate(&context, 0, device);
-  CHECK_CU_ERROR(cuerr, "cuCtxCreate");
-
-  CUpti_SubscriberHandle runtimeSubscriber;
-  cuptierr = cuptiSubscribe(&runtimeSubscriber,
-(CUpti_CallbackFunc)runtimeCallback , &records);
-  CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
-  cuptierr = cuptiEnableDomain(1, runtimeSubscriber,
-CUPTI_CB_DOMAIN_RUNTIME_API);
-  CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
-  cuptierr = cuptiEnableDomain(1, runtimeSubscriber,
-CUPTI_CB_DOMAIN_DRIVER_API);
-  CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
-
-  cudaSetDevice(0);
-    std::string cmd;
-    for (int i = 1; i < argc; ++i) {
-        cmd += std::string(argv[i]) + std::string(" ");
-    }
-    printf("Executing %s\n", cmd.c_str());
-    int status = system(cmd.c_str());
-    printf("Done executing %s\n", cmd.c_str());
-
-  cuptierr = cuptiUnsubscribe(runtimeSubscriber);
-  CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
-
-
-  printf("%lu\n", records.size());
-  for (auto &r : records) {
-    printf("%d\n", r->id_);
-  }
-}
-*/
 
 int initCallbacks() {
 
