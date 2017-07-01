@@ -1,4 +1,4 @@
-TARGETS = query prof.so
+TARGETS = prof.so
 
 all: $(TARGETS)
 

@@ -151,8 +151,8 @@ void handleMemcpy(Allocations &allocations, Values &values,
   }
 }
 
-void handleMalloc(Allocations &allocations, Values &values,
-                  const CUpti_CallbackData *cbInfo) {
+void handleCudaMalloc(Allocations &allocations, Values &values,
+                      const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
@@ -165,7 +165,8 @@ void handleMalloc(Allocations &allocations, Values &values,
         new Allocation(devPtr, size, Location::Device()));
     allocations.insert(a);
 
-    values.insert(std::shared_ptr<Value>(new Value(devPtr, size, a->Id())));
+    values.insert(std::shared_ptr<Value>(
+        new Value(devPtr, size, a->Id(), false /*initialized*/)));
   } else {
     assert(0 && "How did we get here?");
   }
@@ -327,7 +328,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleMemcpy(Allocations::instance(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
-      handleMalloc(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaMalloc(Allocations::instance(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
       handleCudaConfigureCall(cbInfo);

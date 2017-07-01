@@ -27,6 +27,7 @@ std::string Value::json() const {
   pt.put("val.pos", std::to_string(pos_));
   pt.put("val.size", std::to_string(size_));
   pt.put("val.allocation_id", std::to_string(allocation_id_));
+  pt.put("val.initialized", std::to_string(is_initialized_));
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();

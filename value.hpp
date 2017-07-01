@@ -18,6 +18,7 @@ public:
 private:
   bool is_unknown_;
   bool is_not_value_;
+  bool is_initialized_;
   Allocation::id_type allocation_id_; // allocation that this value lives in
 
 public:
@@ -35,7 +36,13 @@ public:
 
   Value(uintptr_t pos, size_t size, Allocation::id_type allocation)
       : Extent(pos, size), is_unknown_(false), is_not_value_(false),
+        is_initialized_(__GCC_ATOMIC_TEST_AND_SET_TRUEVAL),
         allocation_id_(allocation) {}
+
+  Value(uintptr_t pos, size_t size, Allocation::id_type allocation,
+        bool initialized)
+      : Extent(pos, size), is_unknown_(false), is_not_value_(false),
+        is_initialized_(initialized), allocation_id_(allocation) {}
 
 private:
   // static Value &UnknownValue();
