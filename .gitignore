@@ -1,5 +1,4 @@
 *.o
-vec
 *.so
 examples/matrixMul/mm
 examples/vectorAdd/vec
