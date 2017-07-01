@@ -43,18 +43,18 @@ void Value::set_size(size_t size) {
   buf.flush();
 }
 
-Value &Value::UnknownValue() {
-  static Value unknown(0 /*pos*/, 0 /*size*/,
-                       Allocation::UnknownAllocation().Id());
-  unknown.is_unknown_ = true;
-  return unknown;
-}
+// Value &Value::UnknownValue() {
+//   static Value unknown(0 /*pos*/, 0 /*size*/,
+//                        Allocation::UnknownAllocation().Id());
+//   unknown.is_unknown_ = true;
+//   return unknown;
+// }
 
-Value &Value::NoValue() {
-  static Value v(0 /*pos*/, 0 /*size*/, Allocation::NoAllocation().Id());
-  v.is_not_value_ = true;
-  return v;
-}
+// Value &Value::NoValue() {
+//   static Value v(0 /*pos*/, 0 /*size*/, Allocation::NoAllocation().Id());
+//   v.is_not_value_ = true;
+//   return v;
+// }
 
 std::ostream &operator<<(std::ostream &os, const Value &v) {
   os << v.json();

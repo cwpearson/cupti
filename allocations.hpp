@@ -24,6 +24,9 @@ public:
   std::pair<map_type::iterator, bool> insert(const value_type &v);
   std::tuple<bool, key_type> find_live(uintptr_t pos, size_t size,
                                        Location location);
+  std::tuple<bool, key_type> find_live(uintptr_t pos, Location loc) {
+    return find_live(pos, 1, loc);
+  }
 
   value_type &operator[](const key_type &k) { return allocations_[k]; }
   value_type &operator[](key_type &&k) { return allocations_[k]; }

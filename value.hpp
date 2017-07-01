@@ -38,8 +38,8 @@ public:
         allocation_id_(allocation) {}
 
 private:
-  static Value &UnknownValue();
-  static Value &NoValue();
+  // static Value &UnknownValue();
+  // static Value &NoValue();
   std::vector<id_type> dependsOnIdx_; // values this value depends on
 };
 

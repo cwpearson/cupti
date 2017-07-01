@@ -40,8 +40,8 @@ public:
   id_type Id() const { return reinterpret_cast<id_type>(this); }
   Location location() const { return location_; }
 
-  static Allocation &UnknownAllocation();
-  static Allocation &NoAllocation();
+  // static Allocation &UnknownAllocation();
+  // static Allocation &NoAllocation();
 };
 
 #endif

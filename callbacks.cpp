@@ -69,16 +69,16 @@ void handleMemcpy(Allocations &allocations, Values &values,
     Location srcLoc, dstLoc;
     if (cudaMemcpyHostToDevice == kind) {
       printf("%lu --[h2d]--> %lu\n", src, dst);
-      srcLoc = Location::Host;
-      dstLoc = Location::Device;
+      srcLoc = Location::Host();
+      dstLoc = Location::Device();
     } else if (cudaMemcpyDeviceToHost == kind) {
       printf("%lu --[d2h]--> %lu\n", src, dst);
-      srcLoc = Location::Device;
-      dstLoc = Location::Host;
+      srcLoc = Location::Device();
+      dstLoc = Location::Host();
     } else if (cudaMemcpyDeviceToDevice == kind) {
       printf("%lu --[d2d]--> %lu\n", src, dst);
-      srcLoc = Location::Device;
-      dstLoc = Location::Device;
+      srcLoc = Location::Device();
+      dstLoc = Location::Device();
     } else {
       assert(0 && "Unsupported cudaMemcpy kind");
     }
@@ -92,7 +92,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
     // Destination or source allocation may be on the host, and might not have
     // been recorded.
     if (!dstFound) {
-      assert(dstLoc == Location::Host && "How did we miss this value");
+      assert(dstLoc == Location::Host() && "How did we miss this value");
       printf("WARN: creating implicit host dst allocation during memcpy\n");
       std::shared_ptr<Allocation> a(new Allocation(dst, count, dstLoc));
       allocations.insert(a);
@@ -100,7 +100,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
       dstFound = true;
     }
     if (!srcFound) {
-      assert(srcLoc == Location::Host);
+      assert(srcLoc == Location::Host());
       printf("WARN: creating implicit host src allocation during memcpy\n");
       std::shared_ptr<Allocation> a(new Allocation(src, count, srcLoc));
       allocations.insert(a);
@@ -120,7 +120,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
     std::tie(found, srcId) =
         values.get_last_overlapping_value(src, count, srcLoc);
     if (found) {
-      printf("memcpy: found src %d\n", srcId);
+      printf("memcpy: found src %lu\n", srcId);
       dstVal->add_depends_on(srcId);
       if (!values[srcId]->is_known_size()) {
         printf("WARN: source is unknown size. Setting by memcpy count\n");
@@ -162,7 +162,7 @@ void handleMalloc(Allocations &allocations, Values &values,
 
     // Create the new allocation
     std::shared_ptr<Allocation> a(
-        new Allocation(devPtr, size, Location::Device));
+        new Allocation(devPtr, size, Location::Device()));
     allocations.insert(a);
 
     values.insert(std::shared_ptr<Value>(new Value(devPtr, size, a->Id())));
@@ -173,14 +173,18 @@ void handleMalloc(Allocations &allocations, Values &values,
 
 void handleCudaFree(Allocations &allocations, Values &values,
                     const CUpti_CallbackData *cbInfo) {
+  (void)values;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaFree entry\n");
     auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
-    auto devPtr = params->devPtr;
+    auto devPtr = (uintptr_t)params->devPtr;
 
     // Find the live matching allocation
-    auto pair = allocations.find_live(devPtr);
-    if (pair.first) { // found
+    bool found;
+    Allocations::key_type allocId;
+    std::tie(found, allocId) =
+        allocations.find_live(devPtr, Location::Device());
+    if (found) { // found
     } else {
     }
 
@@ -255,7 +259,7 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
                      // printf("arg %lu, val %lu\n", argIdx, valIdx);
 
       const auto &kv = values.find_live(ConfiguredCall().args[argIdx],
-                                        1 /*size*/, Location::Device);
+                                        1 /*size*/, Location::Device());
 
       const auto &key = kv.first;
       if (key != uintptr_t(nullptr)) {
@@ -271,11 +275,11 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       const auto &argValue = values[argKey];
       const auto newValue =
           std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
+      values.insert(newValue);
       for (const auto &depKey : kernelArgKeys) {
         newValue->add_depends_on(depKey);
-        printf("launch: %d deps on %d\n", newValue.get(), depKey);
+        printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
       }
-      values.insert(newValue);
     }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
@@ -350,18 +354,18 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   }
 }
 
-static const char *memcpyKindStr(enum cudaMemcpyKind kind) {
-  switch (kind) {
-  case cudaMemcpyHostToDevice:
-    return "HostToDevice";
-  case cudaMemcpyDeviceToHost:
-    return "DeviceToHost";
-  default:
-    break;
-  }
+// static const char *memcpyKindStr(enum cudaMemcpyKind kind) {
+//   switch (kind) {
+//   case cudaMemcpyHostToDevice:
+//     return "HostToDevice";
+//   case cudaMemcpyDeviceToHost:
+//     return "DeviceToHost";
+//   default:
+//     break;
+//   }
 
-  return "<unknown>";
-}
+//   return "<unknown>";
+// }
 
 int initCallbacks() {
 
