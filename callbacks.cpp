@@ -36,6 +36,12 @@
     exit(-1);                                                                  \
   }
 
+void lazyStopCallbacks();
+void lazyActivateCallbacks();
+
+CUpti_SubscriberHandle SUBSCRIBER;
+bool SUBSCRIBER_ACTIVE = 0;
+
 void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaSetDevice entry\n");
@@ -45,15 +51,6 @@ void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
   } else {
     assert(0 && "unexpected callbackSite");
   }
-}
-
-typedef uint64_t Time;
-
-Time getTimestamp(const CUpti_CallbackData *cbInfo) {
-  uint64_t time;
-  CUptiResult cuptiErr = cuptiDeviceGetTimestamp(cbInfo->context, &time);
-  CHECK_CUPTI_ERROR(cuptiErr, "cuptiDeviceGetTimestamp");
-  return Time(time);
 }
 
 void handleMemcpy(Allocations &allocations, Values &values,
@@ -249,6 +246,8 @@ void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
 }
 
 void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
+  lazyStopCallbacks();
+  lazyActivateCallbacks();
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaLaunch entry\n");
     // const auto params = ((cudaLaunch_v3020_params
@@ -322,8 +321,6 @@ std::string getCallbackName(CUpti_CallbackDomain domain,
 void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        CUpti_CallbackId cbid,
                        const CUpti_CallbackData *cbInfo) {
-  // uint64_t startTimestamp;
-  // uint64_t endTimestamp;
   (void)userdata;
 
   // Data is collected for the following APIs
@@ -374,36 +371,41 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
 //   return "<unknown>";
 // }
 
-int initCallbacks() {
+int activateCallbacks() {
 
-  // CUdevice device = 0;
-  // CUresult cuerr;
   CUptiResult cuptierr;
 
-  CUpti_SubscriberHandle runtimeSubscriber;
-  cuptierr =
-      cuptiSubscribe(&runtimeSubscriber, (CUpti_CallbackFunc)callback, nullptr);
+  cuptierr = cuptiSubscribe(&SUBSCRIBER, (CUpti_CallbackFunc)callback, nullptr);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
-  cuptierr =
-      cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_RUNTIME_API);
+  cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_RUNTIME_API);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
-  cuptierr =
-      cuptiEnableDomain(1, runtimeSubscriber, CUPTI_CB_DOMAIN_DRIVER_API);
+  cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_DRIVER_API);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
 
   // cuptierr = cuptiUnsubscribe(runtimeSubscriber);
-  // CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
 
   return 0;
 }
 
-void lazyInitCallbacks() {
-  static int initialized = 0;
-  if (!initialized) {
-    printf("registering callbacks...\n");
-    initCallbacks();
-    initialized = 1;
-  } else {
+int stopCallbacks() {
+  CUptiResult cuptierr;
+  cuptierr = cuptiUnsubscribe(SUBSCRIBER);
+  CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
+  return 0;
+}
+
+void lazyStopCallbacks() {
+  if (SUBSCRIBER_ACTIVE) {
+    printf("suspending callbacks...\n");
+    stopCallbacks();
+    SUBSCRIBER_ACTIVE = false;
   }
-  return;
+}
+
+void lazyActivateCallbacks() {
+  if (!SUBSCRIBER_ACTIVE) {
+    printf("activating callbacks...\n");
+    activateCallbacks();
+    SUBSCRIBER_ACTIVE = true;
+  }
 }
