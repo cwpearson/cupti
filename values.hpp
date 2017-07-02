@@ -21,6 +21,8 @@ public:
   std::pair<key_type, value_type> find_live(uintptr_t pos, size_t size,
                                             Location loc);
   std::pair<key_type, value_type> find_live(uintptr_t pos, Location loc);
+  std::pair<key_type, value_type> find_live_device(const uintptr_t pos,
+                                                   const size_t size);
 
   std::pair<map_type::iterator, bool> insert(const value_type &v);
   std::pair<map_type::iterator, bool> insert(const Value &v);

@@ -15,6 +15,7 @@
 
 #include "allocation.hpp"
 #include "allocations.hpp"
+#include "numa.hpp"
 #include "set_device.hpp"
 #include "value.hpp"
 #include "values.hpp"
@@ -69,16 +70,17 @@ void handleMemcpy(Allocations &allocations, Values &values,
     Location srcLoc, dstLoc;
     if (cudaMemcpyHostToDevice == kind) {
       printf("%lu --[h2d]--> %lu\n", src, dst);
-      srcLoc = Location::Host();
-      dstLoc = Location::Device();
+      srcLoc = Location::Host(get_numa_node(src));
+      dstLoc = Location::Device(SetDevice().current_device());
     } else if (cudaMemcpyDeviceToHost == kind) {
       printf("%lu --[d2h]--> %lu\n", src, dst);
-      srcLoc = Location::Device();
-      dstLoc = Location::Host();
+      srcLoc = Location::Device(SetDevice().current_device());
+      dstLoc = Location::Host(get_numa_node(dst));
     } else if (cudaMemcpyDeviceToDevice == kind) {
       printf("%lu --[d2d]--> %lu\n", src, dst);
-      srcLoc = Location::Device();
-      dstLoc = Location::Device();
+      const auto &dev = SetDevice().current_device();
+      srcLoc = Location::Device(dev);
+      dstLoc = Location::Device(dev);
     } else {
       assert(0 && "Unsupported cudaMemcpy kind");
     }
@@ -92,7 +94,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
     // Destination or source allocation may be on the host, and might not have
     // been recorded.
     if (!dstFound) {
-      assert(dstLoc == Location::Host() && "How did we miss this value");
+      assert(dstLoc.is_host() && "How did we miss this value");
       printf("WARN: creating implicit host dst allocation during memcpy\n");
       std::shared_ptr<Allocation> a(new Allocation(dst, count, dstLoc));
       allocations.insert(a);
@@ -100,7 +102,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
       dstFound = true;
     }
     if (!srcFound) {
-      assert(srcLoc == Location::Host());
+      assert(srcLoc.is_host() && "How did we miss this value");
       printf("WARN: creating implicit host src allocation during memcpy\n");
       std::shared_ptr<Allocation> a(new Allocation(src, count, srcLoc));
       allocations.insert(a);
@@ -161,8 +163,8 @@ void handleCudaMalloc(Allocations &allocations, Values &values,
     printf("[cudaMalloc] %lu[%lu]\n", devPtr, size);
 
     // Create the new allocation
-    std::shared_ptr<Allocation> a(
-        new Allocation(devPtr, size, Location::Device()));
+    std::shared_ptr<Allocation> a(new Allocation(
+        devPtr, size, Location::Device(SetDevice().current_device())));
     allocations.insert(a);
 
     values.insert(std::shared_ptr<Value>(
@@ -183,8 +185,8 @@ void handleCudaFree(Allocations &allocations, Values &values,
     // Find the live matching allocation
     bool found;
     Allocations::key_type allocId;
-    std::tie(found, allocId) =
-        allocations.find_live(devPtr, Location::Device());
+    std::tie(found, allocId) = allocations.find_live(
+        devPtr, Location::Device(SetDevice().current_device()));
     if (found) { // found
     } else {
     }
@@ -259,13 +261,15 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
          ++argIdx) { // for each kernel argument
                      // printf("arg %lu, val %lu\n", argIdx, valIdx);
 
-      const auto &kv = values.find_live(ConfiguredCall().args[argIdx],
-                                        1 /*size*/, Location::Device());
+      // FIXME: assuming with p2p access, it could be on any device?
+      const auto &kv =
+          values.find_live_device(ConfiguredCall().args[argIdx], 1 /*size*/);
 
       const auto &key = kv.first;
       if (key != uintptr_t(nullptr)) {
         kernelArgKeys.push_back(kv.first);
-        printf("found val for kernel arg\n");
+        printf("found val %lu for kernel arg=%lu\n", key,
+               ConfiguredCall().args[argIdx]);
       }
     }
 
@@ -278,8 +282,8 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
           std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
       values.insert(newValue);
       for (const auto &depKey : kernelArgKeys) {
-        newValue->add_depends_on(depKey);
         printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
+        newValue->add_depends_on(depKey);
       }
     }
 
@@ -287,6 +291,8 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   } else {
     assert(0 && "How did we get here?");
   }
+
+  printf("callback: cudaLaunch: done\n");
 }
 
 std::string getCallbackName(CUpti_CallbackDomain domain,

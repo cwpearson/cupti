@@ -17,20 +17,31 @@ class Location {
 public:
   enum class Location_t { Device, Host, Unified };
 
-  Location() : device_(SetDevice().current_device()) {}
-  Location(Location_t type) : Location() { type_ = type; }
+  Location() {}
+  Location(Location_t type, int device) : type_(type), device_(device) {}
   Location(const Location &other)
       : type_(other.type_), device_(other.device_) {}
 
-  static Location Host() { return Location(Location_t::Host); }
-  static Location Device() { return Location(Location_t::Device); }
-  static Location Unified() { return Location(Location_t::Unified); }
+  static Location Host(int device) {
+    return Location(Location_t::Host, device);
+  }
+  static Location Device(int device) {
+    return Location(Location_t::Device, device);
+  }
+  static Location Unified(int device) {
+    return Location(Location_t::Unified, device);
+  }
 
   int device() const { return device_; }
   Location_t type() const { return type_; }
 
   bool operator==(const Location &rhs) const {
     return type_ == rhs.type_ && device_ == rhs.device_;
+  }
+
+  bool is_host() const { return Location_t::Host == type_; }
+  bool is_device_accessible() const {
+    return Location_t::Device == type_ || Location_t::Unified == type_;
   }
 
   std::string json() const {
