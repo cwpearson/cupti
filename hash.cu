@@ -1,8 +1,6 @@
 #include "hash.hpp"
 
-#include <cstdint>
-#include <cstdlib>
-
+#include "callbacks.hpp"
 #include "check_cuda_error.hpp"
 
 __global__ void hash_kernel(hash_t *digest, const char *devPtr,
@@ -36,6 +34,7 @@ __global__ void hash_kernel(hash_t *digest, const char *devPtr,
 }
 
 hash_t hash_cuda(const char *devPtr, size_t size) {
+  lazyStopCallbacks();
   constexpr size_t BLOCK_SIZE = 256;
 
   const int num_chunks = (size + 8 - 1) / 8;
@@ -53,7 +52,12 @@ hash_t hash_cuda(const char *devPtr, size_t size) {
   CHECK_CUDA_ERROR(cudaMemcpy(&digest_h, digest_d, sizeof(digest_h),
                               cudaMemcpyDeviceToHost));
 
+  lazyActivateCallbacks();
   return digest_h;
+}
+
+hash_t hash_cuda(const uintptr_t ptr, size_t size) {
+  return hash_cuda(reinterpret_cast<const char *>(ptr), size);
 }
 
 hash_t hash_host(const char *ptr, size_t size) {
@@ -72,4 +76,8 @@ hash_t hash_host(const char *ptr, size_t size) {
 
   digest ^= last_chunk;
   return digest;
+}
+
+hash_t hash_host(const uintptr_t ptr, size_t size) {
+  return hash_host(reinterpret_cast<const char *>(ptr), size);
 }

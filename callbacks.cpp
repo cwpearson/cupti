@@ -16,6 +16,7 @@
 #include "allocation.hpp"
 #include "allocations.hpp"
 #include "check_cuda_error.hpp"
+#include "hash.hpp"
 #include "numa.hpp"
 #include "set_device.hpp"
 #include "value.hpp"
@@ -100,6 +101,14 @@ void handleMemcpy(Allocations &allocations, Values &values,
       srcAllocId = a->Id();
       srcFound = true;
     }
+
+    // only create a new dst value if the data being copied is different
+    const auto src_digest =
+        srcLoc.is_host() ? hash_host(src, count) : hash_cuda(src, count);
+    const auto dst_digest =
+        dstLoc.is_host() ? hash_host(dst, count) : hash_cuda(dst, count);
+
+    printf("%llu, %llu\n", src_digest, dst_digest);
 
     // always creates a new dst value
     auto dstVal = std::shared_ptr<Value>(new Value(dst, count, dstAllocId));

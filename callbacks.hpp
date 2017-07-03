@@ -2,5 +2,6 @@
 #define CALLBACKS_HPP
 
 void lazyActivateCallbacks();
+void lazyStopCallbacks();
 
 #endif
