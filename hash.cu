@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "check_cuda_error.hpp"
+
 __global__ void hash_kernel(hash_t *digest, const char *devPtr,
                             const size_t size) {
 
@@ -43,10 +45,13 @@ hash_t hash_cuda(const char *devPtr, size_t size) {
 
   hash_t digest_h = 0;
   hash_t *digest_d;
-  cudaMalloc(&digest_d, sizeof(*digest_d));
-  cudaMemcpy(digest_d, &digest_h, sizeof(digest_h), cudaMemcpyHostToDevice);
+  CHECK_CUDA_ERROR(cudaMalloc(&digest_d, sizeof(*digest_d)));
+  CHECK_CUDA_ERROR(cudaMemcpy(digest_d, &digest_h, sizeof(digest_h),
+                              cudaMemcpyHostToDevice));
   hash_kernel<<<gridDim, blockDim>>>(digest_d, devPtr, size);
-  cudaMemcpy(&digest_h, digest_d, sizeof(digest_h), cudaMemcpyDeviceToHost);
+  CHECK_CUDA_ERROR(cudaGetLastError());
+  CHECK_CUDA_ERROR(cudaMemcpy(&digest_h, digest_d, sizeof(digest_h),
+                              cudaMemcpyDeviceToHost));
 
   return digest_h;
 }

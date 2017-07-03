@@ -15,17 +15,11 @@
 
 #include "allocation.hpp"
 #include "allocations.hpp"
+#include "check_cuda_error.hpp"
 #include "numa.hpp"
 #include "set_device.hpp"
 #include "value.hpp"
 #include "values.hpp"
-
-#define CHECK_CU_ERROR(err, cufunc)                                            \
-  if (err != CUDA_SUCCESS) {                                                   \
-    printf("%s:%d: error %d for CUDA Driver API function '%s'\n", __FILE__,    \
-           __LINE__, err, cufunc);                                             \
-    exit(-1);                                                                  \
-  }
 
 #define CHECK_CUPTI_ERROR(err, cuptifunc)                                      \
   if (err != CUPTI_SUCCESS) {                                                  \
