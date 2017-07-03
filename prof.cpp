@@ -11,7 +11,7 @@ typedef cudaError_t (*cudaMallocFunc)(void **, size_t);
 static cudaMallocFunc real_cudaMalloc = NULL;
 
 extern "C" cudaError_t cudaMalloc(void **devPtr, size_t size) {
-  lazyActivateCallbacks();
+  onceActivateCallbacks();
 
   if (real_cudaMalloc == nullptr) {
     real_cudaMalloc = (cudaMallocFunc)dlsym(RTLD_NEXT, "cudaMalloc");

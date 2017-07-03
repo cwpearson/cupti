@@ -4,11 +4,17 @@
 #include <cstdio>
 #include <cuda.h>
 
-#define CHECK_CUDA_ERROR(err)                                                  \
-  if (err != cudaSuccess) {                                                    \
-    printf("%s:%d: error %d for CUDA Driver API function\n", __FILE__,         \
-           __LINE__, err);                                                     \
-    exit(-1);                                                                  \
+#define CUDA_CHECK(ans)                                                        \
+  { gpuAssert((ans), __FILE__, __LINE__); }
+
+inline void gpuAssert(cudaError_t code, const char *file, int line,
+                      bool abort = true) {
+  if (code != cudaSuccess) {
+    fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file,
+            line);
+    if (abort)
+      exit(code);
   }
+}
 
 #endif

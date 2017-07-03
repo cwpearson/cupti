@@ -104,9 +104,9 @@ void handleMemcpy(Allocations &allocations, Values &values,
 
     // only create a new dst value if the data being copied is different
     const auto src_digest =
-        srcLoc.is_host() ? hash_host(src, count) : hash_cuda(src, count);
+        srcLoc.is_host() ? hash_host(src, count) : hash_device(src, count);
     const auto dst_digest =
-        dstLoc.is_host() ? hash_host(dst, count) : hash_cuda(dst, count);
+        dstLoc.is_host() ? hash_host(dst, count) : hash_device(dst, count);
 
     printf("%llu, %llu\n", src_digest, dst_digest);
 
@@ -397,6 +397,7 @@ int stopCallbacks() {
   return 0;
 }
 
+// stop callbacks if they are running
 void lazyStopCallbacks() {
   if (SUBSCRIBER_ACTIVE) {
     printf("suspending callbacks...\n");
@@ -405,10 +406,21 @@ void lazyStopCallbacks() {
   }
 }
 
+// start callbacks if they are not running
 void lazyActivateCallbacks() {
   if (!SUBSCRIBER_ACTIVE) {
     printf("activating callbacks...\n");
     activateCallbacks();
     SUBSCRIBER_ACTIVE = true;
+  }
+}
+
+// start callbacks only the first time
+void onceActivateCallbacks() {
+  static bool done = false;
+  if (!done) {
+    printf("Activating callbacks for first time!\n");
+    lazyActivateCallbacks();
+    done = true;
   }
 }

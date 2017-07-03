@@ -18,8 +18,8 @@ LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcud
 #	$(NVCC) $(NVCCFLAGS) -dc $^ -lcudadevrt -lcudart -o $@	
 
 %.o : %.cu
-	$(NVCC) -std=c++11 -arch=sm_52 -dc  -Xcompiler -fPIC $^ -o test.o
-	$(NVCC) -std=c++11 -arch=sm_52 -Xcompiler -fPIC -dlink test.o -lcudadevrt -lcudart -o $@	
+	$(NVCC) -std=c++11 -arch=sm_35 -dc  -Xcompiler -fPIC $^ -o test.o
+	$(NVCC) -std=c++11 -arch=sm_35 -Xcompiler -fPIC -dlink test.o -lcudadevrt -lcudart -o $@	
 
 prof.so: $(OBJECTS)
 	$(CXX) -shared $(LIB) $^ test.o -o $@
