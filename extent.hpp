@@ -16,6 +16,9 @@ public:
   bool overlaps(const Extent &other) const;
   bool contains(const Extent &other) const;
   bool contains(pos_t pos) const;
+
+  const pos_t &pos() const { return pos_; }
+  const std::size_t &size() const { return size_; }
 };
 
 #endif

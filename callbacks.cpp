@@ -102,15 +102,7 @@ void handleMemcpy(Allocations &allocations, Values &values,
       srcFound = true;
     }
 
-    // only create a new dst value if the data being copied is different
-    const auto src_digest =
-        srcLoc.is_host() ? hash_host(src, count) : hash_device(src, count);
-    const auto dst_digest =
-        dstLoc.is_host() ? hash_host(dst, count) : hash_device(dst, count);
-
-    printf("%llu, %llu\n", src_digest, dst_digest);
-
-    // always creates a new dst value
+    // always create a new dst value
     auto dstVal = std::shared_ptr<Value>(new Value(dst, count, dstAllocId));
     auto dstPair = values.insert(dstVal);
     assert(dstPair.second && "Should have been a new value");
@@ -249,47 +241,70 @@ void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
 }
 
 void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
-  lazyStopCallbacks();
-  lazyActivateCallbacks();
+  printf("callback: cudaLaunch preamble");
+
+  // Find all values that are used by arguments
+  std::vector<Values::key_type> kernelArgKeys;
+  for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size();
+       ++argIdx) { // for each kernel argument
+                   // printf("arg %lu, val %lu\n", argIdx, valIdx);
+
+    // FIXME: assuming with p2p access, it could be on any device?
+    const auto &kv =
+        values.find_live_device(ConfiguredCall().args[argIdx], 1 /*size*/);
+
+    const auto &key = kv.first;
+    if (key != uintptr_t(nullptr)) {
+      kernelArgKeys.push_back(kv.first);
+      printf("found val %lu for kernel arg=%lu\n", key,
+             ConfiguredCall().args[argIdx]);
+    }
+  }
+
+  static std::map<Value::id_type, hash_t> arg_hashes;
+
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaLaunch entry\n");
     // const auto params = ((cudaLaunch_v3020_params
     // *)(cbInfo->functionParams));
     // const uintptr_t func = (uintptr_t) params->func;
 
-    // Find all values that are used by arguments
-    std::vector<Values::key_type> kernelArgKeys;
-    for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size();
-         ++argIdx) { // for each kernel argument
-                     // printf("arg %lu, val %lu\n", argIdx, valIdx);
+    // The kernel could modify each argument value.
+    // Check the hash of each argument so that when the call exits, we can see
+    // if it was modified.
 
-      // FIXME: assuming with p2p access, it could be on any device?
-      const auto &kv =
-          values.find_live_device(ConfiguredCall().args[argIdx], 1 /*size*/);
-
-      const auto &key = kv.first;
-      if (key != uintptr_t(nullptr)) {
-        kernelArgKeys.push_back(kv.first);
-        printf("found val %lu for kernel arg=%lu\n", key,
-               ConfiguredCall().args[argIdx]);
-      }
-    }
-
-    // Assume that the kernel can modify each argument value.
-    // Therefore, each modifiable argument generates a new value.
-    // All of these new values depend on the previous argument values.
+    arg_hashes.clear();
     for (const auto &argKey : kernelArgKeys) {
       const auto &argValue = values[argKey];
-      const auto newValue =
-          std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
-      values.insert(newValue);
-      for (const auto &depKey : kernelArgKeys) {
-        printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
-        newValue->add_depends_on(depKey);
-      }
+      assert(argValue->location().is_device_accessible() &&
+             "Host pointer arg to cuda launch?");
+      auto digest = hash_device(argValue->pos(), argValue->size());
+      printf("digest: %llu\n", digest);
+      arg_hashes[argKey] = digest;
     }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    printf("callback: cudaLaunch exit\n");
+    // The kernel could have modified any argument values.
+    // Hash each value and compare to the one recorded at kernel launch
+    // If there is a difference, create a new value
+    for (const auto &argKey : kernelArgKeys) {
+      const auto &argValue = values[argKey];
+
+      const auto digest = hash_device(argValue->pos(), argValue->size());
+
+      // no recorded hash, or hash does not match => new value
+      if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
+        const auto newValue =
+            std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
+        values.insert(newValue);
+        for (const auto &depKey : kernelArgKeys) {
+          printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
+          newValue->add_depends_on(depKey);
+        }
+      }
+    }
+
   } else {
     assert(0 && "How did we get here?");
   }
