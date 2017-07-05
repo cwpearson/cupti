@@ -70,6 +70,7 @@ hash_t hash_device(const char *devPtr, size_t size) {
 
   char *buf = new char[size];
   CUDA_CHECK(cudaMemcpy(buf, devPtr, size, cudaMemcpyDeviceToHost));
+  printf("%d, %d\n", buf[0], buf[1]);
   auto digest = hash_host(buf, size);
   delete[] buf;
 

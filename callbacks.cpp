@@ -115,16 +115,25 @@ static void record_memcpy(Allocations &allocations, Values &values,
 
 void handleCudaMemcpy(Allocations &allocations, Values &values,
                   const CUpti_CallbackData *cbInfo) {
-  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaMemcpy entry\n");
     // extract API call parameters
     auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
     const uintptr_t dst = (uintptr_t)params->dst;
     const uintptr_t src = (uintptr_t)params->src;
     const cudaMemcpyKind kind = params->kind;
     const size_t count = params->count;
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaMemcpy entry\n");
     record_memcpy(allocations, values, dst, src, kind, count);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    printf("callback: cudaMemcpy exit\n");
+    if (cudaMemcpyHostToDevice == kind) {
+      // auto digest = hash_device(dst, count);
+      // printf("dst digest: %llu\n", digest);
+    }
+    if (cudaMemcpyDeviceToHost == kind) {
+      // auto digest = hash_device(src, count);
+      // printf("src digest: %llu\n", digest);
+    }
   } else {
     assert(0 && "How did we get here?");
   }
@@ -133,8 +142,6 @@ void handleCudaMemcpy(Allocations &allocations, Values &values,
 
 void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
                            const CUpti_CallbackData *cbInfo) {
-  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaMemcpyAsync entry\n");
     // extract API call parameters
     auto params = ((cudaMemcpyAsync_v3020_params *)(cbInfo->functionParams));
     const uintptr_t dst = (uintptr_t)params->dst;
@@ -142,6 +149,8 @@ void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
     const size_t count = params->count;
     const cudaMemcpyKind kind = params->kind;
     const cudaStream_t stream = params->stream;
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaMemcpyAsync entry\n");
     record_memcpy(allocations, values, dst, src, kind, count);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
@@ -212,6 +221,8 @@ void handleCudaMalloc(Allocations &allocations, Values &values,
 
     values.insert(std::shared_ptr<Value>(
         new Value(devPtr, size, a->Id(), false /*initialized*/)));
+    // auto digest = hash_device(devPtr, size);
+    // printf("uninitialized digest: %llu\n", digest);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -270,15 +281,14 @@ void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaConfigureCall entry\n");
 
-    if (ConfiguredCall().valid) {
-      printf("ERROR: Call is already configured?\n");
-    }
+    assert(!ConfiguredCall().valid && "call is already configured?\n");
 
     auto params = ((cudaConfigureCall_v3020_params *)(cbInfo->functionParams));
     ConfiguredCall().gridDim = params->gridDim;
     ConfiguredCall().blockDim = params->blockDim;
     ConfiguredCall().sharedMem = params->sharedMem;
     ConfiguredCall().stream = params->stream;
+    ConfiguredCall().valid = true;
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
@@ -339,6 +349,7 @@ void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
     // const size_t size     = params->size;
     // const size_t offset   = params->offset;
 
+    assert(ConfiguredCall().valid);
     ConfiguredCall().args.push_back(arg);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
@@ -348,6 +359,11 @@ void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
 
 void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch preamble\n");
+
+  // Get the current stream
+  const cudaStream_t stream = ConfiguredCall().stream;
+
+
 
   // Find all values that are used by arguments
   std::vector<Values::key_type> kernelArgKeys;
@@ -367,8 +383,8 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     }
   }
 
-  static std::map<Value::id_type, hash_t> arg_hashes;
-
+  // static std::map<Value::id_type, hash_t> arg_hashes;
+ 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaLaunch entry\n");
     // const auto params = ((cudaLaunch_v3020_params
@@ -379,41 +395,44 @@ void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // Check the hash of each argument so that when the call exits, we can see
     // if it was modified.
 
-    arg_hashes.clear();
+    // arg_hashes.clear();
     for (const auto &argKey : kernelArgKeys) {
       const auto &argValue = values[argKey];
       assert(argValue->location().is_device_accessible() &&
              "Host pointer arg to cuda launch?");
-      auto digest = hash_device(argValue->pos(), argValue->size());
-      printf("digest: %llu\n", digest);
-      arg_hashes[argKey] = digest;
+      // auto digest = hash_device(argValue->pos(), argValue->size());
+      // printf("digest: %llu\n", digest);
+      // arg_hashes[argKey] = digest;
     }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     printf("callback: cudaLaunch exit\n");
+
+
     // The kernel could have modified any argument values.
     // Hash each value and compare to the one recorded at kernel launch
     // If there is a difference, create a new value
     for (const auto &argKey : kernelArgKeys) {
       const auto &argValue = values[argKey];
 
-      const auto digest = hash_device(argValue->pos(), argValue->size());
+      // const auto digest = hash_device(argValue->pos(), argValue->size());
 
-      if (arg_hashes.count(argKey)) {
-        printf("digest: %llu ==> %llu\n", digest, arg_hashes[argKey]);
-      }
+      // if (arg_hashes.count(argKey)) {
+      //   printf("digest: %llu ==> %llu\n", arg_hashes[argKey], digest);
+      // }
       // no recorded hash, or hash does not match => new value
-      if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
-        const auto newValue =
-            std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
-        values.insert(newValue);
-        for (const auto &depKey : kernelArgKeys) {
-          printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
-          newValue->add_depends_on(depKey);
-        }
-      }
+      // if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
+         const auto newValue =
+             std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
+         values.insert(newValue);
+         for (const auto &depKey : kernelArgKeys) {
+           printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
+           newValue->add_depends_on(depKey);
+         }
+      // }
     }
-
+  ConfiguredCall().valid = false;
+  ConfiguredCall().args.clear();
   } else {
     assert(0 && "How did we get here?");
   }

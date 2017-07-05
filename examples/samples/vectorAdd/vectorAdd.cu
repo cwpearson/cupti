@@ -70,6 +70,7 @@ main(void)
     }
 
     // Initialize the host input vectors
+    srand(1);
     for (int i = 0; i < numElements; ++i)
     {
         h_A[i] = rand()/(float)RAND_MAX;
