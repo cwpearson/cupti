@@ -2,7 +2,7 @@ TARGETS = prof.so
 
 all: $(TARGETS)
 
-OBJECTS = numa.o prof.o callbacks.o value.o values.o allocation.o allocations.o extent.o set_device.o hash.o
+OBJECTS = driver_state.o numa.o prof.o callbacks.o value.o values.o allocation.o allocations.o extent.o hash.o
 
 CXX=g++
 CXXFLAGS= -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC

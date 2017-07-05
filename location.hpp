@@ -11,7 +11,7 @@
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
 
-#include "set_device.hpp"
+#include "driver_state.hpp"
 
 class Location {
 public:
