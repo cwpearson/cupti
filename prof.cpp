@@ -20,6 +20,25 @@ extern "C" cudaError_t cudaMalloc(void **devPtr, size_t size) {
   return real_cudaMalloc(devPtr, size);
 }
 
+//typedef cudaError_t (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
+// static cudaConfigureCall_t realCudaConfigureCall = NULL;
+
+/*
+typedef CUresult (*cuInitFunc)(unsigned int);
+static cuInitFunc real_cuInit = nullptr;
+
+extern "C"
+CUresult cuInit(unsigned int Flags) {
+  printf("intercepted cuInit\n");
+  lazyActivateCallbacks();
+
+  if (real_cuInit == NULL) {
+    real_cuInit = (cuInitFunc)dlsym(RTLD_NEXT,"cuInit");
+  }
+  assert(real_cuInit && "Will the real cuInit please stand up.");
+  return real_cuInit(Flags);
+}
+*/
 // typedef cudaError_t (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
 // static cudaConfigureCall_t realCudaConfigureCall = NULL;
 

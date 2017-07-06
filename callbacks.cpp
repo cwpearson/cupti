@@ -159,6 +159,26 @@ void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
 }
 
 
+void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
+                               const CUpti_CallbackData *cbInfo) {
+    // extract API call parameters
+    auto params = ((cudaMemcpyPeerAsync_v4000_params *)(cbInfo->functionParams));
+    const uintptr_t dst = (uintptr_t)params->dst;
+    const int dstDevice = params->dstDevice;
+    const uintptr_t src = (uintptr_t)params->src;
+    const int srcDevice = params->srcDevice;
+    const size_t count = params->count;
+    const cudaStream_t stream = params->stream;
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaMemcpyPeerAsync entry\n");
+    record_memcpy(allocations, values, dst, src, kind, count);
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+
 void handleCudaMallocHost(Allocations &allocations, Values &values,
                           const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
@@ -480,6 +500,9 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020:
       handleCudaMemcpyAsync(Allocations::instance(), Values::instance(), cbInfo);
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyPeerAsync_v4000:
+      handleCudaMemcpyPeerAsync(Allocations::instance(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
       handleCudaMalloc(Allocations::instance(), Values::instance(), cbInfo);
