@@ -50,6 +50,7 @@
         "typeinfo": "cpp",
         "utility": "cpp",
         "*.ipp": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "algorithm": "cpp"
     }
 }
