@@ -1,5 +1,6 @@
 *.o
 *.so
-examples/matrixMul/mm
-examples/vectorAdd/vec
-examples/deviceQuery/query
+examples/samples/matrixMul/mm
+examples/samples/vectorAdd/vec
+examples/samples/deviceQuery/query
+examples/samples/simpleMultiGPU/mgpu
