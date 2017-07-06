@@ -73,9 +73,11 @@ static void record_memcpy(Allocations &allocations, Values &values,
   // Destination or source allocation may be on the host, and might not have
   // been recorded.
   if (!dstFound) {
-    assert(dstLoc.is_host() && "How did we miss this value");
+    assert(dstLoc.is_host() &&
+           "Couldn't find memcpy dst allocation and dst is not on host");
     printf("WARN: creating implicit host dst allocation during memcpy\n");
-    std::shared_ptr<Allocation> a(new Allocation(dst, count, dstLoc));
+    std::shared_ptr<Allocation> a(
+        new Allocation(dst, count, dstLoc, Allocation::Type::Pageable));
     allocations.insert(a);
     dstAllocId = a->Id();
     dstFound = true;
@@ -83,7 +85,8 @@ static void record_memcpy(Allocations &allocations, Values &values,
   if (!srcFound) {
     assert(srcLoc.is_host() && "How did we miss this value");
     printf("WARN: creating implicit host src allocation during memcpy\n");
-    std::shared_ptr<Allocation> a(new Allocation(src, count, srcLoc));
+    std::shared_ptr<Allocation> a(
+        new Allocation(src, count, srcLoc, Allocation::Type::Pageable));
     allocations.insert(a);
     srcAllocId = a->Id();
     srcFound = true;
@@ -196,7 +199,8 @@ void handleCudaMallocManaged(Allocations &allocations, Values &values,
 
     // Create the new allocation
     std::shared_ptr<Allocation> a(new Allocation(
-        devPtr, size, Location::Unified(DriverState::current_device())));
+        devPtr, size, Location::Unified(DriverState::current_device()),
+        Allocation::Type::Pageable));
     allocations.insert(a);
 
     // Create the new value
@@ -218,7 +222,8 @@ void handleCudaMallocHost(Allocations &allocations, Values &values,
 
     // Create the new allocation
     std::shared_ptr<Allocation> a(
-        new Allocation(ptr, size, Location::Host(get_numa_node(ptr))));
+        new Allocation(ptr, size, Location::Host(get_numa_node(ptr)),
+                       Allocation::Type::Pinned));
     allocations.insert(a);
 
     // Create the new value
@@ -262,7 +267,8 @@ void handleCudaMalloc(Allocations &allocations, Values &values,
 
     // Create the new allocation
     std::shared_ptr<Allocation> a(new Allocation(
-        devPtr, size, Location::Device(DriverState::current_device())));
+        devPtr, size, Location::Device(DriverState::current_device()),
+        Allocation::Type::Pageable));
     allocations.insert(a);
 
     values.insert(std::shared_ptr<Value>(

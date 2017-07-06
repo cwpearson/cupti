@@ -17,11 +17,12 @@ public:
 
 private:
   Location location_;
+  Type type_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const Allocation &v);
-  Allocation(uintptr_t pos, size_t size, Location loc)
-      : Extent(pos, size), location_(loc) {}
+  Allocation(uintptr_t pos, size_t size, Location loc, Type type)
+      : Extent(pos, size), location_(loc), type_(type) {}
 
   std::string json() const;
 

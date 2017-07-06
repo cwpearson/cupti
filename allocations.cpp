@@ -33,7 +33,7 @@ Allocations::find_live(uintptr_t pos, size_t size, Location loc) {
   if (allocations_.empty())
     return std::make_pair(false, -1);
 
-  Allocation dummy(pos, size, loc);
+  Allocation dummy(pos, size, loc, Allocation::Type::Pageable);
   for (const auto &alloc : allocations_) {
     const auto &key = alloc.first;
     const auto &val = alloc.second;

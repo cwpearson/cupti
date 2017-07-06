@@ -9,12 +9,22 @@ using boost::property_tree::write_json;
 
 const std::string output_path("cprof.txt");
 
+std::string to_string(Allocation::Type type) {
+  if (Allocation::Type::Pinned == type)
+    return "pinned";
+  if (Allocation::Type::Pageable == type) {
+    return "pageable";
+  }
+  assert(0 && "Unexpected Allocation::type");
+}
+
 std::string Allocation::json() const {
   ptree pt;
   pt.put("allocation.id", std::to_string(uintptr_t(this)));
   pt.put("allocation.pos", std::to_string(pos_));
   pt.put("allocation.size", std::to_string(size_));
   pt.put("allocation.mem", location_.json());
+  pt.put("allocation.type", to_string(type_));
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();
