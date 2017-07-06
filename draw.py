@@ -78,18 +78,20 @@ class Region(Subgraph):
 
 
 class Allocation(Subgraph):
-    def __init__(self, Id, pos, size):
+    def __init__(self, Id, pos, size, ty):
         Subgraph.__init__(self, Id)
         self.value_ids = []
         self.pos = pos
         self.size = size
+	self.ty = ty
     def __str__(self):
         s = "subgraph " + self.name + " {\n"
         s += "style=filled;\n"
         s += "color=grey;\n"
         s += 'label = "id: ' + self.dot_label() + "\n" + \
                       "pos: " + self.pos + "\n" + \
-                      "size: " + self.size + '";\n'
+                      "size: " + self.size + "\n" + \
+                      self.ty + '";\n'
         for Id in self.value_ids:
             s += str(Id) + ';\n'
         s += "}"
@@ -143,6 +145,7 @@ with open(args[0], 'r') as f:
             Id = alloc["id"]
             size = alloc["size"]
             pos = alloc["pos"]
+            ty = alloc["type"]
             mem = json.loads(alloc["mem"])
 
             mem_type = mem["type"]
@@ -157,7 +160,7 @@ with open(args[0], 'r') as f:
 
             print "adding allocation", Id
             Memories[mem_type].regions[mem_id].allocations += [Id]
-            newAllocation = Allocation(Id, pos, size)
+            newAllocation = Allocation(Id, pos, size, ty)
             Allocations[Id] = newAllocation
 
 ## second pass - set up values and dependences
