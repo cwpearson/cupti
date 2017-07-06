@@ -40,6 +40,9 @@ public:
   }
 
   bool is_host() const { return Location_t::Host == type_; }
+  bool is_host_accessible() const {
+    return is_host() || Location_t::Unified == type_;
+  }
   bool is_device_accessible() const {
     return Location_t::Device == type_ || Location_t::Unified == type_;
   }

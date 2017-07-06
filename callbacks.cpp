@@ -182,6 +182,31 @@ void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
   }
 }
 
+void handleCudaMallocManaged(Allocations &allocations, Values &values,
+                             const CUpti_CallbackData *cbInfo) {
+  auto params = ((cudaMallocManaged_v6000_params *)(cbInfo->functionParams));
+  const uintptr_t devPtr = (uintptr_t)(*(params->devPtr));
+  const size_t size = params->size;
+  const unsigned int flags = params->flags;
+
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+
+    printf("[cudaMallocManaged] %lu[%lu]\n", devPtr, size);
+
+    // Create the new allocation
+    std::shared_ptr<Allocation> a(new Allocation(
+        devPtr, size, Location::Unified(DriverState::current_device())));
+    allocations.insert(a);
+
+    // Create the new value
+    values.insert(std::shared_ptr<Value>(
+        new Value(devPtr, size, a->Id(), false /*initialized*/)));
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
 void handleCudaMallocHost(Allocations &allocations, Values &values,
                           const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {

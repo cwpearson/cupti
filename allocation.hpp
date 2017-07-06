@@ -16,15 +16,12 @@ public:
   typedef uintptr_t id_type;
 
 private:
-  bool is_unknown_;
-  bool is_not_allocation_;
   Location location_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const Allocation &v);
   Allocation(uintptr_t pos, size_t size, Location loc)
-      : Extent(pos, size), is_unknown_(false), is_not_allocation_(false),
-        location_(loc) {}
+      : Extent(pos, size), location_(loc) {}
 
   std::string json() const;
 
@@ -38,9 +35,6 @@ public:
 
   id_type Id() const { return reinterpret_cast<id_type>(this); }
   Location location() const { return location_; }
-
-  // static Allocation &UnknownAllocation();
-  // static Allocation &NoAllocation();
 };
 
 #endif
