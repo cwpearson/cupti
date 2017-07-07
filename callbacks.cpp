@@ -38,10 +38,106 @@ void lazyActivateCallbacks();
 CUpti_SubscriberHandle SUBSCRIBER;
 bool SUBSCRIBER_ACTIVE = 0;
 
-static void record_memcpy(Allocations &allocations, Values &values,
-                          const uintptr_t dst, const uintptr_t src,
-                          const MemoryCopyKind &kind, const size_t count,
-                          const int peerSrc, const int peerDst) {
+typedef struct {
+  dim3 gridDim;
+  dim3 blockDim;
+  size_t sharedMem;
+  cudaStream_t stream;
+  std::vector<uintptr_t> args;
+  bool valid = false;
+} ConfiguredCall_t;
+
+ConfiguredCall_t &ConfiguredCall() {
+  static ConfiguredCall_t cc;
+  return cc;
+}
+
+static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
+  printf("callback: cudaLaunch preamble\n");
+
+  // Get the current stream
+  const cudaStream_t stream = ConfiguredCall().stream;
+  const char *symbolName = cbInfo->symbolName;
+  printf("launching %s\n", symbolName);
+
+  // Find all values that are used by arguments
+  std::vector<Values::key_type> kernelArgKeys;
+  for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size();
+       ++argIdx) { // for each kernel argument
+                   // printf("arg %lu, val %lu\n", argIdx, valIdx);
+
+    // FIXME: assuming with p2p access, it could be on any device?
+    const auto &kv =
+        values.find_live_device(ConfiguredCall().args[argIdx], 1 /*size*/);
+
+    const auto &key = kv.first;
+    if (key != uintptr_t(nullptr)) {
+      kernelArgKeys.push_back(kv.first);
+      printf("found val %lu for kernel arg=%lu\n", key,
+             ConfiguredCall().args[argIdx]);
+    }
+  }
+
+  // static std::map<Value::id_type, hash_t> arg_hashes;
+
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaLaunch entry\n");
+    // const auto params = ((cudaLaunch_v3020_params
+    // *)(cbInfo->functionParams));
+    // const uintptr_t func = (uintptr_t) params->func;
+
+    // The kernel could modify each argument value.
+    // Check the hash of each argument so that when the call exits, we can see
+    // if it was modified.
+
+    // arg_hashes.clear();
+    for (const auto &argKey : kernelArgKeys) {
+      const auto &argValue = values[argKey];
+      assert(argValue->location().is_device_accessible() &&
+             "Host pointer arg to cuda launch?");
+      // auto digest = hash_device(argValue->pos(), argValue->size());
+      // printf("digest: %llu\n", digest);
+      // arg_hashes[argKey] = digest;
+    }
+
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    printf("callback: cudaLaunch exit\n");
+
+    // The kernel could have modified any argument values.
+    // Hash each value and compare to the one recorded at kernel launch
+    // If there is a difference, create a new value
+    for (const auto &argKey : kernelArgKeys) {
+      const auto &argValue = values[argKey];
+
+      // const auto digest = hash_device(argValue->pos(), argValue->size());
+
+      // if (arg_hashes.count(argKey)) {
+      //   printf("digest: %llu ==> %llu\n", arg_hashes[argKey], digest);
+      // }
+      // no recorded hash, or hash does not match => new value
+      // if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
+      const auto newValue =
+          std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
+      values.insert(newValue);
+      for (const auto &depKey : kernelArgKeys) {
+        printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
+        newValue->add_depends_on(depKey);
+      }
+      // }
+    }
+    ConfiguredCall().valid = false;
+    ConfiguredCall().args.clear();
+  } else {
+    assert(0 && "How did we get here?");
+  }
+
+  printf("callback: cudaLaunch: done\n");
+}
+
+void record_memcpy(Allocations &allocations, Values &values,
+                   const uintptr_t dst, const uintptr_t src,
+                   const MemoryCopyKind &kind, const size_t count,
+                   const int peerSrc, const int peerDst) {
 
   Location srcLoc, dstLoc;
   if (MemoryCopyKind::CudaHostToDevice() == kind) {
@@ -119,8 +215,8 @@ static void record_memcpy(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaMemcpy(Allocations &allocations, Values &values,
-                      const CUpti_CallbackData *cbInfo) {
+static void handleCudaMemcpy(Allocations &allocations, Values &values,
+                             const CUpti_CallbackData *cbInfo) {
   // extract API call parameters
   auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
   const uintptr_t dst = (uintptr_t)params->dst;
@@ -146,8 +242,8 @@ void handleCudaMemcpy(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
-                           const CUpti_CallbackData *cbInfo) {
+static void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
+                                  const CUpti_CallbackData *cbInfo) {
   // extract API call parameters
   auto params = ((cudaMemcpyAsync_v3020_params *)(cbInfo->functionParams));
   const uintptr_t dst = (uintptr_t)params->dst;
@@ -165,8 +261,8 @@ void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
-                               const CUpti_CallbackData *cbInfo) {
+static void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
+                                      const CUpti_CallbackData *cbInfo) {
   // extract API call parameters
   auto params = ((cudaMemcpyPeerAsync_v4000_params *)(cbInfo->functionParams));
   const uintptr_t dst = (uintptr_t)params->dst;
@@ -185,8 +281,8 @@ void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaMallocManaged(Allocations &allocations, Values &values,
-                             const CUpti_CallbackData *cbInfo) {
+static void handleCudaMallocManaged(Allocations &allocations, Values &values,
+                                    const CUpti_CallbackData *cbInfo) {
   auto params = ((cudaMallocManaged_v6000_params *)(cbInfo->functionParams));
   const uintptr_t devPtr = (uintptr_t)(*(params->devPtr));
   const size_t size = params->size;
@@ -211,8 +307,8 @@ void handleCudaMallocManaged(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaMallocHost(Allocations &allocations, Values &values,
-                          const CUpti_CallbackData *cbInfo) {
+static void handleCudaMallocHost(Allocations &allocations, Values &values,
+                                 const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     auto params = ((cudaMallocHost_v3020_params *)(cbInfo->functionParams));
@@ -234,8 +330,8 @@ void handleCudaMallocHost(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaFreeHost(Allocations &allocations, Values &values,
-                        const CUpti_CallbackData *cbInfo) {
+static void handleCudaFreeHost(Allocations &allocations, Values &values,
+                               const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     auto params = ((cudaFreeHost_v3020_params *)(cbInfo->functionParams));
@@ -256,8 +352,8 @@ void handleCudaFreeHost(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaMalloc(Allocations &allocations, Values &values,
-                      const CUpti_CallbackData *cbInfo) {
+static void handleCudaMalloc(Allocations &allocations, Values &values,
+                             const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
@@ -280,8 +376,8 @@ void handleCudaMalloc(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaFree(Allocations &allocations, Values &values,
-                    const CUpti_CallbackData *cbInfo) {
+static void handleCudaFree(Allocations &allocations, Values &values,
+                           const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaFree entry\n");
     auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
@@ -302,7 +398,7 @@ void handleCudaFree(Allocations &allocations, Values &values,
   }
 }
 
-void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
+static void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaSetDevice entry\n");
     auto params = ((cudaSetDevice_v3020_params *)(cbInfo->functionParams));
@@ -314,21 +410,7 @@ void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
   }
 }
 
-typedef struct {
-  dim3 gridDim;
-  dim3 blockDim;
-  size_t sharedMem;
-  cudaStream_t stream;
-  std::vector<uintptr_t> args;
-  bool valid = false;
-} ConfiguredCall_t;
-
-ConfiguredCall_t &ConfiguredCall() {
-  static ConfiguredCall_t cc;
-  return cc;
-}
-
-void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
+static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaConfigureCall entry\n");
 
@@ -346,44 +428,7 @@ void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   }
 }
 
-void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
-  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    printf("callback: cudaStreamCreate entry\n");
-    const auto params =
-        ((cudaStreamCreate_v3020_params *)(cbInfo->functionParams));
-    const cudaStream_t stream = *(params->pStream);
-    DriverState::create_stream(stream);
-  } else {
-    assert(0 && "How did we get here?");
-  }
-}
-
-void handleCudaStreamDestroy(const CUpti_CallbackData *cbInfo) {
-  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaStreamCreate entry\n");
-    const auto params =
-        ((cudaStreamDestroy_v3020_params *)(cbInfo->functionParams));
-    const cudaStream_t stream = params->stream;
-  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-  } else {
-    assert(0 && "How did we get here?");
-  }
-}
-
-void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
-  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaStreamSynchronize entry\n");
-    const auto params =
-        ((cudaStreamSynchronize_v3020_params *)(cbInfo->functionParams));
-    const cudaStream_t stream = params->stream;
-  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-  } else {
-    assert(0 && "How did we get here?");
-  }
-}
-
-void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
+static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaSetupArgument entry\n");
     const auto params =
@@ -402,84 +447,41 @@ void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
   }
 }
 
-void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
-  printf("callback: cudaLaunch preamble\n");
-
-  // Get the current stream
-  const cudaStream_t stream = ConfiguredCall().stream;
-
-  // Find all values that are used by arguments
-  std::vector<Values::key_type> kernelArgKeys;
-  for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size();
-       ++argIdx) { // for each kernel argument
-                   // printf("arg %lu, val %lu\n", argIdx, valIdx);
-
-    // FIXME: assuming with p2p access, it could be on any device?
-    const auto &kv =
-        values.find_live_device(ConfiguredCall().args[argIdx], 1 /*size*/);
-
-    const auto &key = kv.first;
-    if (key != uintptr_t(nullptr)) {
-      kernelArgKeys.push_back(kv.first);
-      printf("found val %lu for kernel arg=%lu\n", key,
-             ConfiguredCall().args[argIdx]);
-    }
-  }
-
-  // static std::map<Value::id_type, hash_t> arg_hashes;
-
+static void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaLaunch entry\n");
-    // const auto params = ((cudaLaunch_v3020_params
-    // *)(cbInfo->functionParams));
-    // const uintptr_t func = (uintptr_t) params->func;
-
-    // The kernel could modify each argument value.
-    // Check the hash of each argument so that when the call exits, we can see
-    // if it was modified.
-
-    // arg_hashes.clear();
-    for (const auto &argKey : kernelArgKeys) {
-      const auto &argValue = values[argKey];
-      assert(argValue->location().is_device_accessible() &&
-             "Host pointer arg to cuda launch?");
-      // auto digest = hash_device(argValue->pos(), argValue->size());
-      // printf("digest: %llu\n", digest);
-      // arg_hashes[argKey] = digest;
-    }
-
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    printf("callback: cudaLaunch exit\n");
-
-    // The kernel could have modified any argument values.
-    // Hash each value and compare to the one recorded at kernel launch
-    // If there is a difference, create a new value
-    for (const auto &argKey : kernelArgKeys) {
-      const auto &argValue = values[argKey];
-
-      // const auto digest = hash_device(argValue->pos(), argValue->size());
-
-      // if (arg_hashes.count(argKey)) {
-      //   printf("digest: %llu ==> %llu\n", arg_hashes[argKey], digest);
-      // }
-      // no recorded hash, or hash does not match => new value
-      // if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
-      const auto newValue =
-          std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
-      values.insert(newValue);
-      for (const auto &depKey : kernelArgKeys) {
-        printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
-        newValue->add_depends_on(depKey);
-      }
-      // }
-    }
-    ConfiguredCall().valid = false;
-    ConfiguredCall().args.clear();
+    printf("callback: cudaStreamCreate entry\n");
+    const auto params =
+        ((cudaStreamCreate_v3020_params *)(cbInfo->functionParams));
+    const cudaStream_t stream = *(params->pStream);
+    DriverState::create_stream(stream);
   } else {
     assert(0 && "How did we get here?");
   }
+}
 
-  printf("callback: cudaLaunch: done\n");
+static void handleCudaStreamDestroy(const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaStreamCreate entry\n");
+    const auto params =
+        ((cudaStreamDestroy_v3020_params *)(cbInfo->functionParams));
+    const cudaStream_t stream = params->stream;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+static void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    printf("callback: cudaStreamSynchronize entry\n");
+    const auto params =
+        ((cudaStreamSynchronize_v3020_params *)(cbInfo->functionParams));
+    const cudaStream_t stream = params->stream;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+  } else {
+    assert(0 && "How did we get here?");
+  }
 }
 
 std::string getCallbackName(CUpti_CallbackDomain domain,
@@ -487,17 +489,25 @@ std::string getCallbackName(CUpti_CallbackDomain domain,
   switch (domain) {
   case CUPTI_CB_DOMAIN_RUNTIME_API:
     switch (cbid) {
+    case CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020: // 10
+      return "cudaGetLastError_v3020";
     case CUPTI_RUNTIME_TRACE_CBID_cudaStreamDestroy_v3020:
-      return std::string("cudaStreamDestroy_v3020");
+      return "cudaStreamDestroy_v3020";
+    case CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020:
+      return "cudaDeviceSynchronize_v3020";
+    case CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020: // 136
+      return "cudaEventDestroy";
+    case CUPTI_RUNTIME_TRACE_CBID_cudaStreamAttachMemAsync_v6000: // 208
+      return "cudaStreamAttachMemAsync";
     default:
-      return std::string("<unknown runtime api: ") + std::to_string(cbid) +
-             std::string(">");
+      return std::string("<unknown runtime api, cbid = ") +
+             std::to_string(cbid) + std::string(">");
     }
     break;
   case CUPTI_CB_DOMAIN_DRIVER_API: {
     switch (cbid) {
     case CUPTI_DRIVER_TRACE_CBID_cuDeviceGetAttribute:
-      return std::string("cuDeviceGetAttribute");
+      return "cuDeviceGetAttribute";
     default:
       return std::string("<unknown driver api: ") + std::to_string(cbid) +
              std::string(">");
@@ -533,6 +543,10 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020:
       handleCudaMallocHost(Allocations::instance(), Values::instance(), cbInfo);
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMallocManaged_v6000:
+      handleCudaMallocManaged(Allocations::instance(), Values::instance(),
+                              cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaFree_v3020:
       handleCudaFree(Allocations::instance(), Values::instance(), cbInfo);

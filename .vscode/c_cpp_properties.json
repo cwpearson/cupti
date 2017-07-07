@@ -37,7 +37,8 @@
                     "/usr/local/include",
                     "/usr/include/x86_64-linux-gnu",
                     "/usr/include",
-                    "/usr/local/cuda/extras/CUPTI/include"
+                    "/usr/local/cuda/extras/CUPTI/include",
+                    "/usr/local/cuda/include"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
