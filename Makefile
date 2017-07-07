@@ -2,7 +2,7 @@ TARGETS = prof.so
 
 all: $(TARGETS)
 
-OBJECTS = driver_state.o numa.o prof.o callbacks.o value.o values.o allocation.o allocations.o extent.o hash.o
+OBJECTS = driver_state.o numa.o prof.o callbacks.o value.o values.o allocation.o allocations.o extent.o
 
 CXX=g++
 CXXFLAGS= -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
@@ -22,7 +22,10 @@ LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcud
 	$(NVCC) -std=c++11 -arch=sm_35 -Xcompiler -fPIC -dlink test.o -lcudadevrt -lcudart -o $@	
 
 prof.so: $(OBJECTS)
-	$(CXX) -shared $(LIB) $^ test.o -o $@
+	$(CXX) -shared $(LIB) $^ -o $@
+
+#prof.so: $(OBJECTS)
+#	$(CXX) -shared $(LIB) $^ test.o -o $@
 
 clean:
 	rm -f *.o cprof prof.so
