@@ -117,6 +117,7 @@ Memories = {}
 
 def write_header(dotfile):
     header = "digraph graphname {\n"
+    #header += "newrank=true\n"
     dotfile.write(header)
 
 def write_body(dotfile):

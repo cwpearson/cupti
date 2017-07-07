@@ -7,6 +7,7 @@
 #include <list>
 
 #include "callbacks.hpp"
+#include "values.hpp"
 
 typedef cudaError_t (*cudaMallocFunc)(void **, size_t);
 static cudaMallocFunc real_cudaMalloc = nullptr;
@@ -54,8 +55,38 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
     real_cublasDgemv = (cublasDgemvFunc)dlsym(RTLD_NEXT, "cublasDgemv_v2");
   }
   assert(real_cublasDgemv && "Will the real cublasDgemv please stand up?");
-  return real_cublasDgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y,
-                          incy);
+
+  // record data, we know things about how this API works
+  auto &values = Values::instance();
+
+  // Find the argument values
+  // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
+  Values::key_type aKey, xKey, yKey;
+  Values::value_type aVal, xVal, yVal;
+  std::tie(aKey, aVal) = values.find_live_device((uintptr_t)A, 1);
+  std::tie(xKey, xVal) = values.find_live_device((uintptr_t)x, 1);
+  std::tie(yKey, yVal) = values.find_live_device((uintptr_t)y, 1);
+
+  assert(aKey && xKey && yKey &&
+         "Couldn't find Dgemv argument value on device");
+
+  // FIXME: could use these to do better on dependences
+  printf("WARN: not handling some values (A, alpha, beta)\n");
+
+  const auto newValue =
+      std::shared_ptr<Value>(new Value(*yVal)); // duplicate the value
+  values.insert(newValue);
+  newValue->add_depends_on(aKey);
+  newValue->add_depends_on(xKey);
+  newValue->add_depends_on(yKey);
+
+  lazyStopCallbacks();
+  printf("WARN: disabling CUPTI callbacks during cublasDgemv call\n");
+  const cublasStatus_t ret = real_cublasDgemv(handle, trans, m, n, alpha, A,
+                                              lda, x, incx, beta, y, incy);
+  lazyActivateCallbacks();
+
+  return ret;
 }
 // typedef cudaError_t
 // (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
