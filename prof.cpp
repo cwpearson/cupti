@@ -8,7 +8,7 @@
 #include "callbacks.hpp"
 
 typedef cudaError_t (*cudaMallocFunc)(void **, size_t);
-static cudaMallocFunc real_cudaMalloc = NULL;
+static cudaMallocFunc real_cudaMalloc = nullptr;
 
 extern "C" cudaError_t cudaMalloc(void **devPtr, size_t size) {
   onceActivateCallbacks();
@@ -20,7 +20,24 @@ extern "C" cudaError_t cudaMalloc(void **devPtr, size_t size) {
   return real_cudaMalloc(devPtr, size);
 }
 
-//typedef cudaError_t (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
+typedef cudaError_t (*cudaMallocManagedFunc)(void **, size_t, unsigned int);
+static cudaMallocManagedFunc real_cudaMallocManaged = nullptr;
+
+extern "C" cudaError_t cudaMallocManaged(void **devPtr, size_t size,
+                                         unsigned int flags) {
+  onceActivateCallbacks();
+
+  if (real_cudaMallocManaged == nullptr) {
+    real_cudaMallocManaged =
+        (cudaMallocManagedFunc)dlsym(RTLD_NEXT, "cudaMallocManaged");
+  }
+  assert(real_cudaMallocManaged &&
+         "Will the real cudaMallocManaged please stand up?");
+  return real_cudaMallocManaged(devPtr, size, flags);
+}
+
+// typedef cudaError_t
+// (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
 // static cudaConfigureCall_t realCudaConfigureCall = NULL;
 
 /*
@@ -39,7 +56,8 @@ CUresult cuInit(unsigned int Flags) {
   return real_cuInit(Flags);
 }
 */
-// typedef cudaError_t (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
+// typedef cudaError_t
+// (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
 // static cudaConfigureCall_t realCudaConfigureCall = NULL;
 
 /*
