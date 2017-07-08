@@ -34,7 +34,8 @@ std::string Value::json() const {
 }
 
 Location Value::location() const {
-  return Allocations::instance()[allocation_id_]->location();
+
+  return Allocations::instance().at(allocation_id_)->location();
 }
 
 void Value::set_size(size_t size) {

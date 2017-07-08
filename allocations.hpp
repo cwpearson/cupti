@@ -30,8 +30,10 @@ public:
     return find_live(pos, 1, loc);
   }
 
-  value_type &operator[](const key_type &k) { return allocations_[k]; }
-  value_type &operator[](key_type &&k) { return allocations_[k]; }
+  // value_type &operator[](const key_type &k) { return allocations_[k]; }
+  // value_type &operator[](key_type &&k) { return allocations_[k]; }
+  value_type &at(const key_type &k) { return allocations_.at(k); }
+  value_type &at(key_type &&k) { return allocations_.at(k); }
 
   static Allocations &instance();
 

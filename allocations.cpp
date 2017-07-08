@@ -19,6 +19,7 @@ Allocations::Allocations() : allocations_(map_type()) {}
 std::pair<Allocations::map_type::iterator, bool>
 Allocations::insert(const Allocations::value_type &v) {
 
+  assert(v.get() && "Trying to insert invalid value");
   const auto &valIdx = reinterpret_cast<key_type>(v.get());
 
   std::ofstream buf(output_path, std::ofstream::app);
@@ -46,6 +47,7 @@ Allocations::find_live(uintptr_t pos, size_t size, Location loc) {
     const auto &val = alloc.second;
     assert(val.get());
     if (dummy.overlaps(*val)) {
+      printf("found it\n");
       return std::make_pair(true, key);
     }
   }
