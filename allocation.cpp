@@ -15,6 +15,9 @@ std::string to_string(Allocation::Type type) {
   if (Allocation::Type::Pageable == type) {
     return "pageable";
   }
+  if (Allocation::Type::Unknown == type) {
+    return "unknown";
+  }
   assert(0 && "Unexpected Allocation::type");
 }
 

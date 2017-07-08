@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <mutex>
 
 #include "allocation.hpp"
 #include "extent.hpp"
@@ -19,6 +20,7 @@ public:
 private:
   typedef std::map<key_type, value_type> map_type;
   map_type allocations_;
+  std::mutex access_mutex_;
 
 public:
   std::pair<map_type::iterator, bool> insert(const value_type &v);

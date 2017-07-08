@@ -9,6 +9,21 @@
 #include "callbacks.hpp"
 #include "values.hpp"
 
+typedef cudaError_t (*cudaGetDeviceCountFunc)(int *);
+static cudaGetDeviceCountFunc real_cudaGetDeviceCount = nullptr;
+
+extern "C" cudaError_t cudaGetDeviceCount(int *count) {
+  onceActivateCallbacks();
+
+  if (real_cudaGetDeviceCount == nullptr) {
+    real_cudaGetDeviceCount =
+        (cudaGetDeviceCountFunc)dlsym(RTLD_NEXT, "cudaGetDeviceCount");
+  }
+  assert(real_cudaGetDeviceCount &&
+         "Will the real cudaGetDeviceCount please stand up?");
+  return real_cudaGetDeviceCount(count);
+}
+
 typedef cudaError_t (*cudaMallocFunc)(void **, size_t);
 static cudaMallocFunc real_cudaMalloc = nullptr;
 
@@ -36,6 +51,21 @@ extern "C" cudaError_t cudaMallocManaged(void **devPtr, size_t size,
   assert(real_cudaMallocManaged &&
          "Will the real cudaMallocManaged please stand up?");
   return real_cudaMallocManaged(devPtr, size, flags);
+}
+
+typedef cudaError_t (*cudaMallocHostFunc)(void **ptr, size_t);
+static cudaMallocHostFunc real_cudaMallocHost = nullptr;
+
+extern "C" cudaError_t cudaMallocHost(void **ptr, size_t size) {
+  onceActivateCallbacks();
+
+  if (real_cudaMallocHost == nullptr) {
+    real_cudaMallocHost =
+        (cudaMallocHostFunc)dlsym(RTLD_NEXT, "cudaMallocHost");
+  }
+  assert(real_cudaMallocHost &&
+         "Will the real cudaMallocHost please stand up?");
+  return real_cudaMallocHost(ptr, size);
 }
 
 typedef cublasStatus_t (*cublasDgemvFunc)(cublasHandle_t, cublasOperation_t,

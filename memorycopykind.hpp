@@ -1,12 +1,18 @@
 #ifndef MEMORYCOPYKIND_HPP
 #define MEMORYCOPYKIND_HPP
 
+#include <cassert>
+#include <cstdio>
+#include <cuda_runtime.h>
+
 class MemoryCopyKind {
 private:
   enum class Type {
+    CudaHostToHost,
     CudaHostToDevice,
     CudaDeviceToHost,
     CudaDeviceToDevice,
+    CudaDefault,
     CudaPeer
   };
   Type type_;
@@ -14,13 +20,18 @@ private:
 public:
   MemoryCopyKind(MemoryCopyKind::Type type) : type_(type) {}
   MemoryCopyKind(const cudaMemcpyKind kind) {
-    if (cudaMemcpyHostToDevice == kind) {
+    if (cudaMemcpyHostToHost == kind) {
+      type_ = Type::CudaHostToHost;
+    } else if (cudaMemcpyHostToDevice == kind) {
       type_ = Type::CudaHostToDevice;
     } else if (cudaMemcpyDeviceToHost == kind) {
       type_ = Type::CudaDeviceToHost;
     } else if (cudaMemcpyDeviceToDevice == kind) {
       type_ = Type::CudaDeviceToDevice;
+    } else if (cudaMemcpyDefault == kind) {
+      type_ = Type::CudaDefault;
     } else {
+      printf("Unhandled cudaMemcpyKind %d\n", kind);
       assert(0 && "Unsupported cudaMemcpy kind");
     }
   }
@@ -36,9 +47,11 @@ public:
   static MemoryCopyKind CudaDeviceToHost() {
     return MemoryCopyKind(Type::CudaDeviceToHost);
   }
-
   static MemoryCopyKind CudaDeviceToDevice() {
     return MemoryCopyKind(Type::CudaDeviceToDevice);
+  }
+  static MemoryCopyKind CudaDefault() {
+    return MemoryCopyKind(Type::CudaDefault);
   }
 };
 

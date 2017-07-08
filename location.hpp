@@ -1,73 +1,45 @@
 #ifndef LOCATION_HPP
 #define LOCATION_HPP
 
-#include <string>
-
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <map>
-#include <sstream>
-
-using boost::property_tree::ptree;
-using boost::property_tree::write_json;
+#include <string>
 
 #include "driver_state.hpp"
 
 class Location {
 public:
-  enum class Location_t { Device, Host, Unified };
+  typedef uint64_t flag_t;
+
+  static constexpr flag_t Host = 0x1;
+  static constexpr flag_t CudaDevice = 0x2;
+  static constexpr flag_t CudaUnified = 0x4;
 
   Location() {}
-  Location(Location_t type, int device) : type_(type), device_(device) {}
+  Location(flag_t type, int device) : type_(type), device_(device) {}
   Location(const Location &other)
       : type_(other.type_), device_(other.device_) {}
 
-  static Location Host(int device) {
-    return Location(Location_t::Host, device);
-  }
-  static Location Device(int device) {
-    return Location(Location_t::Device, device);
-  }
-  static Location Unified(int device) {
-    return Location(Location_t::Unified, device);
-  }
-
   int device() const { return device_; }
-  Location_t type() const { return type_; }
 
   bool operator==(const Location &rhs) const {
     return type_ == rhs.type_ && device_ == rhs.device_;
   }
 
-  bool is_host() const { return Location_t::Host == type_; }
-  bool is_host_accessible() const {
-    return is_host() || Location_t::Unified == type_;
-  }
-  bool is_device_accessible() const {
-    return Location_t::Device == type_ || Location_t::Unified == type_;
+  bool is_host() const { return type_ & Host; }
+  bool is_device() const { return type_ & CudaDevice; }
+  bool is_unified() const { return type_ & CudaUnified; }
+  bool is_host_accessible() const { return is_host() || is_unified(); }
+  bool is_device_accessible() const { return is_device() || is_unified(); }
+  bool overlaps(const Location &other) const {
+    return (is_host_accessible() && other.is_host_accessible()) ||
+           (is_device_accessible() && other.is_device_accessible());
   }
 
-  std::string json() const {
-    ptree pt;
-    pt.put("type", to_string(type_));
-    pt.put("id", std::to_string(device_));
-    std::ostringstream buf;
-    write_json(buf, pt, false);
-    return buf.str();
-  }
+  std::string json() const;
 
 private:
-  std::string to_string(const Location_t &l) const {
-    if (Location_t::Host == l)
-      return std::string("host");
-    if (Location_t::Device == l)
-      return std::string("device");
-    if (Location_t::Unified == l)
-      return std::string("unified");
-    assert(0 && "unhandled Location_t");
-  }
-
-  Location_t type_;
+  static std::string to_string(const flag_t &f);
+  flag_t type_;
   int device_;
 };
 

@@ -24,19 +24,27 @@ Allocations::insert(const Allocations::value_type &v) {
   std::ofstream buf(output_path, std::ofstream::app);
   buf << *v;
   buf.flush();
-
+  std::lock_guard<std::mutex> guard(access_mutex_);
   return allocations_.insert(std::make_pair(valIdx, v));
 }
 
 std::tuple<bool, Allocations::key_type>
 Allocations::find_live(uintptr_t pos, size_t size, Location loc) {
-  if (allocations_.empty())
+  printf("Findin an alloc\n");
+  std::lock_guard<std::mutex> guard(access_mutex_);
+  printf("Got lock\n");
+
+  if (allocations_.empty()) {
+    printf("no allocs\n");
     return std::make_pair(false, -1);
+  }
 
   Allocation dummy(pos, size, loc, Allocation::Type::Pageable);
   for (const auto &alloc : allocations_) {
+    printf("checkin\n");
     const auto &key = alloc.first;
     const auto &val = alloc.second;
+    assert(val.get());
     if (dummy.overlaps(*val)) {
       return std::make_pair(true, key);
     }

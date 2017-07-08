@@ -1,14 +1,13 @@
 #include <array>
 #include <cassert>
+#include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-#include <cstdio>
-#include <cstdlib>
-#include <string>
 
 #include <cuda.h>
 #include <cupti.h>
@@ -78,6 +77,9 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     }
   }
 
+  if (kernelArgKeys.empty()) {
+    printf("WARN: didn't find any values for cudaLaunch\n");
+  }
   // static std::map<Value::id_type, hash_t> arg_hashes;
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
@@ -142,20 +144,26 @@ void record_memcpy(Allocations &allocations, Values &values,
   Location srcLoc, dstLoc;
   if (MemoryCopyKind::CudaHostToDevice() == kind) {
     printf("%lu --[h2d]--> %lu\n", src, dst);
-    srcLoc = Location::Host(get_numa_node(src));
-    dstLoc = Location::Device(DriverState::current_device());
+    srcLoc = Location(Location::Host, get_numa_node(src));
+    dstLoc = Location(Location::CudaDevice, DriverState::current_device());
   } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
     printf("%lu --[d2h]--> %lu\n", src, dst);
-    srcLoc = Location::Device(DriverState::current_device());
-    dstLoc = Location::Host(get_numa_node(dst));
+    srcLoc = Location(Location::CudaDevice, DriverState::current_device());
+    dstLoc = Location(Location::Host, get_numa_node(dst));
   } else if (MemoryCopyKind::CudaDeviceToDevice() == kind) {
     printf("%lu --[d2d]--> %lu\n", src, dst);
     const auto &dev = DriverState::current_device();
-    srcLoc = Location::Device(dev);
-    dstLoc = Location::Device(dev);
+    srcLoc = dstLoc = Location(Location::CudaDevice, dev);
   } else if (MemoryCopyKind::CudaPeer() == kind) {
-    srcLoc = Location::Device(peerSrc);
-    dstLoc = Location::Device(peerDst);
+    printf("%lu --[p2p]--> %lu\n", src, dst);
+    srcLoc = Location(Location::CudaDevice, peerSrc);
+    dstLoc = Location(Location::CudaDevice, peerDst);
+  } else if (MemoryCopyKind::CudaDefault() /* using cuda UVA, inferred from
+                                              pointers */
+             == kind) {
+    printf("%lu --[???]--> %lu\n", src, dst);
+    srcLoc = dstLoc =
+        Location(Location::CudaUnified, DriverState::current_device());
   } else {
     assert(0 && "Unsupported cudaMemcpy kind");
   }
@@ -169,9 +177,11 @@ void record_memcpy(Allocations &allocations, Values &values,
   // Destination or source allocation may be on the host, and might not have
   // been recorded.
   if (!dstFound) {
-    assert(dstLoc.is_host() &&
-           "Couldn't find memcpy dst allocation and dst is not on host");
-    printf("WARN: creating implicit host dst allocation during memcpy\n");
+    printf("Didn't find dst value, dst=%llu\n", dst);
+    assert(!dstLoc.is_device_accessible() &&
+           "Couldn't find memcpy dst allocation made by CUDA runtime/driver, "
+           "so dst should not be device accessible.");
+    printf("WARN: creating implicit dst allocation during memcpy\n");
     std::shared_ptr<Allocation> a(
         new Allocation(dst, count, dstLoc, Allocation::Type::Pageable));
     allocations.insert(a);
@@ -179,10 +189,14 @@ void record_memcpy(Allocations &allocations, Values &values,
     dstFound = true;
   }
   if (!srcFound) {
-    assert(srcLoc.is_host() && "How did we miss this value");
-    printf("WARN: creating implicit host src allocation during memcpy\n");
+    printf("Didn't find src value, src=%lu\n", src);
+    if (!srcLoc.is_device_accessible()) {
+      printf("WARN: Couldn't find memcpy src allocation made by CUDA "
+             "runtime/driver, so src should not be device accesible.\n");
+    }
+    printf("WARN: creating implicit src allocation during memcpy\n");
     std::shared_ptr<Allocation> a(
-        new Allocation(src, count, srcLoc, Allocation::Type::Pageable));
+        new Allocation(src, count, srcLoc, Allocation::Type::Unknown));
     allocations.insert(a);
     srcAllocId = a->Id();
     srcFound = true;
@@ -295,7 +309,8 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
 
     // Create the new allocation
     std::shared_ptr<Allocation> a(new Allocation(
-        devPtr, size, Location::Unified(DriverState::current_device()),
+        devPtr, size,
+        Location(Location::CudaUnified, DriverState::current_device()),
         Allocation::Type::Pageable));
     allocations.insert(a);
 
@@ -307,6 +322,19 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
   }
 }
 
+void record_mallochost(Allocations &allocations, Values &values,
+                       const uintptr_t ptr, const size_t size) {
+  // Create the new allocation
+  std::shared_ptr<Allocation> a(
+      new Allocation(ptr, size, Location(Location::Host, get_numa_node(ptr)),
+                     Allocation::Type::Pinned));
+  allocations.insert(a);
+
+  // Create the new value
+  values.insert(std::shared_ptr<Value>(
+      new Value(ptr, size, a->Id(), false /*initialized*/)));
+}
+
 static void handleCudaMallocHost(Allocations &allocations, Values &values,
                                  const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
@@ -315,16 +343,35 @@ static void handleCudaMallocHost(Allocations &allocations, Values &values,
     uintptr_t ptr = (uintptr_t)(*(params->ptr));
     const size_t size = params->size;
     printf("[cudaMallocHost] %lu[%lu]\n", ptr, size);
+    record_mallochost(allocations, values, ptr, size);
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
 
-    // Create the new allocation
-    std::shared_ptr<Allocation> a(
-        new Allocation(ptr, size, Location::Host(get_numa_node(ptr)),
-                       Allocation::Type::Pinned));
-    allocations.insert(a);
+static void handleCuMemHostAlloc(Allocations &allocations, Values &values,
+                                 const CUpti_CallbackData *cbInfo) {
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    auto params = ((cuMemHostAlloc_params *)(cbInfo->functionParams));
+    uintptr_t pp = (uintptr_t)(*(params->pp));
+    const size_t bytesize = params->bytesize;
+    const int Flags = params->Flags;
+    if (Flags & CU_MEMHOSTALLOC_PORTABLE) {
+      // FIXME
+      printf("WARN: cuMemHostAlloc with CU_MEMHOSTALLOC_PORTABLE\n");
+    }
+    if (Flags & CU_MEMHOSTALLOC_DEVICEMAP) {
+      // FIXME
+      printf("WARN: cuMemHostAlloc with CU_MEMHOSTALLOC_DEVICEMAP\n");
+    }
+    if (Flags & CU_MEMHOSTALLOC_WRITECOMBINED) {
+      // FIXME
+      printf("WARN: cuMemHostAlloc with CU_MEMHOSTALLOC_WRITECOMBINED\n");
+    }
+    printf("[cuMemHostAlloc] %lu[%lu]\n", pp, bytesize);
 
-    // Create the new value
-    values.insert(std::shared_ptr<Value>(
-        new Value(ptr, size, a->Id(), false /*initialized*/)));
+    record_mallochost(allocations, values, pp, bytesize);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -342,7 +389,7 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
     bool found;
     Allocations::key_type allocId;
     std::tie(found, allocId) = allocations.find_live(
-        ptr, Location::Device(DriverState::current_device()));
+        ptr, Location(Location::CudaDevice, DriverState::current_device()));
     if (found) { // FIXME
     } else {
     }
@@ -361,9 +408,12 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     const size_t size = params->size;
     printf("[cudaMalloc] %lu[%lu]\n", devPtr, size);
 
+    // FIXME: could be an existing allocation from an instrumented driver API
+
     // Create the new allocation
     std::shared_ptr<Allocation> a(new Allocation(
-        devPtr, size, Location::Device(DriverState::current_device()),
+        devPtr, size,
+        Location(Location::CudaDevice, DriverState::current_device()),
         Allocation::Type::Pageable));
     allocations.insert(a);
 
@@ -387,7 +437,7 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     bool found;
     Allocations::key_type allocId;
     std::tie(found, allocId) = allocations.find_live(
-        devPtr, Location::Device(DriverState::current_device()));
+        devPtr, Location(Location::CudaDevice, DriverState::current_device()));
     if (found) { // FIXME
     } else {
     }
@@ -484,40 +534,6 @@ static void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
   }
 }
 
-std::string getCallbackName(CUpti_CallbackDomain domain,
-                            CUpti_CallbackId cbid) {
-  switch (domain) {
-  case CUPTI_CB_DOMAIN_RUNTIME_API:
-    switch (cbid) {
-    case CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020: // 10
-      return "cudaGetLastError_v3020";
-    case CUPTI_RUNTIME_TRACE_CBID_cudaStreamDestroy_v3020:
-      return "cudaStreamDestroy_v3020";
-    case CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020:
-      return "cudaDeviceSynchronize_v3020";
-    case CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020: // 136
-      return "cudaEventDestroy";
-    case CUPTI_RUNTIME_TRACE_CBID_cudaStreamAttachMemAsync_v6000: // 208
-      return "cudaStreamAttachMemAsync";
-    default:
-      return std::string("<unknown runtime api, cbid = ") +
-             std::to_string(cbid) + std::string(">");
-    }
-    break;
-  case CUPTI_CB_DOMAIN_DRIVER_API: {
-    switch (cbid) {
-    case CUPTI_DRIVER_TRACE_CBID_cuDeviceGetAttribute:
-      return "cuDeviceGetAttribute";
-    default:
-      return std::string("<unknown driver api: ") + std::to_string(cbid) +
-             std::string(">");
-    }
-  }
-  default:
-    return std::string("<unknown domain>");
-  }
-}
-
 void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        CUpti_CallbackId cbid,
                        const CUpti_CallbackData *cbInfo) {
@@ -576,15 +592,22 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCudaStreamSynchronize(cbInfo);
       break;
     default:
-      auto name = getCallbackName(domain, cbid);
-      printf("skipping runtime call %s...\n", name.c_str());
+      auto name = cbInfo->functionName;
+      // auto name = getCallbackName(domain, cbid);
+      // printf("skipping runtime call %s...\n", name);
       break;
     }
   } break;
   case CUPTI_CB_DOMAIN_DRIVER_API: {
-    auto name = getCallbackName(domain, cbid);
-    printf("skipping driver call %s...\n", name.c_str());
-    break;
+    switch (cbid) {
+    case CUPTI_DRIVER_TRACE_CBID_cuMemHostAlloc:
+      handleCuMemHostAlloc(Allocations::instance(), Values::instance(), cbInfo);
+      break;
+    default:
+      auto name = cbInfo->functionName;
+      // printf("skipping driver call %s...\n", name);
+      break;
+    }
   }
   default:
     break;

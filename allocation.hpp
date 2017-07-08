@@ -12,7 +12,7 @@
 
 class Allocation : public Extent {
 public:
-  enum class Type { Pinned, Pageable };
+  enum class Type { Pinned, Pageable, Unknown };
   typedef uintptr_t id_type;
 
 private:
@@ -27,11 +27,11 @@ public:
   std::string json() const;
 
   bool overlaps(const Allocation &other) {
-    return (location_ == other.location_) && Extent::overlaps(other);
+    return location_.overlaps(other.location_) && Extent::overlaps(other);
   }
 
   bool contains(const Allocation &other) {
-    return (location_ == other.location_) && Extent::contains(other);
+    return location_.overlaps(other.location_) && Extent::contains(other);
   }
 
   id_type Id() const { return reinterpret_cast<id_type>(this); }

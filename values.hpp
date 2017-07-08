@@ -2,6 +2,7 @@
 #define VALUES_HPP
 
 #include <memory>
+#include <mutex>
 
 #include "value.hpp"
 
@@ -14,6 +15,7 @@ private:
   typedef std::map<key_type, value_type> map_type;
   map_type values_;
   std::vector<key_type> value_order_;
+  std::mutex modify_mutex_;
 
 public:
   std::pair<bool, key_type>
