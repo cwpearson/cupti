@@ -118,6 +118,41 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
 
   return ret;
 }
+
+typedef cublasStatus_t (*cublasDestroyFunc)(cublasHandle_t handle);
+static cublasDestroyFunc real_cublasDestroy = nullptr;
+extern "C" cublasStatus_t cublasDestroy(cublasHandle_t handle) {
+  printf("prof.so intercepted cublasDestroy call\n");
+
+  if (real_cublasDestroy == nullptr) {
+    real_cublasDestroy =
+        (cublasDestroyFunc)dlsym(RTLD_NEXT, "cublasDestroy_v2");
+  }
+  assert(real_cublasDestroy && "Will the real cublasDestroy please stand up?");
+
+  lazyStopCallbacks();
+  printf("WARN: disabling CUPTI callbacks during cublasDestroy call\n");
+  const cublasStatus_t ret = real_cublasDestroy(handle);
+  lazyActivateCallbacks();
+  return ret;
+}
+
+typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
+static cublasCreateFunc real_cublasCreate = nullptr;
+extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
+  printf("prof.so intercepted cublasCreate call\n");
+
+  if (real_cublasCreate == nullptr) {
+    real_cublasCreate = (cublasCreateFunc)dlsym(RTLD_NEXT, "cublasCreate_v2");
+  }
+  assert(real_cublasCreate && "Will the real cublasCreate please stand up?");
+
+  lazyStopCallbacks();
+  printf("WARN: disabling CUPTI callbacks during cublasCreate call\n");
+  const cublasStatus_t ret = real_cublasCreate(handle);
+  lazyActivateCallbacks();
+  return ret;
+}
 // typedef cudaError_t
 // (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
 // static cudaConfigureCall_t realCudaConfigureCall = NULL;

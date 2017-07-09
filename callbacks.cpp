@@ -177,7 +177,7 @@ void record_memcpy(Allocations &allocations, Values &values,
   // Destination or source allocation may be on the host, and might not have
   // been recorded.
   if (!dstFound) {
-    printf("Didn't find dst value, dst=%llu\n", dst);
+    printf("Didn't find dst value, dst=%lu\n", dst);
     assert(!dstLoc.is_device_accessible() &&
            "Couldn't find memcpy dst allocation made by CUDA runtime/driver, "
            "so dst should not be device accessible.");
@@ -343,6 +343,12 @@ static void handleCudaMallocHost(Allocations &allocations, Values &values,
     uintptr_t ptr = (uintptr_t)(*(params->ptr));
     const size_t size = params->size;
     printf("[cudaMallocHost] %lu[%lu]\n", ptr, size);
+
+    if ((uintptr_t) nullptr == ptr) {
+      printf("WARN: ignoring cudaMallocHost call that returned nullptr\n");
+      return;
+    }
+
     record_mallochost(allocations, values, ptr, size);
   } else {
     assert(0 && "How did we get here?");
@@ -383,7 +389,14 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     auto params = ((cudaFreeHost_v3020_params *)(cbInfo->functionParams));
     uintptr_t ptr = (uintptr_t)(params->ptr);
+    cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
     printf("[cudaFreeHost] %lu\n", ptr);
+    assert(ptr &&
+           "Must have been initialized by cudaMallocHost or cudaHostAlloc");
+
+    if (ret != cudaSuccess) {
+      printf("WARN: unsuccessful cudaFreeHost: %s\n", cudaGetErrorString(ret));
+    }
 
     // Find the live matching allocation
     bool found;
@@ -391,7 +404,9 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
     std::tie(found, allocId) = allocations.find_live(
         ptr, Location(Location::CudaDevice, DriverState::current_device()));
     if (found) { // FIXME
+      allocations.free(allocId);
     } else {
+      assert(0 && "Freeing unallocated memory?");
     }
 
   } else {
@@ -432,6 +447,15 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     printf("callback: cudaFree entry\n");
     auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
     auto devPtr = (uintptr_t)params->devPtr;
+    cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
+    printf("[cudaFree] %lu\n", devPtr);
+
+    assert(cudaSuccess == ret);
+
+    if (!devPtr) { // does nothing if passed 0
+      printf("WARN: cudaFree called on 0? Does nothing.\n");
+      return;
+    }
 
     // Find the live matching allocation
     bool found;
@@ -439,7 +463,9 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     std::tie(found, allocId) = allocations.find_live(
         devPtr, Location(Location::CudaDevice, DriverState::current_device()));
     if (found) { // FIXME
+      allocations.free(allocId);
     } else {
+      assert(0 && "Freeing unallocated memory?"); // FIXME - could be async
     }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
@@ -592,7 +618,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCudaStreamSynchronize(cbInfo);
       break;
     default:
-      auto name = cbInfo->functionName;
+      // auto name = cbInfo->functionName;
       // auto name = getCallbackName(domain, cbid);
       // printf("skipping runtime call %s...\n", name);
       break;
@@ -604,7 +630,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCuMemHostAlloc(Allocations::instance(), Values::instance(), cbInfo);
       break;
     default:
-      auto name = cbInfo->functionName;
+      // auto name = cbInfo->functionName;
       // printf("skipping driver call %s...\n", name);
       break;
     }

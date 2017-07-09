@@ -20,6 +20,10 @@ std::pair<Allocations::map_type::iterator, bool>
 Allocations::insert(const Allocations::value_type &v) {
 
   assert(v.get() && "Trying to insert invalid value");
+  assert(v->pos() && "Inserting allocation at nullptr");
+  if (v->size() == 0) {
+    printf("WARN: inserting size %lu allocation", v->size());
+  }
   const auto &valIdx = reinterpret_cast<key_type>(v.get());
 
   std::ofstream buf(output_path, std::ofstream::app);
@@ -31,6 +35,8 @@ Allocations::insert(const Allocations::value_type &v) {
 
 std::tuple<bool, Allocations::key_type>
 Allocations::find_live(uintptr_t pos, size_t size, Location loc) {
+  assert(pos && "No allocation at null ptr");
+
   printf("Findin an alloc\n");
   std::lock_guard<std::mutex> guard(access_mutex_);
   printf("Got lock\n");
