@@ -391,12 +391,12 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
     uintptr_t ptr = (uintptr_t)(params->ptr);
     cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
     printf("[cudaFreeHost] %lu\n", ptr);
-    assert(ptr &&
-           "Must have been initialized by cudaMallocHost or cudaHostAlloc");
-
     if (ret != cudaSuccess) {
       printf("WARN: unsuccessful cudaFreeHost: %s\n", cudaGetErrorString(ret));
     }
+    assert(cudaSuccess == ret);
+    assert(ptr &&
+           "Must have been initialized by cudaMallocHost or cudaHostAlloc");
 
     // Find the live matching allocation
     bool found;
