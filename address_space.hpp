@@ -1,12 +1,12 @@
-#ifndef LOCATION_HPP
-#define LOCATION_HPP
+#ifndef ADDRESS_SPACE_HPP
+#define ADDRESS_SPACE_HPP
 
 #include <map>
 #include <string>
 
 #include "driver_state.hpp"
 
-class Location {
+class AddressSpace {
 public:
   typedef uint64_t flag_t;
 
@@ -14,14 +14,14 @@ public:
   static constexpr flag_t CudaDevice = 0x2;
   static constexpr flag_t CudaUnified = 0x4;
 
-  Location() {}
-  Location(flag_t type, int device) : type_(type), device_(device) {}
-  Location(const Location &other)
+  AddressSpace() {}
+  AddressSpace(flag_t type, int device) : type_(type), device_(device) {}
+  AddressSpace(const AddressSpace &other)
       : type_(other.type_), device_(other.device_) {}
 
   int device() const { return device_; }
 
-  bool operator==(const Location &rhs) const {
+  bool operator==(const AddressSpace &rhs) const {
     return type_ == rhs.type_ && device_ == rhs.device_;
   }
 
@@ -30,7 +30,7 @@ public:
   bool is_unified() const { return type_ & CudaUnified; }
   bool is_host_accessible() const { return is_host() || is_unified(); }
   bool is_device_accessible() const { return is_device() || is_unified(); }
-  bool overlaps(const Location &other) const {
+  bool overlaps(const AddressSpace &other) const {
     return (is_host_accessible() && other.is_host_accessible()) ||
            (is_device_accessible() && other.is_device_accessible());
   }

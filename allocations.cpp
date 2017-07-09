@@ -34,7 +34,7 @@ Allocations::insert(const Allocations::value_type &v) {
 }
 
 std::tuple<bool, Allocations::key_type>
-Allocations::find_live(uintptr_t pos, size_t size, Location loc) {
+Allocations::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
   assert(pos && "No allocation at null ptr");
 
   printf("Findin an alloc\n");
@@ -46,9 +46,9 @@ Allocations::find_live(uintptr_t pos, size_t size, Location loc) {
     return std::make_pair(false, -1);
   }
 
-  Allocation dummy(pos, size, loc, Allocation::Type::Pageable);
+  AllocationRecord dummy(pos, size, as, AllocationRecord::PageType::Pageable);
   for (const auto &alloc : allocations_) {
-    printf("checkin\n");
+    // printf("checkin\n");
     const auto &key = alloc.first;
     const auto &val = alloc.second;
     assert(val.get());

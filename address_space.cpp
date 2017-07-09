@@ -1,4 +1,4 @@
-#include "location.hpp"
+#include "address_space.hpp"
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -7,7 +7,7 @@
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
 
-std::string Location::to_string(const Location::flag_t &f) {
+std::string AddressSpace::to_string(const AddressSpace::flag_t &f) {
   std::string ret("");
   if (Host & f) {
     ret += std::string("host");
@@ -27,7 +27,7 @@ std::string Location::to_string(const Location::flag_t &f) {
   return ret;
 }
 
-std::string Location::json() const {
+std::string AddressSpace::json() const {
   ptree pt;
   pt.put("type", to_string(type_));
   pt.put("id", std::to_string(device_));

@@ -7,6 +7,7 @@
 #include <list>
 
 #include "callbacks.hpp"
+#include "thread.hpp"
 #include "values.hpp"
 
 typedef cudaError_t (*cudaGetDeviceCountFunc)(int *);
@@ -29,7 +30,7 @@ static cudaMallocFunc real_cudaMalloc = nullptr;
 
 extern "C" cudaError_t cudaMalloc(void **devPtr, size_t size) {
   onceActivateCallbacks();
-
+  // printf("prof.cpp %d\n", get_thread_id());
   if (real_cudaMalloc == nullptr) {
     real_cudaMalloc = (cudaMallocFunc)dlsym(RTLD_NEXT, "cudaMalloc");
   }
@@ -55,9 +56,9 @@ extern "C" cudaError_t cudaMallocManaged(void **devPtr, size_t size,
 
 typedef cudaError_t (*cudaMallocHostFunc)(void **ptr, size_t);
 static cudaMallocHostFunc real_cudaMallocHost = nullptr;
-
 extern "C" cudaError_t cudaMallocHost(void **ptr, size_t size) {
   onceActivateCallbacks();
+  // printf("prof.cpp %d\n", get_thread_id());
 
   if (real_cudaMallocHost == nullptr) {
     real_cudaMallocHost =
@@ -66,6 +67,19 @@ extern "C" cudaError_t cudaMallocHost(void **ptr, size_t size) {
   assert(real_cudaMallocHost &&
          "Will the real cudaMallocHost please stand up?");
   return real_cudaMallocHost(ptr, size);
+}
+
+typedef cudaError_t (*cudaFreeHostFunc)(void *ptr);
+static cudaFreeHostFunc real_cudaFreeHost = nullptr;
+extern "C" cudaError_t cudaFreeHost(void *ptr) {
+  onceActivateCallbacks();
+  printf("prof.cpp %d\n", get_thread_id());
+
+  if (real_cudaFreeHost == nullptr) {
+    real_cudaFreeHost = (cudaFreeHostFunc)dlsym(RTLD_NEXT, "cudaFreeHost");
+  }
+  assert(real_cudaFreeHost && "Will the real cudaFreeHost please stand up?");
+  return real_cudaFreeHost(ptr);
 }
 
 typedef cublasStatus_t (*cublasDgemvFunc)(cublasHandle_t, cublasOperation_t,
@@ -91,7 +105,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  Values::key_type aKey, xKey, yKey;
+  Values::id_type aKey, xKey, yKey;
   Values::value_type aVal, xVal, yVal;
   std::tie(aKey, aVal) = values.find_live_device((uintptr_t)A, 1);
   std::tie(xKey, xVal) = values.find_live_device((uintptr_t)x, 1);
@@ -111,11 +125,52 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   newValue->add_depends_on(yKey);
 
   lazyStopCallbacks();
-  printf("WARN: disabling CUPTI callbacks during cublasDgemv call\n");
+  printf("WARN: disacublasSasumFuncbling CUPTI callbacks during cublasDgemv "
+         "call\n");
   const cublasStatus_t ret = real_cublasDgemv(handle, trans, m, n, alpha, A,
                                               lda, x, incx, beta, y, incy);
   lazyActivateCallbacks();
 
+  return ret;
+}
+
+typedef cublasStatus_t (*cublasSasumFunc)(cublasHandle_t, int, const float *,
+                                          int, float *);
+static cublasSasumFunc real_cublasSasum = nullptr;
+
+extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
+                                      const float *x, int incx, float *result) {
+  printf("prof.so intercepted cublasSasum call\n");
+
+  if (real_cublasSasum == nullptr) {
+    real_cublasSasum = (cublasSasumFunc)dlsym(RTLD_NEXT, "cublasSasum_v2");
+  }
+  assert(real_cublasSasum && "Will the real cublasSasum please stand up?");
+
+  // record data, we know things about how this API works
+  auto &values = Values::instance();
+
+  // Find the argument values
+  // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
+  Values::id_type xKey;
+  Values::value_type xVal;
+  std::tie(xKey, xVal) = values.find_live_device((uintptr_t)x, 1);
+  assert(xKey && "Couldn't find Sasum x argument value on device");
+
+  // FIXME: could use these to do better on dependences
+  printf("WARN: not handling some values (incx)\n");
+
+  Values::id_type rKey;
+  Values::value_type rVal;
+  std::tie(rKey, rVal) =
+      Values::instance().new_value((uintptr_t)result, sizeof(float));
+  rVal->add_depends_on(xKey);
+
+  lazyStopCallbacks();
+  printf("WARN: disabling CUPTI callbacks during cublasSasum "
+         "call\n");
+  const cublasStatus_t ret = real_cublasSasum(handle, n, x, incx, result);
+  lazyActivateCallbacks();
   return ret;
 }
 

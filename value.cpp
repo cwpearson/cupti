@@ -33,9 +33,11 @@ std::string Value::json() const {
   return buf.str();
 }
 
-Location Value::location() const {
-
-  return Allocations::instance().at(allocation_id_)->location();
+/*
+FIXME - not thread-safe, allications may be modified while calling this function
+*/
+AddressSpace Value::address_space() const {
+  return Allocations::instance().at(allocation_id_)->address_space();
 }
 
 void Value::set_size(size_t size) {

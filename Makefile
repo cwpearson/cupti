@@ -2,7 +2,18 @@ TARGETS = prof.so
 
 all: $(TARGETS)
 
-OBJECTS = location.o driver_state.o numa.o prof.o callbacks.o value.o values.o allocation.o allocations.o extent.o
+OBJECTS = \
+address_space.o \
+allocation_record.o \
+allocations.o \
+callbacks.o \
+driver_state.o \
+extent.o \
+numa.o \
+prof.o \
+thread.o \
+value.o \
+values.o
 
 CXX=g++
 CXXFLAGS= -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
