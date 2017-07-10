@@ -30,7 +30,6 @@ std::string AddressSpace::to_string(const AddressSpace::flag_t &f) {
 std::string AddressSpace::json() const {
   ptree pt;
   pt.put("type", to_string(type_));
-  pt.put("id", std::to_string(device_));
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();

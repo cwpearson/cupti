@@ -66,6 +66,9 @@ Values::get_last_overlapping_value(uintptr_t pos, size_t size,
   return std::make_pair(true, kv.first);
 }
 
+Values::id_type Values::find_live(const uintptr_t pos, const AddressSpace &as,
+                                  const Memory &mem) const {}
+
 std::pair<Values::map_type::iterator, bool>
 Values::insert(const value_type &v) {
   assert(v.get() && "Inserting invalid value!");

@@ -10,6 +10,7 @@ class Values {
 public:
   typedef Value::id_type id_type;
   typedef std::shared_ptr<Value> value_type;
+  static constexpr id_type noid = Value::noid;
 
 private:
   typedef std::map<id_type, value_type> map_type;
@@ -27,6 +28,9 @@ public:
                                            const AddressSpace &as);
   std::pair<id_type, value_type> find_live_device(const uintptr_t pos,
                                                   const size_t size);
+
+  id_type find_id(const uintptr_t pos, const AddressSpace &as,
+                  const Memory &mem) const;
 
   std::pair<map_type::iterator, bool> insert(const value_type &v);
   std::pair<map_type::iterator, bool> insert(const Value &v);

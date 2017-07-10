@@ -14,6 +14,7 @@ const std::string output_path("cprof.txt");
 class Value : public Extent {
 public:
   typedef uintptr_t id_type;
+  static constexpr id_type noid = reinterpret_cast<const id_type>(nullptr);
 
 private:
   bool is_unknown_;

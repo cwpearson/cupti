@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <list>
 
+#include "allocations.hpp"
 #include "callbacks.hpp"
 #include "thread.hpp"
 #include "values.hpp"
@@ -149,25 +150,31 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
+  auto &allocations = Allocations::instance();
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  Values::id_type xKey;
-  Values::value_type xVal;
-  std::tie(xKey, xVal) = values.find_live_device((uintptr_t)x, 1);
-  assert(xKey && "Couldn't find Sasum x argument value on device");
+  Values::id_type xId;
+  std::tie(xId, std::ignore) = values.find_live(
+      (uintptr_t)x, AddressSpace::CudaDevice | AddressSpace::CudaUnified,
+      Memory::Any);
+  assert(xId && "Couldn't find Sasum x argument value on device");
 
-  // FIXME: could use these to do better on dependences
-  printf("WARN: not handling some values (incx)\n");
+  // see if we can find an allocation for the result
+  Allocations::id_type rAllocId;
+  std::tie(rAllocId, std::ignore) = allocations.find_live(
+      (uintptr_t)(uintptr_t)result, sizeof(float), AddressSpace::CudaAny);
 
-  Values::id_type rKey;
+  // Make a new value
+  Values::id_type rId;
   Values::value_type rVal;
-  std::tie(rKey, rVal) =
-      Values::instance().new_value((uintptr_t)result, sizeof(float));
-  rVal->add_depends_on(xKey);
+  std::tie(rId, rVal) =
+      Values::instance().new_value((uintptr_t)result, sizeof(float), rAllocId);
+  rVal->add_depends_on(xId);
 
   lazyStopCallbacks();
-  printf("WARN: disabling CUPTI callbacks during cublasSasum "
+  printf("WARN: disabling CUPTI callbacks "
+         "during cublasSasum "
          "call\n");
   const cublasStatus_t ret = real_cublasSasum(handle, n, x, incx, result);
   lazyActivateCallbacks();
