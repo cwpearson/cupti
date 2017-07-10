@@ -32,17 +32,18 @@ public:
   std::string json() const;
 
   bool overlaps(const AllocationRecord &other) {
-    return address_space_.overlaps(other.address_space_) &&
+    return (address_space_.maybe_equal(other.address_space_)) &&
            Extent::overlaps(other);
   }
 
   bool contains(const AllocationRecord &other) {
-    return address_space_.overlaps(other.address_space_) &&
+    return (address_space_.maybe_equal(other.address_space_)) &&
            Extent::contains(other);
   }
 
   id_type Id() const { return reinterpret_cast<id_type>(this); }
   AddressSpace address_space() const { return address_space_; }
+  Memory memory() const { return memory_; }
 };
 
 #endif

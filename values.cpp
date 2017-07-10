@@ -18,7 +18,7 @@ Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
     const auto valKey = value_order_[i];
     const auto &val = values_[valKey];
     assert(val.get());
-    if (val->overlaps(e) && as.overlaps(val->address_space()))
+    if (val->overlaps(e) && as.maybe_equal(val->address_space()))
       return std::make_pair(valKey, val);
 
     if (i == 0)
@@ -45,7 +45,7 @@ Values::find_live_device(const uintptr_t pos, const size_t size) {
   for (size_t i = value_order_.size() - 1; true; i--) {
     const auto valKey = value_order_[i];
     const auto &val = values_[valKey];
-    if (val->overlaps(e) && val->address_space().is_device_accessible())
+    if (val->overlaps(e) && val->address_space().is_cuda())
       return std::make_pair(valKey, val);
 
     if (i == 0)

@@ -7,22 +7,16 @@
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
 
-std::string AddressSpace::to_string(const AddressSpace::flag_t &f) {
+static std::string to_string(const AddressSpace::flag_t &f) {
   std::string ret("");
-  if (Host & f) {
+  if (AddressSpace::Host & f) {
     ret += std::string("host");
   }
-  if (CudaDevice & f) {
+  if (AddressSpace::Cuda & f) {
     if (!ret.empty()) {
       ret += std::string("|");
     }
-    ret += std::string("device");
-  }
-  if (CudaUnified & f) {
-    if (!ret.empty()) {
-      ret += std::string("|");
-    }
-    ret += std::string("unified");
+    ret += std::string("cuda");
   }
   return ret;
 }

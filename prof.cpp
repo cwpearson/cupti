@@ -127,7 +127,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   newValue->add_depends_on(yKey);
 
   lazyStopCallbacks();
-  printf("WARN: disacublasSasumFuncbling CUPTI callbacks during cublasDgemv "
+  printf("WARN: disabling CUPTI callbacks during cublasDgemv "
          "call\n");
   const cublasStatus_t ret = real_cublasDgemv(handle, trans, m, n, alpha, A,
                                               lda, x, incx, beta, y, incy);
@@ -158,24 +158,23 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   Values::id_type xId, yId;
-  std::tie(xId, std::ignore) = values.find_live(
-      (uintptr_t)x, AddressSpace::CudaDevice | AddressSpace::CudaUnified,
-      Memory::Any);
+  printf("Looking for x=%lu\n", (uintptr_t)x);
+  std::tie(xId, std::ignore) =
+      values.find_live((uintptr_t)x, AddressSpace::Cuda);
   assert(xId && "Couldn't find cublasSdot x argument value on device");
-  std::tie(yId, std::ignore) = values.find_live(
-      (uintptr_t)y, AddressSpace::CudaDevice | AddressSpace::CudaUnified,
-      Memory::Any);
+  std::tie(yId, std::ignore) =
+      values.find_live((uintptr_t)y, AddressSpace::Cuda);
   assert(yId && "Couldn't find cublasSdot y argument value on device");
 
   // see if we can find an allocation for the result
   printf("Looking for allocation result=%lu\n", (uintptr_t)result);
   Allocations::id_type rAllocId;
   std::tie(rAllocId, std::ignore) = allocations.find_live(
-      (uintptr_t)result, sizeof(float), AddressSpace::CudaAny);
+      (uintptr_t)result, sizeof(float), AddressSpace::Cuda);
 
   if (!rAllocId) {
     printf("WARN: creating implicit allocation for cublasSdot result\n");
-    AddressSpace AS = AddressSpace::CudaUnknown;
+    AddressSpace AS = AddressSpace::Cuda;
     Memory AM = Memory(Memory::Unknown);
     auto pair = allocations.insert(std::shared_ptr<AllocationRecord>(
         new AllocationRecord((uintptr_t)result, sizeof(float), AS, AM,
@@ -218,15 +217,14 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   Values::id_type xId;
-  std::tie(xId, std::ignore) = values.find_live(
-      (uintptr_t)x, AddressSpace::CudaDevice | AddressSpace::CudaUnified,
-      Memory::Any);
+  std::tie(xId, std::ignore) =
+      values.find_live((uintptr_t)x, AddressSpace(AddressSpace::Cuda));
   assert(xId && "Couldn't find Sasum x argument value on device");
 
   // see if we can find an allocation for the result
   Allocations::id_type rAllocId;
   std::tie(rAllocId, std::ignore) = allocations.find_live(
-      (uintptr_t)(uintptr_t)result, sizeof(float), AddressSpace::CudaAny);
+      (uintptr_t)(uintptr_t)result, sizeof(float), AddressSpace::Cuda);
 
   // Make a new value
   Values::id_type rId;
@@ -317,8 +315,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   printf("Looking for x=%lu, w=%lu, workSpace=%lu\n", (uintptr_t)x,
          (uintptr_t)w, (uintptr_t)workSpace);
   Values::id_type xId, wId, workSpaceId;
-  AddressSpace devOrUnified =
-      AddressSpace::CudaDevice | AddressSpace::CudaUnified;
+  AddressSpace devOrUnified = AddressSpace::Cuda;
   std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, devOrUnified);
   std::tie(wId, std::ignore) = values.find_live((uintptr_t)w, devOrUnified);
   std::tie(workSpaceId, std::ignore) =
@@ -333,8 +330,8 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   if (yId == Values::noid) {
     bool yAllocFound;
     Allocations::id_type yAllocId;
-    std::tie(yAllocFound, yAllocId) = allocations.find_live(
-        (uintptr_t)y, AddressSpace::CudaDevice | AddressSpace::CudaUnified);
+    std::tie(yAllocFound, yAllocId) =
+        allocations.find_live((uintptr_t)y, AddressSpace::Cuda);
     assert(yAllocFound && "Couldn't find allocation");
     std::tie(yId, yVal) = values.new_value(uintptr_t(y), 0, yAllocId);
     yVal->add_depends_on(xId);

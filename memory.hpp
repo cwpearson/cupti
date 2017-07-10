@@ -12,6 +12,8 @@ public:
   static const loc_t Unknown;
   static const loc_t Host;
   static const loc_t CudaDevice;
+  static const loc_t CudaUnified;
+  static const loc_t CudaAny;
   static const loc_t Any;
 
   /*

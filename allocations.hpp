@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 
 #include "address_space.hpp"
 #include "allocation_record.hpp"

@@ -30,8 +30,7 @@ public:
   std::pair<id_type, value_type> find_live_device(const uintptr_t pos,
                                                   const size_t size);
 
-  id_type find_id(const uintptr_t pos, const AddressSpace &as,
-                  const Memory &mem) const;
+  id_type find_id(const uintptr_t pos, const AddressSpace &as) const;
 
   std::pair<map_type::iterator, bool> insert(const value_type &v);
   std::pair<map_type::iterator, bool> insert(const Value &v);
@@ -47,8 +46,6 @@ public:
 
   value_type &operator[](const id_type &k) { return values_[k]; }
   value_type &operator[](id_type &&k) { return values_[k]; }
-  // map_type::iterator begin() { return values_.begin(); }
-  // map_type::iterator end() { return values_.end(); }
 
   static Values &instance();
 

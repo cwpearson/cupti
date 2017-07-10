@@ -40,6 +40,9 @@ public:
     return type_ == rhs.type_;
   }
 
+  static MemoryCopyKind CudaHostToHost() {
+    return MemoryCopyKind(Type::CudaHostToHost);
+  }
   static MemoryCopyKind CudaPeer() { return MemoryCopyKind(Type::CudaPeer); }
   static MemoryCopyKind CudaHostToDevice() {
     return MemoryCopyKind(Type::CudaHostToDevice);

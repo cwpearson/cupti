@@ -100,8 +100,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // arg_hashes.clear();
     for (const auto &argKey : kernelArgIds) {
       const auto &argValue = values[argKey];
-      assert(argValue->address_space().is_device_accessible() &&
-             "Host pointer arg to cuda launch?");
+      assert(argValue->address_space().is_cuda());
       // auto digest = hash_device(argValue->pos(), argValue->size());
       // printf("digest: %llu\n", digest);
       // arg_hashes[argKey] = digest;
@@ -141,86 +140,99 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch: done\n");
 }
 
+Allocations::id_type best_effort_allocation(const uintptr_t p,
+                                            const size_t count) {
+  Allocations::id_type srcAllocId;
+  auto &allocations = Allocations::instance();
+
+  // Look in Host address space
+  bool srcAllocFound;
+  std::tie(srcAllocFound, srcAllocId) =
+      allocations.find_live(p, count, AddressSpace::Host);
+  if (srcAllocFound) {
+    return srcAllocId;
+  }
+
+  std::tie(srcAllocFound, srcAllocId) =
+      allocations.find_live(p, count, AddressSpace::Cuda);
+  if (srcAllocFound) {
+    return srcAllocId;
+  }
+
+  return 0;
+}
+
 void record_memcpy(Allocations &allocations, Values &values,
                    const uintptr_t dst, const uintptr_t src,
                    const MemoryCopyKind &kind, const size_t count,
                    const int peerSrc, const int peerDst) {
 
+  Allocations::id_type srcAllocId = 0, dstAllocId = 0;
   AddressSpace srcAS, dstAS;
-  Memory srcMem, dstMem;
+
+  // Set address space, and create missing allocations along the way
   if (MemoryCopyKind::CudaHostToDevice() == kind) {
     printf("%lu --[h2d]--> %lu\n", src, dst);
-    srcAS = AddressSpace::Host | AddressSpace::CudaUnified;
-    srcMem = Memory(Memory::Host, get_numa_node(src));
 
-    dstAS = AddressSpace::CudaDevice | AddressSpace::CudaUnified;
-    dstMem = Memory(Memory::CudaDevice,
-                    DriverState::thread(get_thread_id()).current_device());
+    // Look for, or create a source allocation
+    srcAllocId = best_effort_allocation(src, count);
+    if (!srcAllocId) {
+      printf("WARN: Creating implicit host src allocation=%lu\n", src);
+      std::shared_ptr<AllocationRecord> a(new AllocationRecord(
+          src, count, AddressSpace::Unknown, Memory::Unknown,
+          AllocationRecord::PageType::Unknown));
+      auto pair = allocations.insert(a);
+      srcAllocId = pair.first->first;
+    }
+
+    srcAS = allocations.at(srcAllocId)->address_space();
+    dstAS = AddressSpace::Cuda;
   } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
     printf("%lu --[d2h]--> %lu\n", src, dst);
-    srcAS = AddressSpace::CudaDevice | AddressSpace::CudaUnified,
-    srcMem = Memory(Memory::CudaDevice,
-                    DriverState::thread(get_thread_id()).current_device());
-    dstAS = AddressSpace::Host | AddressSpace::CudaUnified;
-    dstMem = Memory(Memory::Host, get_numa_node(dst));
-  } else if (MemoryCopyKind::CudaDeviceToDevice() == kind) {
-    printf("%lu --[d2d]--> %lu\n", src, dst);
-    const auto &dev = DriverState::thread(get_thread_id()).current_device();
-    srcAS = dstAS = AddressSpace::CudaDevice | AddressSpace::CudaUnified;
-    srcMem = dstMem = Memory(Memory::CudaDevice, dev);
-  } else if (MemoryCopyKind::CudaPeer() == kind) {
-    printf("%lu --[p2p]--> %lu\n", src, dst);
-    srcAS = dstAS = AddressSpace::CudaDevice | AddressSpace::CudaUnified;
-    srcMem = Memory(Memory::CudaDevice, peerSrc);
-    dstMem = Memory(Memory::CudaDevice, peerDst);
-  } else if (MemoryCopyKind::CudaDefault() /* using cuda UVA, inferred from
-                                              pointers */
-             == kind) {
-    printf("%lu --[???]--> %lu (sz=%lu)\n", src, dst, count);
-    srcAS = dstAS = AddressSpace::CudaUnified;
 
-    // FIXME: we can probably do better here
-    srcMem = dstMem = Memory(Memory::Unknown);
-  } else {
-    assert(0 && "Unsupported cudaMemcpy kind");
-  }
-
-  // Look for existing src / dst allocations
-  bool srcFound, dstFound;
-  Allocations::id_type srcAllocId, dstAllocId;
-  std::tie(dstFound, dstAllocId) = allocations.find_live(dst, count, srcAS);
-  std::tie(srcFound, srcAllocId) = allocations.find_live(src, count, srcAS);
-
-  // Destination or source allocation may be on the host, and might not have
-  // been recorded.
-  if (!dstFound) {
-    printf("Didn't find dst allocation, dst=%lu\n", dst);
-    assert(!dstAS.is_device_accessible() &&
-           "Couldn't find memcpy dst allocation made by CUDA runtime/driver, "
-           "so dst should not be device accessible.");
-    printf("WARN: creating implicit dst allocation during memcpy\n");
-    std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-        dst, count, dstAS, dstMem, AllocationRecord::PageType::Pageable));
-    allocations.insert(a);
-    dstAllocId = a->Id();
-    dstFound = true;
-  }
-  if (!srcFound) {
-    printf("Didn't find src value, src=%lu\n", src);
-    if (!srcAS.is_device_accessible()) {
-      printf("WARN: Couldn't find memcpy src allocation made by CUDA "
-             "runtime/driver, so src address space should not be device "
-             "accesible.\n");
+    // Look for, or create a destination allocation
+    dstAllocId = best_effort_allocation(dst, count);
+    if (!dstAllocId) {
+      printf("WARN: Creating implicit host dst allocation=%lu\n", dst);
+      std::shared_ptr<AllocationRecord> a(new AllocationRecord(
+          dst, count, AddressSpace::Unknown, Memory::Unknown,
+          AllocationRecord::PageType::Unknown));
+      auto pair = allocations.insert(a);
+      dstAllocId = pair.first->first;
     }
-    printf("WARN: creating implicit src allocation during memcpy\n");
-    std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-        src, count, srcAS, srcMem, AllocationRecord::PageType::Unknown));
-    allocations.insert(a);
-    srcAllocId = a->Id();
-    srcFound = true;
+
+    srcAS = AddressSpace::Cuda;
+    dstAS = allocations.at(dstAllocId)->address_space();
+  } else if (MemoryCopyKind::CudaDeviceToDevice() == kind) {
+    srcAS = AddressSpace::Cuda;
+    dstAS = AddressSpace::Cuda;
+  } else if (MemoryCopyKind::CudaDefault() == kind) {
+    srcAS = AddressSpace::Cuda;
+    dstAS = AddressSpace::Cuda;
+  } else if (MemoryCopyKind::CudaPeer() == kind) {
+    srcAS = AddressSpace::Cuda;
+    dstAS = AddressSpace::Cuda;
+  } else if (MemoryCopyKind::CudaHostToHost() == kind) {
+    assert(0 && "Unimplemented");
+  } else {
+    assert(0 && "Unsupported MemoryCopyKind");
   }
 
-  // There may not be a source value, because it may have been initialized on
+  // Look for existing src / dst allocations.
+  // Either we just made it, or it should already exist.
+  if (!srcAllocId) {
+    bool found;
+    std::tie(found, srcAllocId) = allocations.find_live(src, count, srcAS);
+    assert(found);
+  }
+  if (!dstAllocId) {
+    bool found;
+    std::tie(found, dstAllocId) = allocations.find_live(dst, count, dstAS);
+    assert(found);
+  }
+
+  // There may not be a source value, because it may have been initialized
+  // on
   // the host
   Values::id_type srcValId;
   bool found;
@@ -325,11 +337,11 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
     printf("[cudaMallocManaged] %lu[%lu]\n", devPtr, size);
 
     // Create the new allocation
-    AddressSpace AS(AddressSpace::CudaUnified);
     Memory AM(Memory::CudaDevice,
               DriverState::thread(get_thread_id()).current_device());
-    std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-        devPtr, size, AS, AM, AllocationRecord::PageType::Pageable));
+    std::shared_ptr<AllocationRecord> a(
+        new AllocationRecord(devPtr, size, AddressSpace::Cuda, AM,
+                             AllocationRecord::PageType::Pageable));
     allocations.insert(a);
 
     // Create the new value
@@ -343,10 +355,9 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
 void record_mallochost(Allocations &allocations, Values &values,
                        const uintptr_t ptr, const size_t size) {
   // Create the new allocation
-  Memory AM(Memory::Host, get_numa_node(ptr));
+  Memory AM(Memory::Host, get_numa_node(ptr)); // FIXME - is this right
   std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-      ptr, size, AddressSpace::Host | AddressSpace::CudaUnified, AM,
-      AllocationRecord::PageType::Pinned));
+      ptr, size, AddressSpace::Cuda, AM, AllocationRecord::PageType::Pinned));
   allocations.insert(a);
 
   // Create the new value
@@ -420,8 +431,7 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
     // Find the live matching allocation
     bool found;
     Allocations::id_type allocId;
-    std::tie(found, allocId) =
-        allocations.find_live(ptr, AddressSpace::CudaDevice);
+    std::tie(found, allocId) = allocations.find_live(ptr, AddressSpace::Cuda);
     if (found) { // FIXME
       allocations.free(allocId);
     } else {
@@ -442,15 +452,16 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     const size_t size = params->size;
     printf("[cudaMalloc] %lu[%lu]\n", devPtr, size);
 
-    // FIXME: could be an existing allocation from an instrumented driver API
+    // FIXME: could be an existing allocation from an instrumented driver
+    // API
 
     // Create the new allocation
     // FIXME: need to check which address space this is in
     Memory AM = Memory(Memory::CudaDevice,
                        DriverState::thread(get_thread_id()).current_device());
-    std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-        devPtr, size, AddressSpace::CudaDevice | AddressSpace::CudaUnified, AM,
-        AllocationRecord::PageType::Pageable));
+    std::shared_ptr<AllocationRecord> a(
+        new AllocationRecord(devPtr, size, AddressSpace::Cuda, AM,
+                             AllocationRecord::PageType::Pageable));
     Allocations::id_type aId = allocations.insert(a).first->first;
     printf("[cudaMalloc] new alloc id=%lu\n", aId);
 
@@ -483,7 +494,7 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     bool found;
     Allocations::id_type allocId;
     std::tie(found, allocId) =
-        allocations.find_live(devPtr, AddressSpace::CudaDevice);
+        allocations.find_live(devPtr, AddressSpace::Cuda);
     if (found) { // FIXME
       allocations.free(allocId);
     } else {
