@@ -180,7 +180,7 @@ void record_memcpy(Allocations &allocations, Values &values,
     srcAS = dstAS = AddressSpace::CudaUnified;
 
     // FIXME: we can probably do better here
-    srcMem = dstMem = Memory(Memory::Unknown, 0);
+    srcMem = dstMem = Memory(Memory::Unknown);
   } else {
     assert(0 && "Unsupported cudaMemcpy kind");
   }

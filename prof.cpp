@@ -176,7 +176,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   if (!rAllocId) {
     printf("WARN: creating implicit allocation for cublasSdot result\n");
     AddressSpace AS = AddressSpace::CudaUnknown;
-    Memory AM = Memory(Memory::Unknown, 0);
+    Memory AM = Memory(Memory::Unknown);
     auto pair = allocations.insert(std::shared_ptr<AllocationRecord>(
         new AllocationRecord((uintptr_t)result, sizeof(float), AS, AM,
                              AllocationRecord::PageType::Unknown)));

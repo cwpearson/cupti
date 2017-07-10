@@ -19,7 +19,7 @@ public:
   constexpr bool has_value() const noexcept { return has_value(); }
 
   U &value() { return value_; }
-  const U &value() const { return value(); }
+  const U &value() const { return value_; }
 };
 
 #endif

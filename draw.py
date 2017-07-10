@@ -149,12 +149,12 @@ with open(args[0], 'r') as f:
             ty = alloc["type"]
             mem = json.loads(alloc["mem"])
 
-            mem_type = mem["type"]
+            mem_loc = mem["loc"]
             mem_id = mem["id"]
-            if mem_type not in Memories:
-                print "found new mem_type", mem_type
-                Memories[mem_type] = Memory(mem_type)
-            if mem_id not in Memories[mem_type].regions:
+            if mem_loc not in Memories:
+                print "found new mem_loc", mem_loc
+                Memories[mem_loc] = Memory(mem_loc)
+            if mem_id not in Memories[mem_loc].regions:
                 print "found new mem_id", mem_id
                 Memories[mem_type].regions[mem_id] = Region(mem_id)
 

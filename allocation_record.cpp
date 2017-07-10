@@ -26,7 +26,8 @@ std::string AllocationRecord::json() const {
   pt.put("allocation.id", std::to_string(uintptr_t(this)));
   pt.put("allocation.pos", std::to_string(pos_));
   pt.put("allocation.size", std::to_string(size_));
-  pt.put("allocation.mem", address_space_.json());
+  pt.put("allocation.addrsp", address_space_.json());
+  pt.put("allocation.mem", memory_.json());
   pt.put("allocation.type", to_string(type_));
   std::ostringstream buf;
   write_json(buf, pt, false);

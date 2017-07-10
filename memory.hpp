@@ -1,8 +1,10 @@
 #ifndef MEMORY_HPP
 #define MEMORY_HPP
 
-#include "optional.hpp"
 #include <cstdint>
+#include <string>
+
+#include "optional.hpp"
 
 class Memory {
 public:
@@ -21,6 +23,8 @@ public:
   Memory() : loc_(Unknown) {}
   Memory(const loc_t &loc) : loc_(loc) {}
   Memory(const loc_t &loc, int id) : loc_(loc), id_(id) {}
+
+  std::string json() const;
 };
 
 #endif
