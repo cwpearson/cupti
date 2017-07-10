@@ -3,6 +3,7 @@
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <cudnn.h>
 #include <dlfcn.h>
 #include <list>
 
@@ -135,6 +136,57 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   return ret;
 }
 
+typedef cublasStatus_t (*cublasSdotFunc)(cublasHandle_t handle, int n,
+                                         const float *x, int incx,
+                                         const float *y, int incy,
+                                         float *result);
+static cublasSdotFunc real_cublasSdot = nullptr;
+
+extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
+                                     const float *x, int incx, const float *y,
+                                     int incy, float *result) {
+  printf("prof.so intercepted cublasSdot call\n");
+
+  if (real_cublasSdot == nullptr) {
+    real_cublasSdot = (cublasSdotFunc)dlsym(RTLD_NEXT, "cublasSdot_v2");
+  }
+  assert(real_cublasSdot && "Will the real cublasSdot please stand up?");
+
+  // record data, we know things about how this API works
+  auto &values = Values::instance();
+  auto &allocations = Allocations::instance();
+
+  assert(0 && "Fix this implementation.");
+  // Find the argument values
+  // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
+  Values::id_type xId;
+  std::tie(xId, std::ignore) = values.find_live(
+      (uintptr_t)x, AddressSpace::CudaDevice | AddressSpace::CudaUnified,
+      Memory::Any);
+  assert(xId && "Couldn't find cublasSdot x argument value on device");
+
+  // see if we can find an allocation for the result
+  Allocations::id_type rAllocId;
+  std::tie(rAllocId, std::ignore) = allocations.find_live(
+      (uintptr_t)(uintptr_t)result, sizeof(float), AddressSpace::CudaAny);
+
+  // Make a new value
+  Values::id_type rId;
+  Values::value_type rVal;
+  std::tie(rId, rVal) =
+      Values::instance().new_value((uintptr_t)result, sizeof(float), rAllocId);
+  rVal->add_depends_on(xId);
+
+  lazyStopCallbacks();
+  printf("WARN: disabling CUPTI callbacks "
+         "during cublasSdot "
+         "call\n");
+  const cublasStatus_t ret =
+      real_cublasSdot(handle, n, x, incx, y, incy, result);
+  lazyActivateCallbacks();
+  return ret;
+}
+
 typedef cublasStatus_t (*cublasSasumFunc)(cublasHandle_t, int, const float *,
                                           int, float *);
 static cublasSasumFunc real_cublasSasum = nullptr;
@@ -202,6 +254,7 @@ extern "C" cublasStatus_t cublasDestroy(cublasHandle_t handle) {
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
 static cublasCreateFunc real_cublasCreate = nullptr;
 extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
+  onceActivateCallbacks();
   printf("prof.so intercepted cublasCreate call\n");
 
   if (real_cublasCreate == nullptr) {
@@ -209,12 +262,87 @@ extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
   }
   assert(real_cublasCreate && "Will the real cublasCreate please stand up?");
 
-  lazyStopCallbacks();
   printf("WARN: disabling CUPTI callbacks during cublasCreate call\n");
+  lazyStopCallbacks();
   const cublasStatus_t ret = real_cublasCreate(handle);
   lazyActivateCallbacks();
   return ret;
 }
+
+typedef cudnnStatus_t (*cudnnConvolutionForwardFunc)(
+    cudnnHandle_t handle, const void *alpha,
+    const cudnnTensorDescriptor_t xDesc, const void *x,
+    const cudnnFilterDescriptor_t wDesc, const void *w,
+    const cudnnConvolutionDescriptor_t convDesc, cudnnConvolutionFwdAlgo_t algo,
+    void *workSpace, size_t workSpaceSizeInBytes, const void *beta,
+    const cudnnTensorDescriptor_t yDesc, void *y);
+static cudnnConvolutionForwardFunc real_cudnnConvolutionForward = nullptr;
+extern "C" cudnnStatus_t
+cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
+                        const cudnnTensorDescriptor_t xDesc, const void *x,
+                        const cudnnFilterDescriptor_t wDesc, const void *w,
+                        const cudnnConvolutionDescriptor_t convDesc,
+                        cudnnConvolutionFwdAlgo_t algo, void *workSpace,
+                        size_t workSpaceSizeInBytes, const void *beta,
+                        const cudnnTensorDescriptor_t yDesc, void *y) {
+
+  /*
+  y = f(x,w,alpha,beta, workspace)
+  */
+  onceActivateCallbacks();
+  printf("prof.so intercepted cudnnConvolutionForward call\n");
+
+  if (real_cudnnConvolutionForward == nullptr) {
+    real_cudnnConvolutionForward = (cudnnConvolutionForwardFunc)dlsym(
+        RTLD_NEXT, "cudnnConvolutionForward");
+  }
+  assert(real_cublasCreate &&
+         "Will the real cudnnConvolutionForward please stand up?");
+
+  auto &values = Values::instance();
+  auto &allocations = Allocations::instance();
+
+  // Find input values
+  printf("Looking for x=%lu, w=%lu, workSpace=%lu\n", (uintptr_t)x,
+         (uintptr_t)w, (uintptr_t)workSpace);
+  Values::id_type xId, wId, workSpaceId;
+  AddressSpace devOrUnified =
+      AddressSpace::CudaDevice | AddressSpace::CudaUnified;
+  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, devOrUnified);
+  std::tie(wId, std::ignore) = values.find_live((uintptr_t)w, devOrUnified);
+  std::tie(workSpaceId, std::ignore) =
+      values.find_live((uintptr_t)workSpace, devOrUnified);
+  assert(xId && wId && workSpaceId &&
+         "Couldn't find cudnnConvolutionForward argument value on device");
+
+  // See if there is an existing output value to take info from
+  Values::id_type yId;
+  Values::value_type yVal;
+  std::tie(yId, yVal) = values.find_live((uintptr_t)w, devOrUnified);
+  if (yId == Values::noid) {
+    bool yAllocFound;
+    Allocations::id_type yAllocId;
+    std::tie(yAllocFound, yAllocId) = allocations.find_live(
+        (uintptr_t)y, AddressSpace::CudaDevice | AddressSpace::CudaUnified);
+    assert(yAllocFound && "Couldn't find allocation");
+    std::tie(yId, yVal) = values.new_value(uintptr_t(y), 0, yAllocId);
+    yVal->add_depends_on(xId);
+    yVal->add_depends_on(wId);
+    yVal->add_depends_on(workSpaceId);
+    printf("[cudnnConvolutionForward] %lu deps on %lu %lu %lu\n", yId, xId, wId,
+           workSpaceId);
+  }
+
+  printf(
+      "WARN: disabling CUPTI callbacks during cudnnForwardConvolution call\n");
+  lazyStopCallbacks();
+  const cudnnStatus_t ret = real_cudnnConvolutionForward(
+      handle, alpha, xDesc, x, wDesc, w, convDesc, algo, workSpace,
+      workSpaceSizeInBytes, beta, yDesc, y);
+  lazyActivateCallbacks();
+  return ret;
+}
+
 // typedef cudaError_t
 // (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
 // static cudaConfigureCall_t realCudaConfigureCall = NULL;

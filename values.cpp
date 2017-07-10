@@ -18,7 +18,7 @@ Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
     const auto valKey = value_order_[i];
     const auto &val = values_[valKey];
     assert(val.get());
-    if (val->overlaps(e) && as == val->address_space())
+    if (val->overlaps(e) && as.overlaps(val->address_space()))
       return std::make_pair(valKey, val);
 
     if (i == 0)
@@ -66,8 +66,9 @@ Values::get_last_overlapping_value(uintptr_t pos, size_t size,
   return std::make_pair(true, kv.first);
 }
 
-Values::id_type Values::find_live(const uintptr_t pos, const AddressSpace &as,
-                                  const Memory &mem) const {}
+// Values::id_type Values::find_live(const uintptr_t pos, const AddressSpace
+// &as,
+//                                   const Memory &mem) const {}
 
 std::pair<Values::map_type::iterator, bool>
 Values::insert(const value_type &v) {

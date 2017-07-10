@@ -7,10 +7,10 @@
 class Memory {
 public:
   typedef uint64_t loc_t;
-  static constexpr loc_t Unknown = 0x0;
-  static constexpr loc_t Host = 0x1;
-  static constexpr loc_t CudaDevice = 0x2;
-  static constexpr loc_t Any = 0xFFFFFFFF;
+  static const loc_t Unknown;
+  static const loc_t Host;
+  static const loc_t CudaDevice;
+  static const loc_t Any;
 
   /*
   numa region, device id, etc

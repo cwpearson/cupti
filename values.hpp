@@ -4,13 +4,14 @@
 #include <memory>
 #include <mutex>
 
+#include "allocations.hpp"
 #include "value.hpp"
 
 class Values {
 public:
   typedef Value::id_type id_type;
   typedef std::shared_ptr<Value> value_type;
-  static constexpr id_type noid = Value::noid;
+  static const id_type noid = Value::noid;
 
 private:
   typedef std::map<id_type, value_type> map_type;
@@ -36,7 +37,13 @@ public:
   std::pair<map_type::iterator, bool> insert(const Value &v);
 
   std::pair<id_type, value_type> new_value(const uintptr_t pos,
-                                           const size_t size);
+                                           const size_t size,
+                                           Allocations::id_type allocId) {
+    auto v = new Value(pos, size, allocId);
+    auto p = insert(std::shared_ptr<Value>(v));
+    assert(p.second && "Expecting new value");
+    return *p.first;
+  }
 
   value_type &operator[](const id_type &k) { return values_[k]; }
   value_type &operator[](id_type &&k) { return values_[k]; }

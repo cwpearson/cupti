@@ -9,6 +9,7 @@ allocations.o \
 callbacks.o \
 driver_state.o \
 extent.o \
+memory.o \
 numa.o \
 prof.o \
 thread.o \

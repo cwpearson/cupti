@@ -24,7 +24,7 @@ Allocations::insert(const Allocations::value_type &v) {
   if (v->size() == 0) {
     printf("WARN: inserting size %lu allocation", v->size());
   }
-  const auto &valIdx = reinterpret_cast<key_type>(v.get());
+  const auto &valIdx = reinterpret_cast<id_type>(v.get());
 
   std::ofstream buf(output_path, std::ofstream::app);
   buf << *v;
@@ -33,7 +33,7 @@ Allocations::insert(const Allocations::value_type &v) {
   return allocations_.insert(std::make_pair(valIdx, v));
 }
 
-std::tuple<bool, Allocations::key_type>
+std::tuple<bool, Allocations::id_type>
 Allocations::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
   assert(pos && "No allocation at null ptr");
 
@@ -46,7 +46,9 @@ Allocations::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
     return std::make_pair(false, -1);
   }
 
-  AllocationRecord dummy(pos, size, as, AllocationRecord::PageType::Pageable);
+  // FIXME - should be any page type
+  AllocationRecord dummy(pos, size, as, Memory(Memory::Any),
+                         AllocationRecord::PageType::Pageable);
   for (const auto &alloc : allocations_) {
     // printf("checkin\n");
     const auto &key = alloc.first;
