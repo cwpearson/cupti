@@ -141,7 +141,6 @@ typedef cublasStatus_t (*cublasSdotFunc)(cublasHandle_t handle, int n,
                                          const float *y, int incy,
                                          float *result);
 static cublasSdotFunc real_cublasSdot = nullptr;
-
 extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
                                      const float *x, int incx, const float *y,
                                      int incy, float *result) {
@@ -156,19 +155,34 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
-  assert(0 && "Fix this implementation.");
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  Values::id_type xId;
+  Values::id_type xId, yId;
   std::tie(xId, std::ignore) = values.find_live(
       (uintptr_t)x, AddressSpace::CudaDevice | AddressSpace::CudaUnified,
       Memory::Any);
   assert(xId && "Couldn't find cublasSdot x argument value on device");
+  std::tie(yId, std::ignore) = values.find_live(
+      (uintptr_t)y, AddressSpace::CudaDevice | AddressSpace::CudaUnified,
+      Memory::Any);
+  assert(yId && "Couldn't find cublasSdot y argument value on device");
 
   // see if we can find an allocation for the result
+  printf("Looking for allocation result=%lu\n", (uintptr_t)result);
   Allocations::id_type rAllocId;
   std::tie(rAllocId, std::ignore) = allocations.find_live(
-      (uintptr_t)(uintptr_t)result, sizeof(float), AddressSpace::CudaAny);
+      (uintptr_t)result, sizeof(float), AddressSpace::CudaAny);
+
+  if (!rAllocId) {
+    printf("WARN: creating implicit allocation for cublasSdot result\n");
+    AddressSpace AS = AddressSpace::CudaUnknown;
+    Memory AM = Memory(Memory::Unknown, 0);
+    auto pair = allocations.insert(std::shared_ptr<AllocationRecord>(
+        new AllocationRecord((uintptr_t)result, sizeof(float), AS, AM,
+                             AllocationRecord::PageType::Unknown)));
+    assert(pair.second);
+    rAllocId = pair.first->first;
+  }
 
   // Make a new value
   Values::id_type rId;
@@ -178,9 +192,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   rVal->add_depends_on(xId);
 
   lazyStopCallbacks();
-  printf("WARN: disabling CUPTI callbacks "
-         "during cublasSdot "
-         "call\n");
+  printf("WARN: disabling CUPTI callbacks during cublasSdot call\n");
   const cublasStatus_t ret =
       real_cublasSdot(handle, n, x, incx, y, incy, result);
   lazyActivateCallbacks();
@@ -190,7 +202,6 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
 typedef cublasStatus_t (*cublasSasumFunc)(cublasHandle_t, int, const float *,
                                           int, float *);
 static cublasSasumFunc real_cublasSasum = nullptr;
-
 extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
                                       const float *x, int incx, float *result) {
   printf("prof.so intercepted cublasSasum call\n");
