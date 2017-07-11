@@ -57,7 +57,7 @@ ConfiguredCall_t &ConfiguredCall() {
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch preamble\n");
 
-  print_backtrace();
+  // print_backtrace();
 
   // Get the current stream
   const cudaStream_t stream = ConfiguredCall().stream;
@@ -354,15 +354,25 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
 
 void record_mallochost(Allocations &allocations, Values &values,
                        const uintptr_t ptr, const size_t size) {
-  // Create the new allocation
-  Memory AM(Memory::Host, get_numa_node(ptr)); // FIXME - is this right
-  std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-      ptr, size, AddressSpace::Cuda, AM, AllocationRecord::PageType::Pinned));
-  allocations.insert(a);
+
+  Allocations::id_type aId;
+  bool found;
+  // Check if the allocation exists
+  std::tie(found, aId) =
+      allocations.find_live(ptr, size, AddressSpace(AddressSpace::Cuda));
+
+  // If not, create a new one
+  if (!found) {
+    Memory AM(Memory::Host, get_numa_node(ptr)); // FIXME - is this right
+    std::shared_ptr<AllocationRecord> a(new AllocationRecord(
+        ptr, size, AddressSpace::Cuda, AM, AllocationRecord::PageType::Pinned));
+    auto pair = allocations.insert(a);
+    aId = pair.first->first;
+  }
 
   // Create the new value
-  values.insert(std::shared_ptr<Value>(
-      new Value(ptr, size, a->Id(), false /*initialized*/)));
+  values.insert(
+      std::shared_ptr<Value>(new Value(ptr, size, aId, false /*initialized*/)));
 }
 
 static void handleCudaMallocHost(Allocations &allocations, Values &values,
@@ -387,8 +397,17 @@ static void handleCudaMallocHost(Allocations &allocations, Values &values,
 
 static void handleCuMemHostAlloc(Allocations &allocations, Values &values,
                                  const CUpti_CallbackData *cbInfo) {
+
+  auto &ts = DriverState::thread(get_thread_id());
+  if (ts.in_child_api() && ts.parent_api().is_runtime() &&
+      ts.parent_api().cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020) {
+    printf("WARN: skipping cuMemHostAlloc inside cudaMallocHost\n");
+    return;
+  }
+
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+
     auto params = ((cuMemHostAlloc_params *)(cbInfo->functionParams));
     uintptr_t pp = (uintptr_t)(*(params->pp));
     const size_t bytesize = params->bytesize;
@@ -599,6 +618,10 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        const CUpti_CallbackData *cbInfo) {
   (void)userdata;
 
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    DriverState::thread(get_thread_id()).api_enter(domain, cbid, cbInfo);
+  }
+
   // Data is collected for the following APIs
   switch (domain) {
   case CUPTI_CB_DOMAIN_RUNTIME_API: {
@@ -668,6 +691,10 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   }
   default:
     break;
+  }
+
+  if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    DriverState::thread(get_thread_id()).api_exit(domain, cbid, cbInfo);
   }
 }
 
