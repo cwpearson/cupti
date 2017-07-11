@@ -16,6 +16,7 @@ class AllocationRecord : public Extent {
 public:
   enum class PageType { Pinned, Pageable, Unknown };
   typedef uintptr_t id_type;
+  static const id_type noid;
 
 private:
   AddressSpace address_space_;

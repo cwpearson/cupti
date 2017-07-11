@@ -18,6 +18,7 @@ class Allocations {
 public:
   typedef AllocationRecord::id_type id_type;
   typedef std::shared_ptr<AllocationRecord> value_type;
+  static const id_type noid;
 
 private:
   typedef std::map<id_type, value_type> map_type;
@@ -29,11 +30,16 @@ public:
   // void unlock() { access_mutex_.unlock(); }
 
   std::pair<map_type::iterator, bool> insert(const value_type &v);
-  std::tuple<bool, id_type> find_live(uintptr_t pos, size_t size,
-                                      const AddressSpace &as);
-  std::tuple<bool, id_type> find_live(uintptr_t pos, const AddressSpace &as) {
+  std::tuple<id_type, value_type> find_live(uintptr_t pos, size_t size,
+                                            const AddressSpace &as);
+  std::tuple<id_type, value_type> find_live(uintptr_t pos,
+                                            const AddressSpace &as) {
     return find_live(pos, 1, as);
   }
+
+  std::tuple<id_type, value_type>
+  new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
+                 const Memory &am, const AllocationRecord::PageType &ty);
 
   size_t free(const id_type &k) {
     std::lock_guard<std::mutex> guard(access_mutex_);

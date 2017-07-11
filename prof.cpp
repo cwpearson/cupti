@@ -170,9 +170,9 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   printf("Looking for allocation result=%lu\n", (uintptr_t)result);
   Allocations::id_type rAllocId;
   std::tie(rAllocId, std::ignore) = allocations.find_live(
-      (uintptr_t)result, sizeof(float), AddressSpace::Cuda);
+      (uintptr_t)result, sizeof(float), AddressSpace(AddressSpace::Cuda));
 
-  if (!rAllocId) {
+  if (rAllocId == Allocations::noid) {
     printf("WARN: creating implicit allocation for cublasSdot result\n");
     AddressSpace AS = AddressSpace::Cuda;
     Memory AM = Memory(Memory::Unknown);
@@ -182,12 +182,12 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
     assert(pair.second);
     rAllocId = pair.first->first;
   }
-
+  printf("result allocId=%lu\n", rAllocId);
   // Make a new value
   Values::id_type rId;
   Values::value_type rVal;
   std::tie(rId, rVal) =
-      Values::instance().new_value((uintptr_t)result, sizeof(float), rAllocId);
+      values.new_value((uintptr_t)result, sizeof(float), rAllocId);
   rVal->add_depends_on(xId);
 
   lazyStopCallbacks();
@@ -224,19 +224,29 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   // see if we can find an allocation for the result
   Allocations::id_type rAllocId;
   std::tie(rAllocId, std::ignore) = allocations.find_live(
-      (uintptr_t)(uintptr_t)result, sizeof(float), AddressSpace::Cuda);
+      (uintptr_t)result, sizeof(float), AddressSpace::Cuda);
+
+  if (!rAllocId) {
+    // FIXME - can we do a better job with some parameters here
+    AddressSpace AS(AddressSpace::Cuda);
+    Memory AM(Memory::Unknown);
+    std::tie(rAllocId, std::ignore) =
+        allocations.new_allocation((uintptr_t)result, sizeof(float), AS, AM,
+                                   AllocationRecord::PageType::Unknown);
+    printf("WARN: new allocId=%lu for result=%lu\n", rAllocId,
+           (uintptr_t)result);
+  }
+  assert(rAllocId && "If there is no allocation, we need to make one");
 
   // Make a new value
   Values::id_type rId;
   Values::value_type rVal;
   std::tie(rId, rVal) =
-      Values::instance().new_value((uintptr_t)result, sizeof(float), rAllocId);
+      values.new_value((uintptr_t)result, sizeof(float), rAllocId);
   rVal->add_depends_on(xId);
 
   lazyStopCallbacks();
-  printf("WARN: disabling CUPTI callbacks "
-         "during cublasSasum "
-         "call\n");
+  printf("WARN: disabling CUPTI callbacks during cublasSasum call\n");
   const cublasStatus_t ret = real_cublasSasum(handle, n, x, incx, result);
   lazyActivateCallbacks();
   return ret;
@@ -328,18 +338,18 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   Values::value_type yVal;
   std::tie(yId, yVal) = values.find_live((uintptr_t)w, devOrUnified);
   if (yId == Values::noid) {
-    bool yAllocFound;
     Allocations::id_type yAllocId;
-    std::tie(yAllocFound, yAllocId) =
+    std::tie(yAllocId, std::ignore) =
         allocations.find_live((uintptr_t)y, AddressSpace::Cuda);
-    assert(yAllocFound && "Couldn't find allocation");
-    std::tie(yId, yVal) = values.new_value(uintptr_t(y), 0, yAllocId);
-    yVal->add_depends_on(xId);
-    yVal->add_depends_on(wId);
-    yVal->add_depends_on(workSpaceId);
-    printf("[cudnnConvolutionForward] %lu deps on %lu %lu %lu\n", yId, xId, wId,
-           workSpaceId);
+    assert(yAllocId != Allocations::noid && "Couldn't find allocation");
+    std::tie(yId, yVal) = values.new_value(uintptr_t(y), 0, yAllocId); // FIXME
+    printf("WARN: create new y=%lu value=%lu\n", (uintptr_t)y, yId);
   }
+  yVal->add_depends_on(xId);
+  yVal->add_depends_on(wId);
+  yVal->add_depends_on(workSpaceId);
+  printf("[cudnnConvolutionForward] %lu deps on %lu %lu %lu\n", yId, xId, wId,
+         workSpaceId);
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnForwardConvolution call\n");
@@ -350,64 +360,3 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   lazyActivateCallbacks();
   return ret;
 }
-
-// typedef cudaError_t
-// (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
-// static cudaConfigureCall_t realCudaConfigureCall = NULL;
-
-/*
-typedef CUresult (*cuInitFunc)(unsigned int);
-static cuInitFunc real_cuInit = nullptr;
-
-extern "C"
-CUresult cuInit(unsigned int Flags) {
-  printf("intercepted cuInit\n");
-  lazyActivateCallbacks();
-
-  if (real_cuInit == NULL) {
-    real_cuInit = (cuInitFunc)dlsym(RTLD_NEXT,"cuInit");
-  }
-  assert(real_cuInit && "Will the real cuInit please stand up.");
-  return real_cuInit(Flags);
-}
-*/
-// typedef cudaError_t
-// (*cudaConfigureCall_t)(dim3,dim3,size_t,cudaStream_t);
-// static cudaConfigureCall_t realCudaConfigureCall = NULL;
-
-/*
-typedef CUresult (*cuInitFunc)(unsigned int);
-static cuInitFunc real_cuInit = nullptr;
-
-extern "C"
-CUresult cuInit(unsigned int Flags) {
-  printf("intercepted cuInit\n");
-  lazyActivateCallbacks();
-
-  if (real_cuInit == NULL) {
-    real_cuInit = (cuInitFunc)dlsym(RTLD_NEXT,"cuInit");
-  }
-  assert(real_cuInit && "Will the real cuInit please stand up.");
-  return real_cuInit(Flags);
-}
-*/
-/*
-typedef void* (*mallocFunc)(size_t);
-static mallocFunc real_malloc = nullptr;
-
-void* malloc(size_t size) {
-  if(!real_malloc) {
-    real_malloc = (mallocFunc) dlsym(RTLD_NEXT, "malloc");
-  }
-  assert(real_malloc && "Will the real malloc please stand up");
-
-  void *p = real_malloc(size);
-
-  Value newValue;
-  newValue.pos_ = (uintptr_t) p;
-  newValue.size_ = size;
-
-  Data::instance().values_.push_back(newValue);
-  return p;
-}
-*/

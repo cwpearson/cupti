@@ -20,9 +20,9 @@ private:
 
 public:
   bool is_runtime() const { return domain_ == CUPTI_CB_DOMAIN_RUNTIME_API; }
+  CUpti_CallbackDomain domain() const { return domain_; }
   CUpti_CallbackId cbid() const { return cbid_; }
   const CUpti_CallbackData *cb_info() const { return cbInfo_; }
-  const CUpti_CallbackDomain domain() const { return domain_; }
   APICallRecord()
       : domain_(CUPTI_CB_DOMAIN_INVALID), cbid_(-1), cbInfo_(nullptr) {}
   APICallRecord(const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
@@ -44,14 +44,22 @@ public:
   void api_enter(const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
                  const CUpti_CallbackData *cbInfo) {
     apiStack_.push_back(APICallRecord(domain, cbid, cbInfo));
+    printf("Entering %s [stack sz=%lu]\n", cbInfo->functionName,
+           apiStack_.size());
   }
   void api_exit(const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
                 const CUpti_CallbackData *cbInfo) {
 
+    printf("Exiting %s [stack sz=%lu]\n", cbInfo->functionName,
+           apiStack_.size());
     assert(!apiStack_.empty());
     const APICallRecord current = apiStack_.back();
     assert(current.domain() == domain);
-    assert(current.cbid() == cbid);
+    if (current.cbid() != cbid) {
+      printf("%s != %s\n", current.cb_info()->functionName,
+             cbInfo->functionName);
+      assert(0 && "cbid mismatch");
+    }
     assert(current.cb_info() == cbInfo);
     apiStack_.pop_back();
   }

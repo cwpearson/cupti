@@ -9,6 +9,8 @@ using boost::property_tree::write_json;
 
 const std::string output_path("cprof.txt");
 
+const Allocations::id_type Allocations::noid = AllocationRecord::noid;
+
 Allocations &Allocations::instance() {
   static Allocations a;
   return a;
@@ -33,7 +35,7 @@ Allocations::insert(const Allocations::value_type &v) {
   return allocations_.insert(std::make_pair(valIdx, v));
 }
 
-std::tuple<bool, Allocations::id_type>
+std::tuple<Allocations::id_type, Allocations::value_type>
 Allocations::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
   assert(pos && "No allocation at null ptr");
 
@@ -43,7 +45,7 @@ Allocations::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
 
   if (allocations_.empty()) {
     printf("no allocs\n");
-    return std::make_pair(false, -1);
+    return std::make_pair(noid, value_type(nullptr));
   }
 
   // FIXME - should be any page type
@@ -56,8 +58,17 @@ Allocations::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
     assert(val.get());
     if (dummy.overlaps(*val)) {
       printf("found it\n");
-      return std::make_pair(true, key);
+      return std::make_pair(key, val);
     }
   }
-  return std::make_pair(false, -1);
+  return std::make_pair(noid, value_type(nullptr));
+}
+
+std::tuple<Allocations::id_type, Allocations::value_type>
+Allocations::new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
+                            const Memory &am,
+                            const AllocationRecord::PageType &ty) {
+  auto val = value_type(new AllocationRecord(pos, size, as, am, ty));
+  assert(val.get());
+  return std::make_pair(insert(val).first->first, val);
 }

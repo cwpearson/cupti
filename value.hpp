@@ -14,11 +14,9 @@ const std::string output_path("cprof.txt");
 class Value : public Extent {
 public:
   typedef uintptr_t id_type;
-  static const id_type noid = reinterpret_cast<id_type>(nullptr);
+  static const id_type noid;
 
 private:
-  bool is_unknown_;
-  bool is_not_value_;
   bool is_initialized_;
   AllocationRecord::id_type
       allocation_id_; // allocation that this value lives in
@@ -37,14 +35,12 @@ public:
   id_type Id() const { return reinterpret_cast<id_type>(this); }
 
   Value(uintptr_t pos, size_t size, AllocationRecord::id_type allocation)
-      : Extent(pos, size), is_unknown_(false), is_not_value_(false),
-        is_initialized_(__GCC_ATOMIC_TEST_AND_SET_TRUEVAL),
-        allocation_id_(allocation) {}
+      : Extent(pos, size), is_initialized_(false), allocation_id_(allocation) {}
 
   Value(uintptr_t pos, size_t size, AllocationRecord::id_type allocation,
         bool initialized)
-      : Extent(pos, size), is_unknown_(false), is_not_value_(false),
-        is_initialized_(initialized), allocation_id_(allocation) {}
+      : Extent(pos, size), is_initialized_(initialized),
+        allocation_id_(allocation) {}
 
 private:
   // static Value &UnknownValue();

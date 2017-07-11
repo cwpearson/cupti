@@ -146,20 +146,19 @@ Allocations::id_type best_effort_allocation(const uintptr_t p,
   auto &allocations = Allocations::instance();
 
   // Look in Host address space
-  bool srcAllocFound;
-  std::tie(srcAllocFound, srcAllocId) =
+  std::tie(srcAllocId, std::ignore) =
       allocations.find_live(p, count, AddressSpace::Host);
-  if (srcAllocFound) {
+  if (srcAllocId != Allocations::noid) {
     return srcAllocId;
   }
 
-  std::tie(srcAllocFound, srcAllocId) =
+  std::tie(srcAllocId, std::ignore) =
       allocations.find_live(p, count, AddressSpace::Cuda);
-  if (srcAllocFound) {
+  if (srcAllocId != Allocations::noid) {
     return srcAllocId;
   }
 
-  return 0;
+  return Allocations::noid;
 }
 
 void record_memcpy(Allocations &allocations, Values &values,
@@ -221,14 +220,14 @@ void record_memcpy(Allocations &allocations, Values &values,
   // Look for existing src / dst allocations.
   // Either we just made it, or it should already exist.
   if (!srcAllocId) {
-    bool found;
-    std::tie(found, srcAllocId) = allocations.find_live(src, count, srcAS);
-    assert(found);
+    std::tie(srcAllocId, std::ignore) =
+        allocations.find_live(src, count, srcAS);
+    assert(srcAllocId != Allocations::noid);
   }
   if (!dstAllocId) {
-    bool found;
-    std::tie(found, dstAllocId) = allocations.find_live(dst, count, dstAS);
-    assert(found);
+    std::tie(dstAllocId, std::ignore) =
+        allocations.find_live(dst, count, dstAS);
+    assert(dstAllocId != Allocations::noid);
   }
 
   // There may not be a source value, because it may have been initialized
@@ -356,23 +355,19 @@ void record_mallochost(Allocations &allocations, Values &values,
                        const uintptr_t ptr, const size_t size) {
 
   Allocations::id_type aId;
-  bool found;
   // Check if the allocation exists
-  std::tie(found, aId) =
+  std::tie(aId, std::ignore) =
       allocations.find_live(ptr, size, AddressSpace(AddressSpace::Cuda));
 
   // If not, create a new one
-  if (!found) {
+  if (aId == Allocations::noid) {
     Memory AM(Memory::Host, get_numa_node(ptr)); // FIXME - is this right
-    std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-        ptr, size, AddressSpace::Cuda, AM, AllocationRecord::PageType::Pinned));
-    auto pair = allocations.insert(a);
-    aId = pair.first->first;
+    std::tie(aId, std::ignore) = allocations.new_allocation(
+        ptr, size, AddressSpace::Cuda, AM, AllocationRecord::PageType::Pinned);
   }
 
   // Create the new value
-  values.insert(
-      std::shared_ptr<Value>(new Value(ptr, size, aId, false /*initialized*/)));
+  values.new_value(ptr, size, aId, false /*initialized*/);
 }
 
 static void handleCudaMallocHost(Allocations &allocations, Values &values,
@@ -448,10 +443,10 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
            "Must have been initialized by cudaMallocHost or cudaHostAlloc");
 
     // Find the live matching allocation
-    bool found;
     Allocations::id_type allocId;
-    std::tie(found, allocId) = allocations.find_live(ptr, AddressSpace::Cuda);
-    if (found) { // FIXME
+    std::tie(allocId, std::ignore) =
+        allocations.find_live(ptr, AddressSpace::Cuda);
+    if (allocId != Allocations::noid) { // FIXME
       allocations.free(allocId);
     } else {
       // assert(0 && "Freeing unallocated memory?");
@@ -510,11 +505,10 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     }
 
     // Find the live matching allocation
-    bool found;
     Allocations::id_type allocId;
-    std::tie(found, allocId) =
+    std::tie(allocId, std::ignore) =
         allocations.find_live(devPtr, AddressSpace::Cuda);
-    if (found) { // FIXME
+    if (allocId != Allocations::noid) { // FIXME
       allocations.free(allocId);
     } else {
       assert(0 && "Freeing unallocated memory?"); // FIXME - could be async
@@ -618,10 +612,13 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        const CUpti_CallbackData *cbInfo) {
   (void)userdata;
 
-  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    DriverState::thread(get_thread_id()).api_enter(domain, cbid, cbInfo);
+  if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
+      (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
+    if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+      printf("tid=%d about to increase api stack\n", get_thread_id());
+      DriverState::thread(get_thread_id()).api_enter(domain, cbid, cbInfo);
+    }
   }
-
   // Data is collected for the following APIs
   switch (domain) {
   case CUPTI_CB_DOMAIN_RUNTIME_API: {
@@ -693,8 +690,12 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     break;
   }
 
-  if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    DriverState::thread(get_thread_id()).api_exit(domain, cbid, cbInfo);
+  if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
+      (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
+    if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+      printf("tid=%d about to reduce api stack\n", get_thread_id());
+      DriverState::thread(get_thread_id()).api_exit(domain, cbid, cbInfo);
+    }
   }
 }
 

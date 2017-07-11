@@ -10,6 +10,8 @@ using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
 
+const Value::id_type Value::noid = reinterpret_cast<Value::id_type>(nullptr);
+
 void Value::add_depends_on(id_type id) {
   dependsOnIdx_.push_back(id);
 

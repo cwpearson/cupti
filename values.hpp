@@ -11,7 +11,7 @@ class Values {
 public:
   typedef Value::id_type id_type;
   typedef std::shared_ptr<Value> value_type;
-  static const id_type noid = Value::noid;
+  static const id_type noid;
 
 private:
   typedef std::map<id_type, value_type> map_type;
@@ -37,8 +37,17 @@ public:
 
   std::pair<id_type, value_type> new_value(const uintptr_t pos,
                                            const size_t size,
-                                           Allocations::id_type allocId) {
-    auto v = new Value(pos, size, allocId);
+                                           const Allocations::id_type allocId) {
+    return new_value(pos, size, allocId, false);
+  }
+
+  std::pair<id_type, value_type> new_value(const uintptr_t pos,
+                                           const size_t size,
+                                           const Allocations::id_type allocId,
+                                           const bool initialized) {
+    assert((allocId != noid) && "Allocation should be valid");
+
+    auto v = new Value(pos, size, allocId, initialized);
     auto p = insert(std::shared_ptr<Value>(v));
     assert(p.second && "Expecting new value");
     return *p.first;

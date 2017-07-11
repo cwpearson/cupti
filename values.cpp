@@ -4,6 +4,8 @@
 #include <fstream>
 #include <map>
 
+const Values::id_type Values::noid = Value::noid;
+
 // FIXME: refactor this and other find_live and AddressSpace to take a
 // AddressSpace mask
 std::pair<Values::id_type, Values::value_type>

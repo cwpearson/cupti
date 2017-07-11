@@ -9,6 +9,9 @@ using boost::property_tree::write_json;
 
 const std::string output_path("cprof.txt");
 
+const AllocationRecord::id_type AllocationRecord::noid =
+    reinterpret_cast<id_type>(nullptr);
+
 std::string to_string(AllocationRecord::PageType type) {
   if (AllocationRecord::PageType::Pinned == type)
     return "pinned";
