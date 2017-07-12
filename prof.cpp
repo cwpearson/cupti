@@ -9,6 +9,7 @@
 
 #include "allocations.hpp"
 #include "callbacks.hpp"
+#include "driver_state.hpp"
 #include "thread.hpp"
 #include "values.hpp"
 
@@ -126,12 +127,12 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   newValue->add_depends_on(xKey);
   newValue->add_depends_on(yKey);
 
-  lazyStopCallbacks();
+  DriverState::this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasDgemv "
          "call\n");
   const cublasStatus_t ret = real_cublasDgemv(handle, trans, m, n, alpha, A,
                                               lda, x, incx, beta, y, incy);
-  lazyActivateCallbacks();
+  DriverState::this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -190,11 +191,11 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
       values.new_value((uintptr_t)result, sizeof(float), rAllocId);
   rVal->add_depends_on(xId);
 
-  lazyStopCallbacks();
+  DriverState::this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasSdot call\n");
   const cublasStatus_t ret =
       real_cublasSdot(handle, n, x, incx, y, incy, result);
-  lazyActivateCallbacks();
+  DriverState::this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -245,10 +246,11 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
       values.new_value((uintptr_t)result, sizeof(float), rAllocId);
   rVal->add_depends_on(xId);
 
-  lazyStopCallbacks();
-  printf("WARN: disabling CUPTI callbacks during cublasSasum call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+  printf("WARN: tid=%d disabling CUPTI callbacks during cublasSasum call\n",
+         get_thread_id());
   const cublasStatus_t ret = real_cublasSasum(handle, n, x, incx, result);
-  lazyActivateCallbacks();
+  DriverState::this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -263,10 +265,11 @@ extern "C" cublasStatus_t cublasDestroy(cublasHandle_t handle) {
   }
   assert(real_cublasDestroy && "Will the real cublasDestroy please stand up?");
 
-  lazyStopCallbacks();
-  printf("WARN: disabling CUPTI callbacks during cublasDestroy call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+  printf("WARN: tid=%d disabling CUPTI callbacks during cublasDestroy call\n",
+         get_thread_id());
   const cublasStatus_t ret = real_cublasDestroy(handle);
-  lazyActivateCallbacks();
+  DriverState::this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -282,9 +285,9 @@ extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
   assert(real_cublasCreate && "Will the real cublasCreate please stand up?");
 
   printf("WARN: disabling CUPTI callbacks during cublasCreate call\n");
-  lazyStopCallbacks();
+  DriverState::this_thread().pause_cupti_callbacks();
   const cublasStatus_t ret = real_cublasCreate(handle);
-  lazyActivateCallbacks();
+  DriverState::this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -353,10 +356,10 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnForwardConvolution call\n");
-  lazyStopCallbacks();
+  DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionForward(
       handle, alpha, xDesc, x, wDesc, w, convDesc, algo, workSpace,
       workSpaceSizeInBytes, beta, yDesc, y);
-  lazyActivateCallbacks();
+  DriverState::this_thread().resume_cupti_callbacks();
   return ret;
 }

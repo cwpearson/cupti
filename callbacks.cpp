@@ -34,9 +34,6 @@
     exit(-1);                                                                  \
   }
 
-void lazyStopCallbacks();
-void lazyActivateCallbacks();
-
 CUpti_SubscriberHandle SUBSCRIBER;
 bool SUBSCRIBER_ACTIVE = 0;
 
@@ -336,8 +333,7 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
     printf("[cudaMallocManaged] %lu[%lu]\n", devPtr, size);
 
     // Create the new allocation
-    Memory AM(Memory::CudaDevice,
-              DriverState::thread(get_thread_id()).current_device());
+    Memory AM(Memory::CudaDevice, DriverState::this_thread().current_device());
     std::shared_ptr<AllocationRecord> a(
         new AllocationRecord(devPtr, size, AddressSpace::Cuda, AM,
                              AllocationRecord::PageType::Pageable));
@@ -393,7 +389,7 @@ static void handleCudaMallocHost(Allocations &allocations, Values &values,
 static void handleCuMemHostAlloc(Allocations &allocations, Values &values,
                                  const CUpti_CallbackData *cbInfo) {
 
-  auto &ts = DriverState::thread(get_thread_id());
+  auto &ts = DriverState::this_thread();
   if (ts.in_child_api() && ts.parent_api().is_runtime() &&
       ts.parent_api().cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020) {
     printf("WARN: skipping cuMemHostAlloc inside cudaMallocHost\n");
@@ -471,8 +467,8 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
 
     // Create the new allocation
     // FIXME: need to check which address space this is in
-    Memory AM = Memory(Memory::CudaDevice,
-                       DriverState::thread(get_thread_id()).current_device());
+    Memory AM =
+        Memory(Memory::CudaDevice, DriverState::this_thread().current_device());
     std::shared_ptr<AllocationRecord> a(
         new AllocationRecord(devPtr, size, AddressSpace::Cuda, AM,
                              AllocationRecord::PageType::Pageable));
@@ -612,11 +608,15 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        const CUpti_CallbackData *cbInfo) {
   (void)userdata;
 
+  if (!DriverState::this_thread().is_cupti_callbacks_enabled()) {
+    return;
+  }
+
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-      printf("tid=%d about to increase api stack\n", get_thread_id());
-      DriverState::thread(get_thread_id()).api_enter(domain, cbid, cbInfo);
+      // printf("tid=%d about to increase api stack\n", get_thread_id());
+      DriverState::this_thread().api_enter(domain, cbid, cbInfo);
     }
   }
   // Data is collected for the following APIs
@@ -693,27 +693,13 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-      printf("tid=%d about to reduce api stack\n", get_thread_id());
-      DriverState::thread(get_thread_id()).api_exit(domain, cbid, cbInfo);
+      // printf("tid=%d about to reduce api stack\n", get_thread_id());
+      DriverState::this_thread().api_exit(domain, cbid, cbInfo);
     }
   }
 }
 
-// static const char *memcpyKindStr(enum cudaMemcpyKind kind) {
-//   switch (kind) {
-//   case cudaMemcpyHostToDevice:
-//     return "HostToDevice";
-//   case cudaMemcpyDeviceToHost:
-//     return "DeviceToHost";
-//   default:
-//     break;
-//   }
-
-//   return "<unknown>";
-// }
-
 int activateCallbacks() {
-
   CUptiResult cuptierr;
 
   cuptierr = cuptiSubscribe(&SUBSCRIBER, (CUpti_CallbackFunc)callback, nullptr);
@@ -723,32 +709,7 @@ int activateCallbacks() {
   cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_DRIVER_API);
   CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
 
-  // cuptierr = cuptiUnsubscribe(runtimeSubscriber);
-
   return 0;
-}
-
-int stopCallbacks() {
-  CUptiResult cuptierr;
-  cuptierr = cuptiUnsubscribe(SUBSCRIBER);
-  CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
-  return 0;
-}
-
-// stop callbacks if they are running
-void lazyStopCallbacks() {
-  if (SUBSCRIBER_ACTIVE) {
-    stopCallbacks();
-    SUBSCRIBER_ACTIVE = false;
-  }
-}
-
-// start callbacks if they are not running
-void lazyActivateCallbacks() {
-  if (!SUBSCRIBER_ACTIVE) {
-    activateCallbacks();
-    SUBSCRIBER_ACTIVE = true;
-  }
 }
 
 // start callbacks only the first time
@@ -756,7 +717,14 @@ void onceActivateCallbacks() {
   static bool done = false;
   if (!done) {
     printf("Activating callbacks for first time!\n");
-    lazyActivateCallbacks();
+    activateCallbacks();
     done = true;
   }
 }
+
+// static int stopCallbacks() {
+//   CUptiResult cuptierr;
+//   cuptierr = cuptiUnsubscribe(SUBSCRIBER);
+//   CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
+//   return 0;
+// }
