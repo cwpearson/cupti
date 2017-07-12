@@ -28,7 +28,28 @@ cudnnActivationForward(cudnnHandle_t handle,
 
   LD_PRELOAD_BOILERPLATE(cudnnActivationForward);
 
-  assert(0 && "unimplemented");
+  Values::id_type srcId, dstId;
+  Values::value_type srcVal, dstVal;
+
+  auto &values = Values::instance();
+  auto &allocations = Allocations::instance();
+
+  // Get src value
+  std::tie(srcId, srcVal) =
+      values.find_live((uintptr_t)srcData, 1, AddressSpace::Cuda());
+  assert(srcId && "src should be on device");
+
+  // Get dst allocation
+  Allocations::id_type dstAllocId;
+  std::tie(dstAllocId, std::ignore) =
+      allocations.find_live((uintptr_t)destData, AddressSpace::Cuda());
+  assert(dstAllocId && "dst alloc should be on device");
+
+  std::tie(dstId, dstVal) =
+      values.new_value((uintptr_t)destData, 0, dstAllocId, true);
+  dstVal->add_depends_on(srcId);
+
+  // Fixme: also depends on alpha, beta
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnActivationForward call\n");
