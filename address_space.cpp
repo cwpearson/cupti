@@ -7,18 +7,17 @@
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
 
-static std::string to_string(const AddressSpace::flag_t &f) {
-  std::string ret("");
-  if (AddressSpace::Host & f) {
-    ret += std::string("host");
+static std::string to_string(const AddressSpace::Type &t) {
+  switch (t) {
+  case AddressSpace::Type::Host:
+    return "host";
+  case AddressSpace::Type::Cuda:
+    return "cuda";
+  case AddressSpace::Type::Unknown:
+    return "unknown";
+  default:
+    assert(0 && "Unhandled AddressSpace::Type");
   }
-  if (AddressSpace::Cuda & f) {
-    if (!ret.empty()) {
-      ret += std::string("|");
-    }
-    ret += std::string("cuda");
-  }
-  return ret;
 }
 
 std::string AddressSpace::json() const {
@@ -27,4 +26,9 @@ std::string AddressSpace::json() const {
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();
+}
+
+bool AddressSpace::maybe_equal(const AddressSpace &other) const {
+  assert(is_valid());
+  return other == *this || is_unknown() || other.is_unknown();
 }

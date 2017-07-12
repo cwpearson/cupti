@@ -25,7 +25,7 @@ class Value(Node):
         self.allocation_id = allocation_id
     def add_to_graph(self, g):
         n = g.add_node(self.ID)
-        n.attributes() += Attribute("size", self.size, type='int')
+         += Attribute("size", self.size, type='int')
         n["pos"] = self.pos
         return n
 

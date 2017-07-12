@@ -12,6 +12,13 @@ const std::string output_path("cprof.txt");
 const AllocationRecord::id_type AllocationRecord::noid =
     reinterpret_cast<id_type>(nullptr);
 
+AllocationRecord::AllocationRecord(uintptr_t pos, size_t size,
+                                   const AddressSpace &as, const Memory &mem,
+                                   PageType pt)
+    : Extent(pos, size), address_space_(as), memory_(mem), type_(pt) {
+  assert(address_space_.is_valid());
+}
+
 std::string to_string(AllocationRecord::PageType type) {
   if (AllocationRecord::PageType::Pinned == type)
     return "pinned";
@@ -36,18 +43,6 @@ std::string AllocationRecord::json() const {
   write_json(buf, pt, false);
   return buf.str();
 }
-
-// AllocationRecord &AllocationRecord::UnknownAllocationRecord() {
-//   static AllocationRecord unknown(0 /*pos*/, 0 /*size*/, Location::Host());
-//   unknown.is_unknown_ = true;
-//   return unknown;
-// }
-
-// AllocationRecord &AllocationRecord::NoAllocationRecord() {
-//   static AllocationRecord a(0 /*pos*/, 0 /*size*/, Location::Host());
-//   a.is_not_AllocationRecord_ = true;
-//   return a;
-// }
 
 std::ostream &operator<<(std::ostream &os, const AllocationRecord &v) {
   os << v.json();

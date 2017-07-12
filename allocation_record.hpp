@@ -27,8 +27,7 @@ private:
 public:
   friend std::ostream &operator<<(std::ostream &os, const AllocationRecord &v);
   AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
-                   const Memory &mem, PageType pt)
-      : Extent(pos, size), address_space_(as), memory_(mem), type_(pt) {}
+                   const Memory &mem, PageType pt);
 
   std::string json() const;
 

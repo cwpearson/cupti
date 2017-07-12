@@ -11,6 +11,8 @@ driver_state.o \
 extent.o \
 memory.o \
 numa.o \
+preload_cudnn.o \
+preload_cublas.o \
 prof.o \
 thread.o \
 value.o \
@@ -26,9 +28,6 @@ LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcud
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) $(INC) $^ -c -o $@	
 
-#%.o : %.cu
-#	$(NVCC) $(NVCCFLAGS) -dc $^ -lcudadevrt -lcudart -o $@	
-
 %.o : %.cu
 	$(NVCC) -std=c++11 -arch=sm_35 -dc  -Xcompiler -fPIC $^ -o test.o
 	$(NVCC) -std=c++11 -arch=sm_35 -Xcompiler -fPIC -dlink test.o -lcudadevrt -lcudart -o $@	
@@ -36,8 +35,12 @@ LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcud
 prof.so: $(OBJECTS)
 	$(CXX) -shared $(LIB) $^ -o $@
 
-#prof.so: $(OBJECTS)
-#	$(CXX) -shared $(LIB) $^ test.o -o $@
-
 clean:
 	rm -f *.o cprof prof.so
+
+
+#prof.so: $(OBJECTS)
+#	$(CXX) -shared $(LIB) $^ test.o -o $@
+#%.o : %.cu
+#	$(NVCC) $(NVCCFLAGS) -dc $^ -lcudadevrt -lcudart -o $@	
+

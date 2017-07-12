@@ -6,31 +6,34 @@
 
 class AddressSpace {
 public:
-  typedef uint64_t flag_t;
-
-  static constexpr flag_t Unknown = 0x0;
-  static constexpr flag_t Host = 0x1;
-  static constexpr flag_t Cuda = 0x2;
-
-  AddressSpace() {}
-  AddressSpace(flag_t type) : type_(type) {}
+  enum class Type { Unknown, Host, Cuda, Invalid };
+  AddressSpace() : type_(Type::Invalid) {}
   AddressSpace(const AddressSpace &other) : type_(other.type_) {}
 
+private:
+  AddressSpace(Type type) : type_(type) {}
+
+public:
   bool operator==(const AddressSpace &rhs) const { return type_ == rhs.type_; }
   bool operator<(const AddressSpace &rhs) const { return type_ < rhs.type_; }
 
-  bool is_host() const { return type_ & Host; }
-  bool is_cuda() const { return type_ & Cuda; }
-  bool is_unknown() const { return type_ == Unknown; }
+  bool is_valid() const { return type_ != Type::Invalid; }
+  bool is_host() const { return type_ == Type::Host; }
+  bool is_cuda() const { return type_ == Type::Cuda; }
+  bool is_unknown() const { return type_ == Type::Unknown; }
 
-  bool maybe_equal(const AddressSpace &other) const {
-    return other == *this || is_unknown() || other.is_unknown();
-  }
+  bool maybe_equal(const AddressSpace &other) const;
 
   std::string json() const;
 
+  static AddressSpace Host() { return AddressSpace(AddressSpace::Type::Host); }
+  static AddressSpace Cuda() { return AddressSpace(AddressSpace::Type::Cuda); }
+  static AddressSpace Unknown() {
+    return AddressSpace(AddressSpace::Type::Unknown);
+  }
+
 private:
-  flag_t type_;
+  Type type_;
 };
 
 #endif

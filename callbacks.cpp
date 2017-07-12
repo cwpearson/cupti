@@ -54,7 +54,7 @@ ConfiguredCall_t &ConfiguredCall() {
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch preamble\n");
 
-  // print_backtrace();
+  print_backtrace();
 
   // Get the current stream
   const cudaStream_t stream = ConfiguredCall().stream;
@@ -144,13 +144,13 @@ Allocations::id_type best_effort_allocation(const uintptr_t p,
 
   // Look in Host address space
   std::tie(srcAllocId, std::ignore) =
-      allocations.find_live(p, count, AddressSpace::Host);
+      allocations.find_live(p, count, AddressSpace::Host());
   if (srcAllocId != Allocations::noid) {
     return srcAllocId;
   }
 
   std::tie(srcAllocId, std::ignore) =
-      allocations.find_live(p, count, AddressSpace::Cuda);
+      allocations.find_live(p, count, AddressSpace::Cuda());
   if (srcAllocId != Allocations::noid) {
     return srcAllocId;
   }
@@ -173,41 +173,43 @@ void record_memcpy(Allocations &allocations, Values &values,
     // Look for, or create a source allocation
     srcAllocId = best_effort_allocation(src, count);
     if (!srcAllocId) {
-      printf("WARN: Creating implicit host src allocation=%lu\n", src);
-      std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-          src, count, AddressSpace::Unknown, Memory::Unknown,
-          AllocationRecord::PageType::Unknown));
-      auto pair = allocations.insert(a);
-      srcAllocId = pair.first->first;
+      Memory M(Memory::Host, get_numa_node(dst));
+      std::tie(srcAllocId, std::ignore) =
+          allocations.new_allocation(src, count, AddressSpace::Host(), M,
+                                     AllocationRecord::PageType::Unknown);
+      printf("WARN: Couldn't find src alloc. Created implict host "
+             "allocation=%lu.\n",
+             src);
     }
 
     srcAS = allocations.at(srcAllocId)->address_space();
-    dstAS = AddressSpace::Cuda;
+    dstAS = AddressSpace::Cuda();
   } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
     printf("%lu --[d2h]--> %lu\n", src, dst);
 
     // Look for, or create a destination allocation
     dstAllocId = best_effort_allocation(dst, count);
     if (!dstAllocId) {
-      printf("WARN: Creating implicit host dst allocation=%lu\n", dst);
-      std::shared_ptr<AllocationRecord> a(new AllocationRecord(
-          dst, count, AddressSpace::Unknown, Memory::Unknown,
-          AllocationRecord::PageType::Unknown));
-      auto pair = allocations.insert(a);
-      dstAllocId = pair.first->first;
+      Memory M(Memory::Host, get_numa_node(dst));
+      std::tie(dstAllocId, std::ignore) =
+          allocations.new_allocation(dst, count, AddressSpace::Host(), M,
+                                     AllocationRecord::PageType::Unknown);
+      printf("WARN: Couldn't find dst alloc. Created implict host "
+             "allocation=%lu.\n",
+             src);
     }
 
-    srcAS = AddressSpace::Cuda;
+    srcAS = AddressSpace::Cuda();
     dstAS = allocations.at(dstAllocId)->address_space();
   } else if (MemoryCopyKind::CudaDeviceToDevice() == kind) {
-    srcAS = AddressSpace::Cuda;
-    dstAS = AddressSpace::Cuda;
+    srcAS = AddressSpace::Cuda();
+    dstAS = AddressSpace::Cuda();
   } else if (MemoryCopyKind::CudaDefault() == kind) {
-    srcAS = AddressSpace::Cuda;
-    dstAS = AddressSpace::Cuda;
+    srcAS = AddressSpace::Cuda();
+    dstAS = AddressSpace::Cuda();
   } else if (MemoryCopyKind::CudaPeer() == kind) {
-    srcAS = AddressSpace::Cuda;
-    dstAS = AddressSpace::Cuda;
+    srcAS = AddressSpace::Cuda();
+    dstAS = AddressSpace::Cuda();
   } else if (MemoryCopyKind::CudaHostToHost() == kind) {
     assert(0 && "Unimplemented");
   } else {
@@ -248,9 +250,9 @@ void record_memcpy(Allocations &allocations, Values &values,
   }
 
   // always create a new dst value
-  auto dstVal = std::shared_ptr<Value>(new Value(dst, count, dstAllocId));
-  auto dstPair = values.insert(dstVal);
-  assert(dstPair.second && "Should have been a new value");
+  Values::id_type dstValId;
+  Values::value_type dstVal;
+  std::tie(dstValId, dstVal) = values.new_value(dst, count, dstAllocId);
   dstVal->add_depends_on(srcValId);
 }
 
@@ -334,14 +336,13 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
 
     // Create the new allocation
     Memory AM(Memory::CudaDevice, DriverState::this_thread().current_device());
-    std::shared_ptr<AllocationRecord> a(
-        new AllocationRecord(devPtr, size, AddressSpace::Cuda, AM,
-                             AllocationRecord::PageType::Pageable));
-    allocations.insert(a);
+    Allocations::id_type aId;
+    std::tie(aId, std::ignore) =
+        allocations.new_allocation(devPtr, size, AddressSpace::Cuda(), AM,
+                                   AllocationRecord::PageType::Pageable);
 
     // Create the new value
-    values.insert(std::shared_ptr<Value>(
-        new Value(devPtr, size, a->Id(), false /*initialized*/)));
+    values.new_value(devPtr, size, aId, false /*initialized*/);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -353,13 +354,14 @@ void record_mallochost(Allocations &allocations, Values &values,
   Allocations::id_type aId;
   // Check if the allocation exists
   std::tie(aId, std::ignore) =
-      allocations.find_live(ptr, size, AddressSpace(AddressSpace::Cuda));
+      allocations.find_live(ptr, size, AddressSpace::Cuda());
 
   // If not, create a new one
   if (aId == Allocations::noid) {
     Memory AM(Memory::Host, get_numa_node(ptr)); // FIXME - is this right
-    std::tie(aId, std::ignore) = allocations.new_allocation(
-        ptr, size, AddressSpace::Cuda, AM, AllocationRecord::PageType::Pinned);
+    std::tie(aId, std::ignore) =
+        allocations.new_allocation(ptr, size, AddressSpace::Cuda(), AM,
+                                   AllocationRecord::PageType::Pinned);
   }
 
   // Create the new value
@@ -441,7 +443,7 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
     // Find the live matching allocation
     Allocations::id_type allocId;
     std::tie(allocId, std::ignore) =
-        allocations.find_live(ptr, AddressSpace::Cuda);
+        allocations.find_live(ptr, AddressSpace::Cuda());
     if (allocId != Allocations::noid) { // FIXME
       allocations.free(allocId);
     } else {
@@ -470,7 +472,7 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     Memory AM =
         Memory(Memory::CudaDevice, DriverState::this_thread().current_device());
     std::shared_ptr<AllocationRecord> a(
-        new AllocationRecord(devPtr, size, AddressSpace::Cuda, AM,
+        new AllocationRecord(devPtr, size, AddressSpace::Cuda(), AM,
                              AllocationRecord::PageType::Pageable));
     Allocations::id_type aId = allocations.insert(a).first->first;
     printf("[cudaMalloc] new alloc id=%lu\n", aId);
@@ -503,7 +505,7 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     // Find the live matching allocation
     Allocations::id_type allocId;
     std::tie(allocId, std::ignore) =
-        allocations.find_live(devPtr, AddressSpace::Cuda);
+        allocations.find_live(devPtr, AddressSpace::Cuda());
     if (allocId != Allocations::noid) { // FIXME
       allocations.free(allocId);
     } else {
