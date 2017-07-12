@@ -522,7 +522,7 @@ static void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
     auto params = ((cudaSetDevice_v3020_params *)(cbInfo->functionParams));
     const int device = params->device;
 
-    DriverState::thread(get_thread_id()).set_device(device);
+    DriverState::this_thread().set_device(device);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");

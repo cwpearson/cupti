@@ -57,18 +57,20 @@ public:
 
 // FIXME: not thread-safe
 class DriverState {
+public:
+  typedef ThreadState mapped_type;
+  typedef tid_t key_type;
+  typedef std::pair<key_type, mapped_type> value_type;
+
 private:
-  typedef std::map<tid_t, ThreadState> ThreadMap;
-  ThreadMap threadState_;
+  typedef std::map<key_type, mapped_type> ThreadMap;
+  ThreadMap threadStates_;
 
   static DriverState &instance();
 
 public:
-  static ThreadState &thread(const tid_t &tid) {
-    return instance().threadState_[tid];
-  }
-  static ThreadState &this_thread() {
-    return instance().threadState_[get_thread_id()];
+  static mapped_type &this_thread() {
+    return instance().threadStates_[get_thread_id()];
   }
 };
 
