@@ -109,7 +109,7 @@ class DottedEdge(Edge):
     def __str__(self):
        return str(self.src) + " -> " + str(self.dst) + " [dir=none, style=dashed];" 
 
-Edges = []
+Edges = set([])
 Values = {}
 Locations = []
 Allocations = {}
@@ -181,11 +181,15 @@ with open(args[0], 'r') as f:
 
         elif "dep" in j:
             dep = j["dep"]
-            Edges += [DirectedEdge(dep["src_id"], dep["dst_id"])]
+            newEdge = DirectedEdge(dep["src_id"], dep["dst_id"])
+            if newEdge in Edges:
+                print "duplicate edge!"
+            else:
+                Edges.add(newEdge)
 
 with open("cprof.dot", 'w') as dotfile:
     write_header(dotfile)
     write_body(dotfile)
     write_footer(dotfile)
 
-print subprocess.check_output(['dot','-Tpdf', '-o', 'cprof.pdf', 'cprof.dot'])
+# print subprocess.check_output(['dot','-Tpdf', '-o', 'cprof.pdf', 'cprof.dot'])
