@@ -9,6 +9,7 @@
 #include "allocations.hpp"
 #include "callbacks.hpp"
 #include "driver_state.hpp"
+#include "preload.hpp"
 #include "thread.hpp"
 #include "values.hpp"
 
@@ -17,7 +18,28 @@ typedef cudnnStatus_t (*cudnnActivationForwardFunc)(
     const void *alpha, const cudnnTensorDescriptor_t srcDesc,
     const void *srcData, const void *beta,
     const cudnnTensorDescriptor_t destDesc, void *destData);
-static cudnnActivationForwardFunc real_cudnnActivationForward = nullptr;
+
+extern "C" cudnnStatus_t
+cudnnActivationForward(cudnnHandle_t handle,
+                       cudnnActivationDescriptor_t activationDesc,
+                       const void *alpha, const cudnnTensorDescriptor_t srcDesc,
+                       const void *srcData, const void *beta,
+                       const cudnnTensorDescriptor_t destDesc, void *destData) {
+
+  LD_PRELOAD_BOILERPLATE(cudnnActivationForward);
+
+  assert(0 && "unimplemented");
+
+  printf(
+      "WARN: disabling CUPTI callbacks during cudnnActivationForward call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+  const cudnnStatus_t ret =
+      real_cudnnActivationForward(handle, activationDesc, alpha, srcDesc,
+                                  srcData, beta, destDesc, destData);
+  DriverState::this_thread().resume_cupti_callbacks();
+
+  return ret;
+}
 
 typedef cudnnStatus_t (*cudnnConvolutionForwardFunc)(
     cudnnHandle_t handle, const void *alpha,
@@ -36,17 +58,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
                         size_t workSpaceSizeInBytes, const void *beta,
                         const cudnnTensorDescriptor_t yDesc, void *y) {
 
-  onceActivateCallbacks();
-  printf("prof.so intercepted cudnnConvolutionForward call\n");
-
-  static cudnnConvolutionForwardFunc real_cudnnConvolutionForward = nullptr;
-
-  if (real_cudnnConvolutionForward == nullptr) {
-    real_cudnnConvolutionForward = (cudnnConvolutionForwardFunc)dlsym(
-        RTLD_NEXT, "cudnnConvolutionForward");
-  }
-  assert(real_cudnnConvolutionForward &&
-         "Will the real cudnnConvolutionForward please stand up?");
+  LD_PRELOAD_BOILERPLATE(cudnnConvolutionForward);
 
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
@@ -89,5 +101,6 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
       handle, alpha, xDesc, x, wDesc, w, convDesc, algo, workSpace,
       workSpaceSizeInBytes, beta, yDesc, y);
   DriverState::this_thread().resume_cupti_callbacks();
+
   return ret;
 }
