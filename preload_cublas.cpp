@@ -153,7 +153,6 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   auto &values = Values::instance();
 
   // Find the argument values
-  // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   Values::id_type aId, bId, cId;
   Values::value_type aVal, bVal, cVal;
   std::tie(aId, aVal) = values.find_live_device((uintptr_t)A, 1);
@@ -239,6 +238,60 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   return ret;
 }
 
+typedef cublasStatus_t (*cublasSgemvFunc)(cublasHandle_t handle,
+                                          cublasOperation_t trans, int m, int n,
+                                          const float *alpha, const float *A,
+                                          int lda, const float *x, int incx,
+                                          const float *beta, float *y,
+                                          int incy);
+extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
+                                      cublasOperation_t trans, int m, int n,
+                                      const float *alpha, const float *A,
+                                      int lda, const float *x, int incx,
+                                      const float *beta, float *y, int incy) {
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasSgemv);
+
+  // record data, we know things about how this API works
+  auto &values = Values::instance();
+
+  // Find the argument values
+  // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
+  Values::id_type aKey, xKey, yKey;
+  Values::value_type aVal, xVal, yVal;
+  std::tie(aKey, aVal) = values.find_live_device((uintptr_t)A, 1);
+  std::tie(xKey, xVal) = values.find_live_device((uintptr_t)x, 1);
+  std::tie(yKey, yVal) = values.find_live_device((uintptr_t)y, 1);
+
+  assert(aKey && xKey && yKey &&
+         "Couldn't find cublasSgemv argument value on device");
+
+  // FIXME: could use these to do better on dependences
+  printf("WARN: not handling some values (A, alpha, beta)\n");
+
+  Values::id_type newId;
+  Values::value_type newVal;
+  std::tie(newId, newVal) = values.duplicate_value(yVal);
+  newVal->add_depends_on(xKey);
+  newVal->add_depends_on(yKey);
+
+  DriverState::this_thread().pause_cupti_callbacks();
+  printf("WARN: disabling CUPTI callbacks during cublasSgemv "
+         "call\n");
+  const cublasStatus_t ret = real_cublasSgemv(handle, trans, m, n, alpha, A,
+                                              lda, x, incx, beta, y, incy);
+  DriverState::this_thread().resume_cupti_callbacks();
+
+  auto api = std::make_shared<ApiRecord>(
+      "cublasSgemv", DriverState::this_thread().current_device());
+  api->add_output(newId);
+  api->add_input(aKey);
+  api->add_input(xKey);
+  api->add_input(yKey);
+  APIs::instance().insert(api);
+
+  return ret;
+}
+
 typedef cublasStatus_t (*cublasSasumFunc)(cublasHandle_t, int, const float *,
                                           int, float *);
 extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
@@ -290,6 +343,44 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
          get_thread_id());
   const cublasStatus_t ret = real_cublasSasum(handle, n, x, incx, result);
   DriverState::this_thread().resume_cupti_callbacks();
+  return ret;
+}
+
+typedef cublasStatus_t (*cublasSscalFunc)(
+    cublasHandle_t handle, int n,
+    const float *alpha, /* host or device pointer */
+    float *x, int incx);
+extern "C" cublasStatus_t
+cublasSscal(cublasHandle_t handle, int n,
+            const float *alpha, /* host or device pointer */
+            float *x, int incx) {
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasSscal);
+
+  auto &values = Values::instance();
+
+  // Find input values
+  Values::id_type xId, outId;
+  Values::value_type xVal, outVal;
+  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AddressSpace::Cuda());
+  assert(xId && "Couldn't find cublasSscal x value on device");
+
+  // Create output value
+  std::tie(outId, outVal) = values.duplicate_value(xVal);
+  outVal->add_depends_on(xId);
+
+  // track api
+  auto api = std::make_shared<ApiRecord>(
+      "cublasSscal", DriverState::this_thread().current_device());
+  api->add_output(outId);
+  api->add_input(xId);
+  APIs::instance().insert(api);
+
+  // Do the actual call
+  printf("WARN: disabling CUPTI callbacks during cublasSscal call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+  const cublasStatus_t ret = real_cublasSscal(handle, n, alpha, x, incx);
+  DriverState::this_thread().resume_cupti_callbacks();
+
   return ret;
 }
 
