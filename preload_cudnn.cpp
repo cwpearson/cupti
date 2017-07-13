@@ -171,6 +171,113 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   return ret;
 }
 
+typedef cudnnStatus_t (*cudnnConvolutionBackwardDataFunc)(
+    cudnnHandle_t, const void *, const cudnnFilterDescriptor_t, const void *,
+    const cudnnTensorDescriptor_t, const void *,
+    const cudnnConvolutionDescriptor_t, cudnnConvolutionBwdDataAlgo_t, void *,
+    size_t, const void *, const cudnnTensorDescriptor_t, void *);
+extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
+    cudnnHandle_t handle, const void *alpha,
+    const cudnnFilterDescriptor_t wDesc, const void *w,
+    const cudnnTensorDescriptor_t dyDesc, const void *dy,
+    const cudnnConvolutionDescriptor_t convDesc,
+    cudnnConvolutionBwdDataAlgo_t algo, void *workSpace,
+    size_t workSpaceSizeInBytes, const void *beta,
+    const cudnnTensorDescriptor_t dxDesc, void *dx) {
+  CUDNN_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardData);
+  auto &values = Values::instance();
+
+  // Find input values
+  Values::id_type wId, dyId, workSpaceId, dxId;
+  Values::value_type wVal, dyVal, workSpaceVal, dxVal;
+  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, AddressSpace::Cuda());
+  std::tie(wId, wVal) = values.find_live((uintptr_t)w, AddressSpace::Cuda());
+  std::tie(workSpaceId, workSpaceVal) =
+      values.find_live((uintptr_t)workSpace, AddressSpace::Cuda());
+  std::tie(dxId, dxVal) = values.find_live((uintptr_t)dx, AddressSpace::Cuda());
+
+  assert(dyId &&
+         "Couldn't find cudnnConvolutionBackwardData dy value on device");
+
+  // Create output value
+  Values::id_type outId;
+  Values::value_type outVal;
+  std::tie(outId, outVal) = values.duplicate_value(dxVal);
+  outVal->add_depends_on(wId);
+  outVal->add_depends_on(dyId);
+  outVal->add_depends_on(workSpaceId);
+  outVal->add_depends_on(dxId);
+  // track api
+  auto api =
+      std::make_shared<ApiRecord>("cudnnConvolutionBackwardData",
+                                  DriverState::this_thread().current_device());
+  api->add_output(outId);
+  api->add_input(wId);
+  api->add_input(dyId);
+  api->add_input(workSpaceId);
+  api->add_input(dxId);
+  APIs::instance().insert(api);
+
+  // Do the actual call
+  printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardData "
+         "call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+  const cudnnStatus_t ret = real_cudnnConvolutionBackwardData(
+      handle, alpha, wDesc, w, dyDesc, dy, convDesc, algo, workSpace,
+      workSpaceSizeInBytes, beta, dxDesc, dx);
+  DriverState::this_thread().resume_cupti_callbacks();
+
+  return ret;
+}
+
+typedef cudnnStatus_t (*cudnnConvolutionBackwardBiasFunc)(
+    cudnnHandle_t handle, const void *alpha,
+    const cudnnTensorDescriptor_t dyDesc, const void *dy, const void *beta,
+    const cudnnTensorDescriptor_t dbDesc, void *db);
+extern "C" cudnnStatus_t
+cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
+                             const cudnnTensorDescriptor_t dyDesc,
+                             const void *dy, const void *beta,
+                             const cudnnTensorDescriptor_t dbDesc, void *db) {
+  CUDNN_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardBias);
+  auto &values = Values::instance();
+  auto &allocations = Allocations::instance();
+
+  // Find input values
+  Values::id_type dyId, dbId;
+  Values::value_type dyVal, dbVal;
+  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, AddressSpace::Cuda());
+
+  assert(dyId &&
+         "Couldn't find cudnnConvolutionBackwardBias dy value on device");
+
+  // Create output value
+  Allocations::id_type dbAllocId;
+  std::tie(dbAllocId, std::ignore) =
+      allocations.find_live((uintptr_t)db, 1, AddressSpace::Cuda());
+  assert(dbAllocId && "y allocation should be on device");
+  std::tie(dbId, dbVal) = values.new_value((uintptr_t)db, 0, dbAllocId);
+  dbVal->add_depends_on(dyId);
+
+  // track api
+  auto api =
+      std::make_shared<ApiRecord>("cudnnConvolutionBackwardBias",
+                                  DriverState::this_thread().current_device());
+  api->add_output(dbId);
+  api->add_input(dyId);
+  APIs::instance().insert(api);
+
+  // Do the actual call
+  printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardBias "
+         "call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+  const cudnnStatus_t ret = real_cudnnConvolutionBackwardBias(
+      handle, alpha, dyDesc, dy, beta, dbDesc, db);
+  DriverState::this_thread().resume_cupti_callbacks();
+
+  return ret;
+}
+
 typedef cudnnStatus_t (*cudnnConvolutionBackwardFilterFunc)(
     cudnnHandle_t handle, const void *alpha,
     const cudnnTensorDescriptor_t xDesc, const void *x,
@@ -192,7 +299,6 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   auto &values = Values::instance();
 
   // Find input values
-
   Values::id_type xId, dyId, workSpaceId, dwId;
   Values::value_type dwVal;
   std::tie(xId, std::ignore) =
