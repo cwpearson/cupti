@@ -164,8 +164,8 @@ Allocations::id_type best_effort_allocation(const uintptr_t p,
   return Allocations::noid;
 }
 
-void record_memcpy(Allocations &allocations, Values &values,
-                   const uintptr_t dst, const uintptr_t src,
+void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
+                   Values &values, const uintptr_t dst, const uintptr_t src,
                    const MemoryCopyKind &kind, const size_t count,
                    const int peerSrc, const int peerDst) {
 
@@ -272,18 +272,9 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
   const size_t count = params->count;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpy entry\n");
-    record_memcpy(allocations, values, dst, src, MemoryCopyKind(kind), count,
-                  0 /*unused*/, 0 /*unused */);
+    record_memcpy(cbInfo, allocations, values, dst, src, MemoryCopyKind(kind),
+                  count, 0 /*unused*/, 0 /*unused */);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    printf("callback: cudaMemcpy exit\n");
-    if (cudaMemcpyHostToDevice == kind) {
-      // auto digest = hash_device(dst, count);
-      // printf("dst digest: %llu\n", digest);
-    }
-    if (cudaMemcpyDeviceToHost == kind) {
-      // auto digest = hash_device(src, count);
-      // printf("src digest: %llu\n", digest);
-    }
   } else {
     assert(0 && "How did we get here?");
   }
@@ -300,8 +291,8 @@ static void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
   const cudaStream_t stream = params->stream;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpyAsync entry\n");
-    record_memcpy(allocations, values, dst, src, MemoryCopyKind(kind), count,
-                  0 /*unused*/, 0 /*unused */);
+    record_memcpy(cbInfo, allocations, values, dst, src, MemoryCopyKind(kind),
+                  count, 0 /*unused*/, 0 /*unused */);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
@@ -320,8 +311,8 @@ static void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
   const cudaStream_t stream = params->stream;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpyPeerAsync entry\n");
-    record_memcpy(allocations, values, dst, src, MemoryCopyKind::CudaPeer(),
-                  count, srcDevice, dstDevice);
+    record_memcpy(cbInfo, allocations, values, dst, src,
+                  MemoryCopyKind::CudaPeer(), count, srcDevice, dstDevice);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
