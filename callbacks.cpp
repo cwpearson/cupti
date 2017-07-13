@@ -14,6 +14,7 @@
 
 #include "allocation_record.hpp"
 #include "allocations.hpp"
+#include "apis.hpp"
 #include "backtrace.hpp"
 #include "check_cuda_error.hpp"
 #include "driver_state.hpp"
@@ -85,7 +86,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   // static std::map<Value::id_type, hash_t> arg_hashes;
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaLaunch entry\n");
+    // printf("callback: cudaLaunch entry\n");
     // const auto params = ((cudaLaunch_v3020_params
     // *)(cbInfo->functionParams));
     // const uintptr_t func = (uintptr_t) params->func;
@@ -95,23 +96,26 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // if it was modified.
 
     // arg_hashes.clear();
-    for (const auto &argKey : kernelArgIds) {
-      const auto &argValue = values[argKey];
-      assert(argValue->address_space().is_cuda());
-      // auto digest = hash_device(argValue->pos(), argValue->size());
-      // printf("digest: %llu\n", digest);
-      // arg_hashes[argKey] = digest;
-    }
+    // for (const auto &argKey : kernelArgIds) {
+    //   const auto &argValue = values[argKey];
+    //   assert(argValue->address_space().is_cuda());
+    // auto digest = hash_device(argValue->pos(), argValue->size());
+    // printf("digest: %llu\n", digest);
+    // arg_hashes[argKey] = digest;
+    // }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     printf("callback: cudaLaunch exit\n");
 
+    auto api = std::make_shared<ApiRecord>(
+        cbInfo->functionName, DriverState::this_thread().current_device());
+
     // The kernel could have modified any argument values.
     // Hash each value and compare to the one recorded at kernel launch
     // If there is a difference, create a new value
-    for (const auto &argKey : kernelArgIds) {
-      const auto &argValue = values[argKey];
-
+    for (const auto &argValId : kernelArgIds) {
+      const auto &argValue = values[argValId];
+      api->add_input(argValId);
       // const auto digest = hash_device(argValue->pos(), argValue->size());
 
       // if (arg_hashes.count(argKey)) {
@@ -119,15 +123,17 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       // }
       // no recorded hash, or hash does not match => new value
       // if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
-      const auto newValue =
-          std::shared_ptr<Value>(new Value(*argValue)); // duplicate the value
-      values.insert(newValue);
-      for (const auto &depKey : kernelArgIds) {
-        printf("launch: %lu deps on %lu\n", newValue->Id(), depKey);
-        newValue->add_depends_on(depKey);
+      Values::id_type newId;
+      Values::value_type newVal;
+      std::tie(newId, newVal) = values.duplicate_value(argValue);
+      for (const auto &depId : kernelArgIds) {
+        printf("launch: %lu deps on %lu\n", newId, depId);
+        newVal->add_depends_on(depId);
       }
+      api->add_output(newId);
       // }
     }
+    APIs::instance().insert(api);
     ConfiguredCall().valid = false;
     ConfiguredCall().args.clear();
   } else {

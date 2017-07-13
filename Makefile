@@ -6,6 +6,8 @@ OBJECTS = \
 address_space.o \
 allocation_record.o \
 allocations.o \
+api_record.o \
+apis.o \
 callbacks.o \
 driver_state.o \
 extent.o \
@@ -18,12 +20,13 @@ thread.o \
 value.o \
 values.o
 
+LD = ld
 CXX=g++
 CXXFLAGS= -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
 NVCC=nvcc
 NVCCFLAGS= -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer
 INC = -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
-LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcudart -lcudadevrt -ldl -lnuma
+LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt -ldl -lnuma
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) $(INC) $^ -c -o $@	

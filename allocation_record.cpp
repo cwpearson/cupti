@@ -4,7 +4,6 @@
 #include <boost/property_tree/ptree.hpp>
 
 using boost::property_tree::ptree;
-using boost::property_tree::read_json;
 using boost::property_tree::write_json;
 
 const std::string output_path("cprof.txt");

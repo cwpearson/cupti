@@ -35,6 +35,13 @@ public:
   std::pair<map_type::iterator, bool> insert(const value_type &v);
   std::pair<map_type::iterator, bool> insert(const Value &v);
 
+  std::pair<id_type, value_type> duplicate_value(const value_type &v) {
+    auto nv = std::shared_ptr<Value>(new Value(*v));
+    auto p = insert(nv);
+    assert(p.second && "Should be new value");
+    return *p.first;
+  }
+
   std::pair<id_type, value_type> new_value(const uintptr_t pos,
                                            const size_t size,
                                            const Allocations::id_type allocId) {
