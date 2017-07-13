@@ -108,6 +108,58 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   return ret;
 }
 
+typedef cublasStatus_t (*cublasSaxpyFunc)(
+    cublasHandle_t handle, int n,
+    const float *alpha, /* host or device pointer */
+    const float *x, int incx, float *y, int incy);
+extern "C" cublasStatus_t
+cublasSaxpy(cublasHandle_t handle, int n,
+            const float *alpha, /* host or device pointer */
+            const float *x, int incx, float *y, int incy) {
+
+  static cublasSaxpyFunc real_cublasSaxpy = nullptr;
+  printf("LD_PRELOAD intercepted cublasSaxpy call\n");
+
+  if (real_cublasSaxpy == nullptr) {
+    real_cublasSaxpy = (cublasSaxpyFunc)dlsym(RTLD_NEXT, "cublasSaxpy_v2");
+  }
+  assert(real_cublasSaxpy && "Will the real cublasSaxpy please stand up?");
+
+  auto &values = Values::instance();
+
+  // Find input values
+  Values::id_type xId, yId;
+  Values::value_type xVal, yVal;
+  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AddressSpace::Cuda());
+  std::tie(yId, yVal) = values.find_live((uintptr_t)y, AddressSpace::Cuda());
+
+  assert(xId && "Couldn't find cublasSaxpy x value on device");
+
+  // Create output value
+  Values::id_type outId;
+  Values::value_type outVal;
+  std::tie(outId, outVal) = values.duplicate_value(yVal);
+  outVal->add_depends_on(xId);
+  outVal->add_depends_on(yId);
+
+  // track api
+  auto api = std::make_shared<ApiRecord>(
+      "cublasSaxpy", DriverState::this_thread().current_device());
+  api->add_output(outId);
+  api->add_input(xId);
+  api->add_input(yId);
+  APIs::instance().insert(api);
+
+  // Do the actual call
+  printf("WARN: disabling CUPTI callbacks during cublasSaxpy call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+  const cublasStatus_t ret =
+      real_cublasSaxpy(handle, n, alpha, x, incx, y, incy);
+  DriverState::this_thread().resume_cupti_callbacks();
+
+  return ret;
+}
+
 typedef cublasStatus_t (*cublasSgemmFunc)(
     cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
     int m, int n, int k, const float *alpha, /* host or device pointer */
