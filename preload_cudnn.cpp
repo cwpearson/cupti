@@ -25,7 +25,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
     const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
 
   // FIXME - also depends on alpha, beta
-  LD_CUDNN_PRELOAD_BOILERPLATE(cudnnActivationForward);
+  CUDNN_LD_PRELOAD_BOILERPLATE(cudnnActivationForward);
 
   Values::id_type xId, yId;
   Values::value_type xVal, yVal;
@@ -73,7 +73,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
                                         const void *A, const void *beta,
                                         const cudnnTensorDescriptor_t cDesc,
                                         void *C) {
-  LD_CUDNN_PRELOAD_BOILERPLATE(cudnnAddTensor);
+  CUDNN_LD_PRELOAD_BOILERPLATE(cudnnAddTensor);
 
   // FIXME - alpha and beta
 
@@ -122,7 +122,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
     const cudnnTensorDescriptor_t xDesc, const void *x, const void *beta,
     const cudnnTensorDescriptor_t dxDesc, void *dx) {
 
-  LD_CUDNN_PRELOAD_BOILERPLATE(cudnnActivationBackward);
+  CUDNN_LD_PRELOAD_BOILERPLATE(cudnnActivationBackward);
 
   Values::id_type yId, dyId, xId, dxId;
   Values::value_type yVal, dyVal, xVal, dxVal;
@@ -188,7 +188,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
     size_t workSpaceSizeInBytes, const void *beta,
     const cudnnFilterDescriptor_t dwDesc, void *dw) {
 
-  LD_CUDNN_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardFilter);
+  CUDNN_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardFilter);
   auto &values = Values::instance();
 
   // Find input values
@@ -254,7 +254,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
                         size_t workSpaceSizeInBytes, const void *beta,
                         const cudnnTensorDescriptor_t yDesc, void *y) {
 
-  LD_CUDNN_PRELOAD_BOILERPLATE(cudnnConvolutionForward);
+  CUDNN_LD_PRELOAD_BOILERPLATE(cudnnConvolutionForward);
 
   auto &values = Values::instance();
 
@@ -313,7 +313,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
     const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,
     const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
 
-  LD_CUDNN_PRELOAD_BOILERPLATE(cudnnSoftmaxForward);
+  CUDNN_LD_PRELOAD_BOILERPLATE(cudnnSoftmaxForward);
 
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();

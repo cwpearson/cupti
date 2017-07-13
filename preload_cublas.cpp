@@ -10,19 +10,13 @@
 #include "apis.hpp"
 #include "callbacks.hpp"
 #include "driver_state.hpp"
+#include "preload.hpp"
 #include "thread.hpp"
 #include "values.hpp"
 
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
 extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
-  static cublasCreateFunc real_cublasCreate = nullptr;
-  onceActivateCallbacks();
-  printf("LD_PRELOAD intercepted cublasCreate call\n");
-
-  if (real_cublasCreate == nullptr) {
-    real_cublasCreate = (cublasCreateFunc)dlsym(RTLD_NEXT, "cublasCreate_v2");
-  }
-  assert(real_cublasCreate && "Will the real cublasCreate please stand up?");
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasCreate);
 
   printf("WARN: disabling CUPTI callbacks during cublasCreate call\n");
   DriverState::this_thread().pause_cupti_callbacks();
@@ -33,21 +27,12 @@ extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
 
 typedef cublasStatus_t (*cublasDestroyFunc)(cublasHandle_t handle);
 extern "C" cublasStatus_t cublasDestroy(cublasHandle_t handle) {
-  static cublasDestroyFunc real_cublasDestroy = nullptr;
-  printf("LD_PRELOAD intercepted cublasDestroy call\n");
-
-  if (real_cublasDestroy == nullptr) {
-    real_cublasDestroy =
-        (cublasDestroyFunc)dlsym(RTLD_NEXT, "cublasDestroy_v2");
-  }
-  assert(real_cublasDestroy && "Will the real cublasDestroy please stand up?");
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasDestroy);
 
   DriverState::this_thread().pause_cupti_callbacks();
   printf("WARN: tid=%d disabling CUPTI callbacks during cublasDestroy call\n",
          get_thread_id());
   const cublasStatus_t ret = real_cublasDestroy(handle);
-  printf("WARN: tid=%d enabling CUPTI callbacks after cublasDestroy call\n",
-         get_thread_id());
   DriverState::this_thread().resume_cupti_callbacks();
   return ret;
 }
@@ -61,13 +46,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
             cublasOperation_t transb, int m, int n, int k, const double *alpha,
             const double *A, int lda, const double *B, int ldb,
             const double *beta, double *C, int ldc) {
-  static cublasDgemmFunc real_cublasDgemm = nullptr;
-  printf("LD_PRELOAD intercepted cublasDgemm call\n");
-
-  if (real_cublasDgemm == nullptr) {
-    real_cublasDgemm = (cublasDgemmFunc)dlsym(RTLD_NEXT, "cublasDgemm_v2");
-  }
-  assert(real_cublasDgemm && "Will the real cublasDgemm please stand up?");
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasDgemm);
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
@@ -117,13 +96,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
             const float *alpha, /* host or device pointer */
             const float *x, int incx, float *y, int incy) {
 
-  static cublasSaxpyFunc real_cublasSaxpy = nullptr;
-  printf("LD_PRELOAD intercepted cublasSaxpy call\n");
-
-  if (real_cublasSaxpy == nullptr) {
-    real_cublasSaxpy = (cublasSaxpyFunc)dlsym(RTLD_NEXT, "cublasSaxpy_v2");
-  }
-  assert(real_cublasSaxpy && "Will the real cublasSaxpy please stand up?");
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasSaxpy);
 
   auto &values = Values::instance();
 
@@ -173,13 +146,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
             const float *A, int lda, const float *B, int ldb,
             const float *beta, /* host or device pointer */
             float *C, int ldc) {
-  static cublasSgemmFunc real_cublasSgemm = nullptr;
-  printf("LD_PRELOAD intercepted cublasSgemm call\n");
-
-  if (real_cublasSgemm == nullptr) {
-    real_cublasSgemm = (cublasSgemmFunc)dlsym(RTLD_NEXT, "cublasSgemm_v2");
-  }
-  assert(real_cublasSgemm && "Will the real cublasSgemm please stand up?");
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasSgemm);
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
@@ -229,13 +196,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
                                       const double *alpha, const double *A,
                                       int lda, const double *x, int incx,
                                       const double *beta, double *y, int incy) {
-  static cublasDgemvFunc real_cublasDgemv = nullptr;
-  printf("LD_PRELOAD intercepted cublasDgemv call\n");
-
-  if (real_cublasDgemv == nullptr) {
-    real_cublasDgemv = (cublasDgemvFunc)dlsym(RTLD_NEXT, "cublasDgemv_v2");
-  }
-  assert(real_cublasDgemv && "Will the real cublasDgemv please stand up?");
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasDgemv);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
@@ -282,13 +243,7 @@ typedef cublasStatus_t (*cublasSasumFunc)(cublasHandle_t, int, const float *,
                                           int, float *);
 extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
                                       const float *x, int incx, float *result) {
-  static cublasSasumFunc real_cublasSasum = nullptr;
-  printf("LD_PRELOAD intercepted cublasSasum call\n");
-
-  if (real_cublasSasum == nullptr) {
-    real_cublasSasum = (cublasSasumFunc)dlsym(RTLD_NEXT, "cublasSasum_v2");
-  }
-  assert(real_cublasSasum && "Will the real cublasSasum please stand up?");
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasSasum);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
@@ -345,13 +300,8 @@ typedef cublasStatus_t (*cublasSdotFunc)(cublasHandle_t handle, int n,
 extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
                                      const float *x, int incx, const float *y,
                                      int incy, float *result) {
-  static cublasSdotFunc real_cublasSdot = nullptr;
-  printf("LD_PRELOAD intercepted cublasSdot call\n");
 
-  if (real_cublasSdot == nullptr) {
-    real_cublasSdot = (cublasSdotFunc)dlsym(RTLD_NEXT, "cublasSdot_v2");
-  }
-  assert(real_cublasSdot && "Will the real cublasSdot please stand up?");
+  CUBLAS_LD_PRELOAD_BOILERPLATE(cublasSdot);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
