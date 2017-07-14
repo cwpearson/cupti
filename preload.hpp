@@ -3,7 +3,7 @@
 
 #include "callbacks.hpp"
 
-#define CUDNN_LD_PRELOAD_BOILERPLATE(name)                                     \
+#define SAME_LD_PRELOAD_BOILERPLATE(name)                                      \
   onceActivateCallbacks();                                                     \
   static name##Func real_##name = nullptr;                                     \
   printf("LD_PRELOAD intercept: " #name "\n");                                 \
@@ -12,7 +12,7 @@
   }                                                                            \
   assert(real_##name && "Will the real " #name " please stand up?");
 
-#define CUBLAS_LD_PRELOAD_BOILERPLATE(name)                                    \
+#define V2_LD_PRELOAD_BOILERPLATE(name)                                        \
   onceActivateCallbacks();                                                     \
   static name##Func real_##name = nullptr;                                     \
   printf("LD_PRELOAD intercept: " #name "\n");                                 \

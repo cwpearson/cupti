@@ -13,15 +13,15 @@ driver_state.o \
 extent.o \
 memory.o \
 numa.o \
-preload_cudnn.o \
 preload_cublas.o \
-prof.o \
+preload_cudart.o \
+preload_cudnn.o \
 thread.o \
 value.o \
 values.o
 
 LD = ld
-CXX=g++
+CXX = g++
 CXXFLAGS= -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
 NVCC=nvcc
 NVCCFLAGS= -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer
@@ -29,7 +29,7 @@ INC = -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
 LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt -ldl -lnuma
 
 %.o : %.cpp
-	$(CXX) $(CXXFLAGS) $(INC) $^ -c -o $@	
+	$(CXX) $(CXXFLAGS) $(INC) $^ -c -o $@
 
 %.o : %.cu
 	$(NVCC) -std=c++11 -arch=sm_35 -dc  -Xcompiler -fPIC $^ -o test.o

@@ -108,7 +108,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     printf("callback: cudaLaunch exit\n");
 
     auto api = std::make_shared<ApiRecord>(
-        cbInfo->functionName, DriverState::this_thread().current_device());
+        cbInfo->functionName, cbInfo->symbolName,
+        DriverState::this_thread().current_device());
 
     // The kernel could have modified any argument values.
     // Hash each value and compare to the one recorded at kernel launch
@@ -260,6 +261,12 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   Values::value_type dstVal;
   std::tie(dstValId, dstVal) = values.new_value(dst, count, dstAllocId);
   dstVal->add_depends_on(srcValId);
+
+  auto api = std::make_shared<ApiRecord>(
+      cbInfo->functionName, DriverState::this_thread().current_device());
+  api->add_input(srcValId);
+  api->add_output(dstValId);
+  APIs::instance().insert(api);
 }
 
 static void handleCudaMemcpy(Allocations &allocations, Values &values,

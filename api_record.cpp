@@ -33,8 +33,10 @@ static ptree to_json(const std::vector<Values::id_type> &v) {
 
 std::string ApiRecord::json() const {
   ptree pt;
-  pt.put("api.id", std::to_string(Id()));
-  pt.put("api.name", name_);
+  pt.put("api.id", Id());
+  pt.put("api.name", apiName_);
+  pt.put("api.device", device_);
+  pt.put("api.symbolname", kernelName_);
   pt.add_child("api.inputs", to_json(inputs_));
   pt.add_child("api.outputs", to_json(outputs_));
   std::ostringstream buf;
