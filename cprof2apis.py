@@ -3,6 +3,7 @@
 import sys
 import json
 import csv
+import math
 
 class Node():
     def __init__(self, ID):
@@ -19,7 +20,7 @@ class Value(Node):
     def __init__(self, ID, pos, size, allocation_id):
         Node.__init__(self, ID)
         self.pos = pos
-        self.size = size
+        self.size = math.log(size,2)
         self.alloc_id = allocation_id
     def write_to_csv(self, writer):
         writer.writerow([self.ID, self.size, self.pos])
@@ -29,7 +30,7 @@ class Allocation(Node):
     def __init__(self, ID, pos, size, ty, addrsp):
         Node.__init__(self, ID)
         self.pos = pos
-        self.size = size
+        self.size = math.log(size,2)
     	self.ty = ty
         self.addrsp = addrsp
 
@@ -94,6 +95,8 @@ with open('edges.csv', 'wb') as edgefile:
                     Id = int(val["id"])
                     allocation_id = int(val["allocation_id"])
                     size = int(val["size"])
+                    if 0 == size:
+                        size = Allocations[allocation_id].size
                     pos = int(val["pos"])
                     newValue = Value(Id, pos, size, allocation_id)
                     Values[Id] = newValue
