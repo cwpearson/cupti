@@ -48,11 +48,9 @@ class API(Node):
         else:
             self.outputs = [int(x) for x in outputs]
     def write_to_csv(self, nodewriter, edgewriter):
-        nodewriter.writerow([self.ID, 0, 0, self.name, self.symbol])
         for i in self.inputs:
-            edgewriter.writerow([i, self.ID, float(Values[i].size)])
-        for o in self.outputs:
-            edgewriter.writerow([self.ID, o, float(Values[o].size)])
+            for o in self.outputs:
+                edgewriter.writerow([i, o, float(Values[o].size), self.name, self.symbol])
 
 class DirectedEdge(Edge):
     def __init__(self, src, dst, weight):
@@ -72,8 +70,8 @@ with open('edges.csv', 'wb') as edgefile:
     with open('nodes.csv', 'wb') as nodefile:
         edgewriter = csv.writer(edgefile, delimiter=',')
         nodewriter = csv.writer(nodefile, delimiter=',')
-        nodewriter.writerow(["id", "size", "pos", "name", "symbol"])
-        edgewriter.writerow(["source", "target", "weight"])
+        nodewriter.writerow(["id", "size", "pos"])
+        edgewriter.writerow(["source", "target", "weight", "name", "symbol"])
         with open(args[0], 'r') as f:
             for line in f:
                 j = json.loads(line)
