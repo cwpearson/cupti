@@ -14,7 +14,6 @@ const Value::id_type Value::noid = reinterpret_cast<Value::id_type>(nullptr);
 
 void Value::add_depends_on(id_type id) {
   dependsOnIdx_.push_back(id);
-
   ptree pt;
   pt.put("dep.dst_id", std::to_string(uintptr_t(this)));
   pt.put("dep.src_id", std::to_string(id));
@@ -25,15 +24,18 @@ void Value::add_depends_on(id_type id) {
 
 std::string Value::json() const {
   ptree pt;
-  pt.put("val.id", std::to_string(uintptr_t(this)));
-  pt.put("val.pos", std::to_string(pos_));
-  pt.put("val.size", std::to_string(size_));
-  pt.put("val.allocation_id", std::to_string(allocation_id_));
-  pt.put("val.initialized", std::to_string(is_initialized_));
+  pt.put("val.id", uintptr_t(this));
+  pt.put("val.pos", pos_);
+  pt.put("val.size", size_);
+  pt.put("val.allocation_id", allocation_id_);
+  pt.put("val.initialized", is_initialized_);
+  pt.put("val.label", label_);
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();
 }
+
+void Value::append_label(const std::string &s) { label_ += s; }
 
 /*
 FIXME - not thread-safe, allications may be modified while calling this function

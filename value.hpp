@@ -20,6 +20,7 @@ private:
   bool is_initialized_;
   AllocationRecord::id_type
       allocation_id_; // allocation that this value lives in
+  std::string label_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const Value &v);
@@ -41,6 +42,8 @@ public:
         bool initialized)
       : Extent(pos, size), is_initialized_(initialized),
         allocation_id_(allocation) {}
+
+  void append_label(const std::string &s);
 
 private:
   // static Value &UnknownValue();
