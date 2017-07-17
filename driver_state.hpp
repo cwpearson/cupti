@@ -36,7 +36,7 @@ private:
   std::vector<APICallRecord> apiStack_;
 
 public:
-  ThreadState() : cuptiCallbacksEnabled_(true) {}
+  ThreadState() : currentDevice_(0), cuptiCallbacksEnabled_(true) {}
 
   int current_device() const { return currentDevice_; }
   void set_device(const int device) { currentDevice_ = device; }
