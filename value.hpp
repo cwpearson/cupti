@@ -9,8 +9,6 @@
 #include "allocation_record.hpp"
 #include "extent.hpp"
 
-const std::string output_path("cprof.txt");
-
 class Value : public Extent {
 public:
   typedef uintptr_t id_type;
@@ -20,7 +18,6 @@ private:
   bool is_initialized_;
   AllocationRecord::id_type
       allocation_id_; // allocation that this value lives in
-  std::string label_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const Value &v);
@@ -43,11 +40,10 @@ public:
       : Extent(pos, size), is_initialized_(initialized),
         allocation_id_(allocation) {}
 
-  void append_label(const std::string &s);
+  void record_meta_append(const std::string &s);
+  void record_meta_set(const std::string &s);
 
 private:
-  // static Value &UnknownValue();
-  // static Value &NoValue();
   std::vector<id_type> dependsOnIdx_; // values this value depends on
 };
 

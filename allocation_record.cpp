@@ -6,8 +6,6 @@
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
 
-const std::string output_path("cprof.txt");
-
 const AllocationRecord::id_type AllocationRecord::noid =
     reinterpret_cast<id_type>(nullptr);
 

@@ -1,4 +1,5 @@
 #include "allocations.hpp"
+#include "output_path.hpp"
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -6,8 +7,6 @@
 using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
-
-const std::string output_path("cprof.txt");
 
 const Allocations::id_type Allocations::noid = AllocationRecord::noid;
 
@@ -27,8 +26,7 @@ Allocations::insert(const Allocations::value_type &v) {
     printf("WARN: inserting size %lu allocation", v->size());
   }
   const auto &valIdx = reinterpret_cast<id_type>(v.get());
-
-  std::ofstream buf(output_path, std::ofstream::app);
+  std::ofstream buf(output_path::get(), std::ofstream::app);
   buf << *v;
   buf.flush();
   std::lock_guard<std::mutex> guard(access_mutex_);

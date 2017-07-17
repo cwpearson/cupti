@@ -1,4 +1,5 @@
 #include "values.hpp"
+#include "output_path.hpp"
 
 #include <cassert>
 #include <fstream>
@@ -80,7 +81,7 @@ Values::insert(const value_type &v) {
   std::lock_guard<std::mutex> guard(modify_mutex_);
   value_order_.push_back(valIdx);
 
-  std::ofstream buf(output_path, std::ofstream::app);
+  std::ofstream buf(output_path::get(), std::ofstream::app);
   buf << *v;
   buf.flush();
 

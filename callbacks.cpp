@@ -261,7 +261,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   Values::value_type dstVal;
   std::tie(dstValId, dstVal) = values.new_value(dst, count, dstAllocId);
   dstVal->add_depends_on(srcValId);
-  dstVal->append_label(cbInfo->functionName);
+  dstVal->record_meta_append(cbInfo->functionName);
 
   auto api = std::make_shared<ApiRecord>(
       cbInfo->functionName, DriverState::this_thread().current_device());
