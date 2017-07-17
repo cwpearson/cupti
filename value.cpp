@@ -48,7 +48,7 @@ void Value::record_meta_set(const std::string &s) {
   ptree pt;
   pt.put("meta.set", s);
   pt.put("meta.val_id", Id());
-  std::ostringstream buf;
+  std::ofstream buf(output_path::get(), std::ofstream::app);
   write_json(buf, pt, false);
   buf.flush();
 }
