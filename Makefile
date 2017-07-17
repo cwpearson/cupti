@@ -1,7 +1,5 @@
 TARGETS = prof.so
 
-all: $(TARGETS)
-
 OBJECTS = \
 address_space.o \
 allocation_record.o \
@@ -21,6 +19,8 @@ thread.o \
 value.o \
 values.o
 
+DEPS=$(patsubst %.o,$(DEPS_DIR)/%.d,$(OBJECTS))
+
 LD = ld
 CXX = g++
 CXXFLAGS= -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
@@ -29,18 +29,23 @@ NVCCFLAGS= -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-fr
 INC = -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
 LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt -ldl -lnuma
 
+all: $(TARGETS)
+
+clean:
+	rm -f $(OBJECTS) $(DEPS) $(TARGETS)
+
+prof.so: $(OBJECTS)
+	$(CXX) -shared $(LIB) $^ -o $@
+
 %.o : %.cpp
-	$(CXX) $(CXXFLAGS) $(INC) $^ -c -o $@
+	$(CXX) -MMD -MP $(CXXFLAGS) $(INC) $< -c -o $@
 
 %.o : %.cu
 	$(NVCC) -std=c++11 -arch=sm_35 -dc  -Xcompiler -fPIC $^ -o test.o
 	$(NVCC) -std=c++11 -arch=sm_35 -Xcompiler -fPIC -dlink test.o -lcudadevrt -lcudart -o $@	
 
-prof.so: $(OBJECTS)
-	$(CXX) -shared $(LIB) $^ -o $@
+-include $(DEPS)
 
-clean:
-	rm -f *.o cprof prof.so
 
 
 #prof.so: $(OBJECTS)

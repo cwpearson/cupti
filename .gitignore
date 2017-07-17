@@ -1,4 +1,5 @@
 *.o
+*.d
 *.so
 examples/samples/matrixMul/mm
 examples/samples/vectorAdd/vec
