@@ -1,6 +1,7 @@
 *.o
 *.d
 *.so
+*.pyc
 examples/samples/matrixMul/mm
 examples/samples/vectorAdd/vec
 examples/samples/deviceQuery/query
