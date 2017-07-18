@@ -19,7 +19,12 @@ extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
 
   printf("WARN: disabling CUPTI callbacks during cublasCreate call\n");
   DriverState::this_thread().pause_cupti_callbacks();
+
   const cublasStatus_t ret = real_cublasCreate(handle);
+
+  DriverState::track_cublas_handle(*handle,
+                                   DriverState::this_thread().current_device());
+
   DriverState::this_thread().resume_cupti_callbacks();
   return ret;
 }
@@ -76,7 +81,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   DriverState::this_thread().resume_cupti_callbacks();
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasDgemm", DriverState::this_thread().current_device());
+      "cublasDgemm", DriverState::device_from_cublas_handle(handle));
   api->add_output(newId);
   api->add_input(aId);
   api->add_input(bId);
@@ -116,7 +121,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
 
   // track api
   auto api = std::make_shared<ApiRecord>(
-      "cublasSaxpy", DriverState::this_thread().current_device());
+      "cublasSaxpy", DriverState::device_from_cublas_handle(handle));
   api->add_output(outId);
   api->add_input(xId);
   api->add_input(yId);
@@ -175,7 +180,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   DriverState::this_thread().resume_cupti_callbacks();
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasSgemm", DriverState::this_thread().current_device());
+      "cublasSgemm", DriverState::device_from_cublas_handle(handle));
   api->add_output(newId);
   api->add_input(aId);
   api->add_input(bId);
@@ -227,7 +232,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   DriverState::this_thread().resume_cupti_callbacks();
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasDgemv", DriverState::this_thread().current_device());
+      "cublasDgemv", DriverState::device_from_cublas_handle(handle));
   api->add_output(newId);
   api->add_input(aKey);
   api->add_input(xKey);
@@ -281,7 +286,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   DriverState::this_thread().resume_cupti_callbacks();
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasSgemv", DriverState::this_thread().current_device());
+      "cublasSgemv", DriverState::device_from_cublas_handle(handle));
   api->add_output(newId);
   api->add_input(aKey);
   api->add_input(xKey);
@@ -332,7 +337,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   rVal->add_depends_on(xId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasSasum", DriverState::this_thread().current_device());
+      "cublasSasum", DriverState::device_from_cublas_handle(handle));
   api->add_output(rId);
   api->add_input(xId);
   APIs::instance().insert(api);
@@ -369,7 +374,7 @@ cublasSscal(cublasHandle_t handle, int n,
 
   // track api
   auto api = std::make_shared<ApiRecord>(
-      "cublasSscal", DriverState::this_thread().current_device());
+      "cublasSscal", DriverState::device_from_cublas_handle(handle));
   api->add_output(outId);
   api->add_input(xId);
   APIs::instance().insert(api);
@@ -434,7 +439,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   rVal->add_depends_on(yId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasSdot", DriverState::this_thread().current_device());
+      "cublasSdot", DriverState::device_from_cublas_handle(handle));
   api->add_output(rId);
   api->add_input(xId);
   api->add_input(yId);

@@ -14,6 +14,20 @@
 #include "thread.hpp"
 #include "values.hpp"
 
+typedef cudnnStatus_t (*cudnnCreateFunc)(cudnnHandle_t *handle);
+extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
+  SAME_LD_PRELOAD_BOILERPLATE(cudnnCreate);
+
+  printf("WARN: disabling CUPTI callbacks during cudnnCreate call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+
+  const cudnnStatus_t ret = real_cudnnCreate(handle);
+  DriverState::track_cudnn_handle(*handle,
+                                  DriverState::this_thread().current_device());
+  DriverState::this_thread().resume_cupti_callbacks();
+  return ret;
+}
+
 typedef cudnnStatus_t (*cudnnActivationForwardFunc)(
     cudnnHandle_t handle, cudnnActivationDescriptor_t activationDesc,
     const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,
@@ -47,7 +61,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   yVal->add_depends_on(xId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnActivationForward", DriverState::this_thread().current_device());
+      "cudnnActivationForward", DriverState::device_from_cudnn_handle(handle));
   api->add_output(yId);
   api->add_input(xId);
   APIs::instance().insert(api);
@@ -95,7 +109,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   dstVal->add_depends_on(cId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnAddTensor", DriverState::this_thread().current_device());
+      "cudnnAddTensor", DriverState::device_from_cudnn_handle(handle));
   api->add_output(dstId);
   api->add_input(aId);
   api->add_input(cId);
@@ -153,7 +167,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
 
   // FIXME: also depends on alpha, beta
   auto api = std::make_shared<ApiRecord>(
-      "cudnnActivationBackward", DriverState::this_thread().current_device());
+      "cudnnActivationBackward", DriverState::device_from_cudnn_handle(handle));
   api->add_output(dxId);
   api->add_input(xId);
   api->add_input(yId);
@@ -208,9 +222,9 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   outVal->add_depends_on(workSpaceId);
   outVal->add_depends_on(dxId);
   // track api
-  auto api =
-      std::make_shared<ApiRecord>("cudnnConvolutionBackwardData",
-                                  DriverState::this_thread().current_device());
+  auto api = std::make_shared<ApiRecord>(
+      "cudnnConvolutionBackwardData",
+      DriverState::device_from_cudnn_handle(handle));
   api->add_output(outId);
   api->add_input(wId);
   api->add_input(dyId);
@@ -260,9 +274,9 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   dbVal->add_depends_on(dyId);
 
   // track api
-  auto api =
-      std::make_shared<ApiRecord>("cudnnConvolutionBackwardBias",
-                                  DriverState::this_thread().current_device());
+  auto api = std::make_shared<ApiRecord>(
+      "cudnnConvolutionBackwardBias",
+      DriverState::device_from_cudnn_handle(handle));
   api->add_output(dbId);
   api->add_input(dyId);
   APIs::instance().insert(api);
@@ -324,7 +338,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
          outId, xId, dyId, workSpaceId, dwId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnConvolutionForward", DriverState::this_thread().current_device());
+      "cudnnConvolutionForward", DriverState::device_from_cudnn_handle(handle));
   api->add_output(outId);
   api->add_input(xId);
   api->add_input(dyId);
@@ -391,7 +405,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
          xId, wId, workSpaceId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnConvolutionForward", DriverState::this_thread().current_device());
+      "cudnnConvolutionForward", DriverState::device_from_cudnn_handle(handle));
   api->add_output(outId);
   api->add_input(xId);
   api->add_input(wId);
@@ -441,7 +455,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
 
   // track api
   auto api = std::make_shared<ApiRecord>(
-      "cudnnSoftmaxForward", DriverState::this_thread().current_device());
+      "cudnnSoftmaxForward", DriverState::device_from_cudnn_handle(handle));
   api->add_output(yId);
   api->add_input(xId);
   APIs::instance().insert(api);

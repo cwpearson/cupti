@@ -19,7 +19,7 @@ thread.o \
 value.o \
 values.o
 
-DEPS=$(patsubst %.o,$(DEPS_DIR)/%.d,$(OBJECTS))
+DEPS=$(patsubst %.o,%.d,$(OBJECTS))
 
 LD = ld
 CXX = g++
@@ -38,6 +38,7 @@ prof.so: $(OBJECTS)
 	$(CXX) -shared $(LIB) $^ -o $@
 
 %.o : %.cpp
+	cppcheck $<
 	$(CXX) -MMD -MP $(CXXFLAGS) $(INC) $< -c -o $@
 
 %.o : %.cu

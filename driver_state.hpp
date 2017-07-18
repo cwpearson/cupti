@@ -8,6 +8,9 @@
 #include <map>
 #include <vector>
 
+#include <cublas_v2.h>
+#include <cudnn.h>
+
 #include "thread.hpp"
 
 class APICallRecord {
@@ -65,10 +68,25 @@ public:
 private:
   typedef std::map<key_type, mapped_type> ThreadMap;
   ThreadMap threadStates_;
+  std::map<const cublasHandle_t, int> cublasHandleToDevice_;
+  std::map<const cudnnHandle_t, int> cudnnHandleToDevice_;
 
   static DriverState &instance();
 
 public:
+  static void track_cublas_handle(const cublasHandle_t h, const int device) {
+    instance().cublasHandleToDevice_[h] = device;
+  }
+  static void track_cudnn_handle(const cudnnHandle_t h, const int device) {
+    instance().cudnnHandleToDevice_[h] = device;
+  }
+  static int device_from_cublas_handle(const cublasHandle_t h) {
+    return instance().cublasHandleToDevice_.at(h);
+  }
+
+  static int device_from_cudnn_handle(const cudnnHandle_t h) {
+    return instance().cudnnHandleToDevice_.at(h);
+  }
   static mapped_type &this_thread() {
     return instance().threadStates_[get_thread_id()];
   }
