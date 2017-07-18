@@ -509,6 +509,7 @@ static void handleCudaFree(Allocations &allocations, Values &values,
 
     // Find the live matching allocation
     Allocations::id_type allocId;
+    printf("Looking for %lu\n", devPtr);
     std::tie(allocId, std::ignore) =
         allocations.find_live(devPtr, AddressSpace::Cuda());
     if (allocId != Allocations::noid) { // FIXME
@@ -580,7 +581,7 @@ static void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
     const auto params =
         ((cudaStreamCreate_v3020_params *)(cbInfo->functionParams));
     const cudaStream_t stream = *(params->pStream);
-    printf("WARN: ignoring cudaStreamCreate");
+    printf("WARN: ignoring cudaStreamCreate\n");
   } else {
     assert(0 && "How did we get here?");
   }

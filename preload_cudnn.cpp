@@ -28,6 +28,18 @@ extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
   return ret;
 }
 
+typedef cudnnStatus_t (*cudnnDestroyFunc)(cudnnHandle_t handle);
+extern "C" cudnnStatus_t cudnnDestroy(cudnnHandle_t handle) {
+  SAME_LD_PRELOAD_BOILERPLATE(cudnnDestroy);
+
+  printf("WARN: disabling CUPTI callbacks during cudnnDestroy call\n");
+  DriverState::this_thread().pause_cupti_callbacks();
+
+  const cudnnStatus_t ret = real_cudnnDestroy(handle);
+  DriverState::this_thread().resume_cupti_callbacks();
+  return ret;
+}
+
 typedef cudnnStatus_t (*cudnnActivationForwardFunc)(
     cudnnHandle_t handle, cudnnActivationDescriptor_t activationDesc,
     const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,

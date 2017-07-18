@@ -37,12 +37,9 @@ std::tuple<Allocations::id_type, Allocations::value_type>
 Allocations::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
   assert(pos && "No allocation at null ptr");
 
-  printf("Findin an alloc\n");
   std::lock_guard<std::mutex> guard(access_mutex_);
-  printf("Got lock\n");
 
   if (allocations_.empty()) {
-    printf("no allocs\n");
     return std::make_pair(noid, value_type(nullptr));
   }
 
@@ -55,7 +52,6 @@ Allocations::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
     const auto &val = alloc.second;
     assert(val.get());
     if (dummy.overlaps(*val)) {
-      printf("found it\n");
       return std::make_pair(key, val);
     }
   }
