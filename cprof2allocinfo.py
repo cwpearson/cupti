@@ -7,57 +7,66 @@ import math
 
 import pycprof
 
-def value_handler(v):
+Allocations = {}
+Devices = {}
+Transfers = {}
+Values = {}
+
+def api_handler(a):
+    if type(a) != pycprof.API:
+        return
+
+    if a.functionName == "cuLaunch":
+        pass
+    else:
+        for val_in in a.inputs:
+            for val_out in a.outputs:
+                vin = Values[val_in]
+                vout = Values[val_out]
+                if vin.size != vout.size:
+                    print vin.size, vout.size, a.functionName
+                ain = Allocations[vin.allocation_id]
+                aout = Allocations[vout.allocation_id]
+
+                if ain not in Transfers:
+                    Transfers[ain] = {}
+                if aout not in Transfers[ain]:
+                    Transfers[ain][aout] = []
+                Transfers[ain][aout] += [vin.size]
+
+
     # print "value_handler called"
     # writer.writerow([v.ID, v.size, v.pos])
-    pass
 
 def allocation_handler(a):
-    pass
+    if type(a) != pycprof.Allocation:
+        return
+    Allocations[a.id_] = a
 
-def handler(o):
-    pass
+def value_handler(v):
+    if type(v) != pycprof.Value:
+        return
+    Values[v.id_] = v
 
-def api_handler(o):
+# def handler(o):
+#     pass
+
+# def api_handler(o):
         # for i in self.inputs:
         #     for o in self.outputs:
         #         if self.name == "cuLaunch":
         #             edgewriter.writerow([i, o, float(Values[o].size), self.symbol, self.symbol])
         #         else:
         #             edgewriter.writerow([i, o, float(Values[o].size), self.name, self.name])
-    pass
+    # pass
 
-pycprof.register_handler(value_handler)
-pycprof.register_handler(allocation_handler)
-pycprof.register_handler(handler)
-pycprof.register_handler(api_handler)
+pycprof.run_handler(value_handler)
+print len(Values), "values found"
 
-pycprof.run()
+pycprof.run_handler(allocation_handler)
+print len(Allocations), "allocations found"
+pycprof.run_handler(api_handler)
 
-
-sys.exit(-1)
-
-class Node():
-    def __init__(self, ID):
-        self.ID = ID
-
-
-class Edge():
-    def __init__(self, src, dst, weight):
-        self.src = src
-        self.dst = dst
-        self.weight = weight
-
-    
-class DirectedEdge(Edge):
-    def __init__(self, src, dst, weight):
-        Edge.__init__(self, src, dst, weight)
-
-
-
-Nodes = {}
-Values = {}
-Allocations = {}
 
 args = sys.argv[1:]
 

@@ -1,28 +1,43 @@
+""" Utilities for interacting with cprof data files """
+
 import json
+
+DEFAULT_INPUT = "output.cprof"
 
 _handlers = []
 
-def register_handler(f):
+def add_handler(f):
     """ Register a handler to run on cprof object """
     global _handlers
     _handlers += [f]
 
+def set_handlers(l):
+    _handlers = l
+
+def run_handlers(handler_list, path=None):
+    """ Run a list of handlers on a cprof file """
+    if not path:
+        path = DEFAULT_INPUT
+
+    with open(path, 'r') as input_file:
+        for line in input_file:
+            j = json.loads(line)
+            if "val" in j:
+                obj = Value(j["val"])
+            elif "allocation" in j:
+                obj = Allocation(j["allocation"])
+            elif "api" in j:
+                obj = API(j["api"])
+
+            for handler_func in handler_list:
+                handler_func(obj)
+
+def run_handler(func, path=None):
+    return run_handlers([func], path)
 
 def run(path=None):
     """ Run registered handlers on path """
-    if not path:
-        path = "output.cprof"
-
-    with open(path, 'r') as f:
-        for line in f:
-            j = json.loads(line)
-            if "value" in j:
-                o = Value(j["value"])
-            elif "allocation" in j:
-                o = Allocation(j["allocation"])
-
-            for h in _handlers:
-                h(o)
+    run_handlers(_handlers, path)
 
 class Value(object):
     def __init__(self, j):
@@ -44,11 +59,11 @@ class Allocation(object):
 class API(object):
     def __init__(self, j):
         self.id_ = int(j["id"])
-        self.name = j["name"]
-        self.symbol = j["symbol"]
+        self.functionName = j["name"]
+        self.symbol = j["symbolname"]
 
-        inputs = json.loads(j["inputs"])
-        outputs = json.loads(j["outputs"])
+        inputs = j["inputs"]
+        outputs = j["outputs"]
         if inputs == "":
             self.inputs = []
         else:
