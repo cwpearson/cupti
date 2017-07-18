@@ -28,6 +28,8 @@ def run_handlers(handler_list, path=None):
                 obj = Allocation(j["allocation"])
             elif "api" in j:
                 obj = API(j["api"])
+            else:
+                continue
 
             for handler_func in handler_list:
                 handler_func(obj)
