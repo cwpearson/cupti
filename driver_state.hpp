@@ -51,6 +51,7 @@ public:
 
   bool in_child_api() const { return apiStack_.size() >= 2; }
   const APICallRecord &parent_api() const;
+  APICallRecord &current_api();
 
   void pause_cupti_callbacks();
   void resume_cupti_callbacks();

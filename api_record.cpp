@@ -39,6 +39,8 @@ std::string ApiRecord::json() const {
   pt.put("api.symbolname", kernelName_);
   pt.add_child("api.inputs", to_json(inputs_));
   pt.add_child("api.outputs", to_json(outputs_));
+  pt.put("api.start", start_);
+  pt.put("api.end", end_);
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();

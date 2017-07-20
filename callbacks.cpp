@@ -23,17 +23,9 @@
 #include "memorycopykind.hpp"
 #include "numa.hpp"
 #include "thread.hpp"
+#include "util_cupti.hpp"
 #include "value.hpp"
 #include "values.hpp"
-
-#define CHECK_CUPTI_ERROR(err, cuptifunc)                                      \
-  if (err != CUPTI_SUCCESS) {                                                  \
-    const char *errstr;                                                        \
-    cuptiGetResultString(err, &errstr);                                        \
-    printf("%s:%d:Error %s for CUPTI API function '%s'.\n", __FILE__,          \
-           __LINE__, errstr, cuptifunc);                                       \
-    exit(-1);                                                                  \
-  }
 
 CUpti_SubscriberHandle SUBSCRIBER;
 bool SUBSCRIBER_ACTIVE = 0;
@@ -282,6 +274,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     printf("callback: cudaMemcpy entry\n");
     record_memcpy(cbInfo, allocations, values, dst, src, MemoryCopyKind(kind),
                   count, 0 /*unused*/, 0 /*unused */);
+
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
@@ -711,12 +704,11 @@ int activateCallbacks() {
   CUptiResult cuptierr;
 
   cuptierr = cuptiSubscribe(&SUBSCRIBER, (CUpti_CallbackFunc)callback, nullptr);
-  CHECK_CUPTI_ERROR(cuptierr, "cuptiSubscribe");
+  CUPTI_CHECK(cuptierr);
   cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_RUNTIME_API);
-  CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
+  CUPTI_CHECK(cuptierr);
   cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_DRIVER_API);
-  CHECK_CUPTI_ERROR(cuptierr, "cuptiEnableDomain");
-
+  CUPTI_CHECK(cuptierr);
   return 0;
 }
 
@@ -733,6 +725,6 @@ void onceActivateCallbacks() {
 // static int stopCallbacks() {
 //   CUptiResult cuptierr;
 //   cuptierr = cuptiUnsubscribe(SUBSCRIBER);
-//   CHECK_CUPTI_ERROR(cuptierr, "cuptiUnsubscribe");
+//   CUPTI_CHECK(cuptierr, "cuptiUnsubscribe");
 //   return 0;
 // }
