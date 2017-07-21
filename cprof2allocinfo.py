@@ -93,7 +93,7 @@ print len(Values), "values found"
 pycprof.run_handler(api_handler)
 print max(len(D2A), len(A2D)), "devices"
 
-pycprof.set_edge_fields(["count"])
+pycprof.set_edge_fields(["Weight"])
 pycprof.set_node_fields(["pos", "size"])
 
 # Add allocation nodes
@@ -110,10 +110,13 @@ for dev in A2D:
 # add edges
 for dev, xfers in D2A.iteritems():
     for aid, sizes in xfers.iteritems():
-        pycprof.add_edge(dev, aid, {"count": sum(sizes)})
+        pycprof.add_edge(dev, aid, {"Weight": math.log(sum(sizes),2)})
 for dev, xfers in A2D.iteritems():
     for aid, sizes in xfers.iteritems():
-        pycprof.add_edge(aid, dev, {"count": sum(sizes)})        
+        pycprof.add_edge(aid, dev, {"Weight": math.log(sum(sizes),2)})
+for src, dsts in A2A.iteritems():
+    for dst in dsts:
+        pycprof.add_edge(src, dst, {"Weight": math.log(sum(sizes),2)})
 
 pycprof.write_nodes("nodes")
 pycprof.write_edges("edges")

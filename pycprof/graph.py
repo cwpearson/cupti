@@ -37,7 +37,7 @@ def write_nodes(basename):
 def write_edges(basename):
     with open(basename + ".csv", 'wb') as f:
         writer = csv.writer(f, delimiter=",", quotechar='|')
-        writer.writerow(["src", "dst"] + _edgeFieldList)
+        writer.writerow(["Source", "Target"] + _edgeFieldList)
         for src, dsts in _edges.iteritems():
             for dst, e in dsts.iteritems():
                 writer.writerow([src, dst] + [e[field] if field in e else "" for field in _edgeFieldList])
