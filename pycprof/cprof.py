@@ -2,6 +2,8 @@
 
 import json
 
+from progress import print_progress
+
 DEFAULT_INPUT = "output.cprof"
 
 _handlers = []
@@ -20,7 +22,15 @@ def run_handlers(handler_list, path=None):
         path = DEFAULT_INPUT
 
     with open(path, 'r') as input_file:
-        for line in input_file:
+        # i = 0
+        # for i, l in enumerate(input_file):
+        #     pass
+        # l = i + 1
+        # print l
+
+        # print_progress(0, l, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
+        for i, line in enumerate(input_file):
+            # print_progress(i, l, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
             j = json.loads(line)
             if "val" in j:
                 obj = Value(j["val"])
