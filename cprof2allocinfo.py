@@ -27,11 +27,11 @@ def api_handler(api):
             a = Allocations[a_id]
             if v.size == 0:
                 v.size = a.size
-                if dev not in A2D:
-                    A2D[dev] = {}
-                if a_id not in A2D[dev]:
-                    A2D[dev][a_id] = []
-                A2D[dev][a_id] += [v.size]
+            if dev not in A2D:
+                A2D[dev] = {}
+            if a_id not in A2D[dev]:
+                A2D[dev][a_id] = []
+            A2D[dev][a_id] += [v.size]
 
 
         for v_id in api.outputs:
@@ -40,11 +40,11 @@ def api_handler(api):
             a = Allocations[a_id]
             if v.size == 0:
                 v.size = a.size
-                if dev not in D2A:
-                    D2A[dev] = {}
-                if a_id not in D2A[dev]:
-                    D2A[dev][a_id] = []
-                D2A[dev][a_id] += [v.size]
+            if dev not in D2A:
+                D2A[dev] = {}
+            if a_id not in D2A[dev]:
+                D2A[dev][a_id] = []
+            D2A[dev][a_id] += [v.size]
 
     else:
         for vin_id in api.inputs:
@@ -58,6 +58,7 @@ def api_handler(api):
                 if aout_id not in A2A[ain_id]:
                     A2A[ain_id][aout_id] = []
                 assert(vin.size == vout.size)
+                # print "adding A2A"
                 A2A[ain_id][aout_id] += [vin.size]
 
     
@@ -109,10 +110,10 @@ for dev in A2D:
 # add edges
 for dev, xfers in D2A.iteritems():
     for aid, sizes in xfers.iteritems():
-        pycprof.add_edge(dev, aid, {"count:", sum(sizes)})
+        pycprof.add_edge(dev, aid, {"count": sum(sizes)})
 for dev, xfers in A2D.iteritems():
     for aid, sizes in xfers.iteritems():
-        pycprof.add_edge(aid, dev, {"count:", sum(sizes)})        
+        pycprof.add_edge(aid, dev, {"count": sum(sizes)})        
 
 pycprof.write_nodes("nodes")
 pycprof.write_edges("edges")
