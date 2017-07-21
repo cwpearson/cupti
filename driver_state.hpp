@@ -11,32 +11,15 @@
 #include <cublas_v2.h>
 #include <cudnn.h>
 
+#include "api_record.hpp"
 #include "thread.hpp"
-
-class APICallRecord {
-private:
-  CUpti_CallbackDomain domain_;
-  CUpti_CallbackId cbid_;
-  const CUpti_CallbackData *cbInfo_;
-
-public:
-  bool is_runtime() const { return domain_ == CUPTI_CB_DOMAIN_RUNTIME_API; }
-  CUpti_CallbackDomain domain() const { return domain_; }
-  CUpti_CallbackId cbid() const { return cbid_; }
-  const CUpti_CallbackData *cb_info() const { return cbInfo_; }
-  APICallRecord()
-      : domain_(CUPTI_CB_DOMAIN_INVALID), cbid_(-1), cbInfo_(nullptr) {}
-  APICallRecord(const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
-                const CUpti_CallbackData *cbInfo)
-      : domain_(domain), cbid_(cbid), cbInfo_(cbInfo) {}
-};
 
 class ThreadState {
 private:
   int currentDevice_;
   bool cuptiCallbacksEnabled_;
 
-  std::vector<APICallRecord> apiStack_;
+  std::vector<ApiRecordRef> apiStack_;
 
 public:
   ThreadState() : currentDevice_(0), cuptiCallbacksEnabled_(true) {}
@@ -44,14 +27,14 @@ public:
   int current_device() const { return currentDevice_; }
   void set_device(const int device) { currentDevice_ = device; }
 
-  void api_enter(const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
-                 const CUpti_CallbackData *cbInfo);
+  void api_enter(const int device, const CUpti_CallbackDomain domain,
+                 const CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo);
   void api_exit(const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
                 const CUpti_CallbackData *cbInfo);
 
   bool in_child_api() const { return apiStack_.size() >= 2; }
-  const APICallRecord &parent_api() const;
-  APICallRecord &current_api();
+  const ApiRecordRef &parent_api() const;
+  ApiRecordRef &current_api();
 
   void pause_cupti_callbacks();
   void resume_cupti_callbacks();

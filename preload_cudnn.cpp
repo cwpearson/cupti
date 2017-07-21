@@ -76,7 +76,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
       "cudnnActivationForward", DriverState::device_from_cudnn_handle(handle));
   api->add_output(yId);
   api->add_input(xId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnActivationForward call\n");
@@ -125,7 +125,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   api->add_output(dstId);
   api->add_input(aId);
   api->add_input(cId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   printf("WARN: disabling CUPTI callbacks during cudnnAddTensor call\n");
   DriverState::this_thread().pause_cupti_callbacks();
@@ -184,7 +184,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   api->add_input(xId);
   api->add_input(yId);
   api->add_input(dyId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnActivationBackward call\n");
@@ -242,7 +242,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   api->add_input(dyId);
   api->add_input(workSpaceId);
   api->add_input(dxId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardData "
@@ -291,7 +291,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
       DriverState::device_from_cudnn_handle(handle));
   api->add_output(dbId);
   api->add_input(dyId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardBias "
@@ -356,7 +356,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   api->add_input(dyId);
   api->add_input(workSpaceId);
   api->add_input(dwId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   printf("WARN: disabling CUPTI callbacks during "
          "cudnnConvolutionBackwardFilter call\n");
@@ -423,7 +423,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   api->add_input(wId);
   api->add_input(workSpaceId);
   api->add_input(yId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnConvolutionForward call\n");
@@ -470,7 +470,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
       "cudnnSoftmaxForward", DriverState::device_from_cudnn_handle(handle));
   api->add_output(yId);
   api->add_input(xId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cudnnSoftmaxForward call\n");

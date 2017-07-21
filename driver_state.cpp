@@ -8,35 +8,32 @@ DriverState &DriverState::instance() {
   return s;
 }
 
-void ThreadState::api_enter(const CUpti_CallbackDomain domain,
+void ThreadState::api_enter(const int device, const CUpti_CallbackDomain domain,
                             const CUpti_CallbackId cbid,
                             const CUpti_CallbackData *cbInfo) {
 
-  apiStack_.push_back(APICallRecord(domain, cbid, cbInfo));
-  // printf("Entering %s [stack sz=%lu]\n", cbInfo->functionName,
-  //        apiStack_.size());
+  apiStack_.push_back(
+      std::make_shared<ApiRecord>(device, domain, cbid, cbInfo));
 }
 
 void ThreadState::api_exit(const CUpti_CallbackDomain domain,
                            const CUpti_CallbackId cbid,
                            const CUpti_CallbackData *cbInfo) {
 
-  // printf("Exiting %s [stack sz=%lu]\n", cbInfo->functionName,
-  // apiStack_.size());
   assert(!apiStack_.empty());
-  const APICallRecord current = apiStack_.back();
-  assert(current.domain() == domain);
-  assert(current.cbid() == cbid);
-  assert(current.cb_info() == cbInfo);
+  const auto current = apiStack_.back();
+  assert(current->domain() == domain);
+  assert(current->cbid() == cbid);
+  assert(current->cb_info() == cbInfo);
   apiStack_.pop_back();
 }
 
-const APICallRecord &ThreadState::parent_api() const {
+const ApiRecordRef &ThreadState::parent_api() const {
   assert(apiStack_.size() >= 2);
   return apiStack_[apiStack_.size() - 2];
 }
 
-APICallRecord &ThreadState::current_api() {
+ApiRecordRef &ThreadState::current_api() {
   assert(apiStack_.size() >= 1);
   return apiStack_.back();
 }

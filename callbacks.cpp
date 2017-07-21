@@ -126,7 +126,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       api->add_output(newId);
       // }
     }
-    APIs::instance().insert(api);
+    APIs::record(api);
     ConfiguredCall().valid = false;
     ConfiguredCall().args.clear();
   } else {
@@ -158,9 +158,9 @@ Allocations::id_type best_effort_allocation(const uintptr_t p,
 }
 
 void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
-                   Values &values, const uintptr_t dst, const uintptr_t src,
-                   const MemoryCopyKind &kind, const size_t count,
-                   const int peerSrc, const int peerDst) {
+                   Values &values, const ApiRecordRef &api, const uintptr_t dst,
+                   const uintptr_t src, const MemoryCopyKind &kind,
+                   const size_t count, const int peerSrc, const int peerDst) {
 
   Allocations::id_type srcAllocId = 0, dstAllocId = 0;
   AddressSpace srcAS, dstAS;
@@ -255,11 +255,9 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   dstVal->add_depends_on(srcValId);
   dstVal->record_meta_append(cbInfo->functionName);
 
-  auto api = std::make_shared<ApiRecord>(
-      cbInfo->functionName, DriverState::this_thread().current_device());
   api->add_input(srcValId);
   api->add_output(dstValId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 }
 
 static void handleCudaMemcpy(Allocations &allocations, Values &values,
@@ -272,10 +270,26 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
   const size_t count = params->count;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpy entry\n");
-    record_memcpy(cbInfo, allocations, values, dst, src, MemoryCopyKind(kind),
-                  count, 0 /*unused*/, 0 /*unused */);
+
+    uint64_t start;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start));
+    auto api = DriverState::this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_start_time(start);
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+
+    uint64_t end;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
+    auto api = DriverState::this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_end_time(end);
+
+    record_memcpy(cbInfo, allocations, values, api, dst, src,
+                  MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
+
   } else {
     assert(0 && "How did we get here?");
   }
@@ -292,9 +306,24 @@ static void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
   const cudaStream_t stream = params->stream;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpyAsync entry\n");
-    record_memcpy(cbInfo, allocations, values, dst, src, MemoryCopyKind(kind),
-                  count, 0 /*unused*/, 0 /*unused */);
+
+    uint64_t start;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start));
+    auto api = DriverState::this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_start_time(start);
+
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    uint64_t end;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
+    auto api = DriverState::this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_end_time(end);
+
+    record_memcpy(cbInfo, allocations, values, api, dst, src,
+                  MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -312,9 +341,22 @@ static void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
   const cudaStream_t stream = params->stream;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpyPeerAsync entry\n");
-    record_memcpy(cbInfo, allocations, values, dst, src,
-                  MemoryCopyKind::CudaPeer(), count, srcDevice, dstDevice);
+    uint64_t start;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start));
+    auto api = DriverState::this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_start_time(start);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    uint64_t end;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
+    auto api = DriverState::this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_end_time(end);
+
+    record_memcpy(cbInfo, allocations, values, api, dst, src,
+                  MemoryCopyKind::CudaPeer(), count, srcDevice, dstDevice);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -390,8 +432,9 @@ static void handleCuMemHostAlloc(Allocations &allocations, Values &values,
                                  const CUpti_CallbackData *cbInfo) {
 
   auto &ts = DriverState::this_thread();
-  if (ts.in_child_api() && ts.parent_api().is_runtime() &&
-      ts.parent_api().cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020) {
+  if (ts.in_child_api() && ts.parent_api()->is_runtime() &&
+      ts.parent_api()->cbid() ==
+          CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020) {
     printf("WARN: skipping cuMemHostAlloc inside cudaMallocHost\n");
     return;
   }
@@ -617,7 +660,8 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_ENTER) {
       // printf("tid=%d about to increase api stack\n", get_thread_id());
-      DriverState::this_thread().api_enter(domain, cbid, cbInfo);
+      DriverState::this_thread().api_enter(
+          DriverState::this_thread().current_device(), domain, cbid, cbInfo);
     }
   }
   // Data is collected for the following APIs

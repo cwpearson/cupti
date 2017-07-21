@@ -21,6 +21,9 @@ void ApiRecord::add_output(const Value::id_type &id) {
   outputs_.push_back(id);
 }
 
+void ApiRecord::record_start_time(const uint64_t start) { start_ = start; }
+void ApiRecord::record_end_time(const uint64_t end) { end_ = end; }
+
 static ptree to_json(const std::vector<Values::id_type> &v) {
   ptree array;
   for (const auto &e : v) {

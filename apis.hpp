@@ -19,10 +19,13 @@ private:
   map_type records_;
   std::mutex mutex_;
 
-public:
-  value_type insert(const mapped_type &m);
+  value_type _record(const mapped_type &m);
 
+public:
   static APIs &instance();
+  static value_type record(const mapped_type &m) {
+    return instance()._record(m);
+  }
 
 private:
   APIs();

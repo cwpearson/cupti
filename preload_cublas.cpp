@@ -76,9 +76,6 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   DriverState::this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasDgemm "
          "call\n");
-  const cublasStatus_t ret = real_cublasDgemm(
-      handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-  DriverState::this_thread().resume_cupti_callbacks();
 
   auto api = std::make_shared<ApiRecord>(
       "cublasDgemm", DriverState::device_from_cublas_handle(handle));
@@ -86,7 +83,11 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   api->add_input(aId);
   api->add_input(bId);
   api->add_input(cId);
-  APIs::instance().insert(api);
+  APIs::record(api);
+
+  const cublasStatus_t ret = real_cublasDgemm(
+      handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+  DriverState::this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -125,7 +126,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
   api->add_output(outId);
   api->add_input(xId);
   api->add_input(yId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cublasSaxpy call\n");
@@ -185,7 +186,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   api->add_input(aId);
   api->add_input(bId);
   api->add_input(cId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   return ret;
 }
@@ -237,7 +238,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   api->add_input(aKey);
   api->add_input(xKey);
   api->add_input(yKey);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   return ret;
 }
@@ -291,7 +292,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   api->add_input(aKey);
   api->add_input(xKey);
   api->add_input(yKey);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   return ret;
 }
@@ -340,7 +341,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
       "cublasSasum", DriverState::device_from_cublas_handle(handle));
   api->add_output(rId);
   api->add_input(xId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   DriverState::this_thread().pause_cupti_callbacks();
   printf("WARN: tid=%d disabling CUPTI callbacks during cublasSasum call\n",
@@ -377,7 +378,7 @@ cublasSscal(cublasHandle_t handle, int n,
       "cublasSscal", DriverState::device_from_cublas_handle(handle));
   api->add_output(outId);
   api->add_input(xId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cublasSscal call\n");
@@ -443,7 +444,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   api->add_output(rId);
   api->add_input(xId);
   api->add_input(yId);
-  APIs::instance().insert(api);
+  APIs::record(api);
 
   DriverState::this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasSdot call\n");
