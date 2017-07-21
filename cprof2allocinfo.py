@@ -75,3 +75,6 @@ print sum(len(ts) for _,ts in TransfersOut.iteritems()), "xfers out of allocs"
 
 print sum(sum(ts) for _,ts in TransfersIn.iteritems()), "bytes in to allocs"
 print sum(sum(ts) for _,ts in TransfersOut.iteritems()), "bytes out of allocs"
+
+pycprof.edge_fields(["id", "src", "dst"])
+pycprof.node_fields(["id", "pos", "size"])
