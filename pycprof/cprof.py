@@ -66,13 +66,14 @@ class Allocation(object):
         self.pos = int(j["pos"])
         self.type = j["type"]
         self.address_space = json.loads(j["addrsp"])
-        self.mem = json.loads(j["mem"])
+        self.mem = Memory(json.loads(j["mem"]))
 
 class API(object):
     def __init__(self, j):
         self.id_ = int(j["id"])
         self.functionName = j["name"]
         self.symbol = j["symbolname"]
+        self.device = j["device"]
 
         inputs = j["inputs"]
         outputs = j["outputs"]
@@ -84,3 +85,8 @@ class API(object):
             self.outputs = []
         else:
             self.outputs = [int(x) for x in outputs]
+
+class Memory(object):
+    def __init__(self, j):
+        self.location = j["loc"]
+        self.id_ = j["id"]

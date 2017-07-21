@@ -8,40 +8,73 @@ import math
 import pycprof
 
 Allocations = {}
-Devices = {}
-TransfersIn = {}
-TransfersOut = {}
+Memories = {}
+A2D = {}
+D2A = {}
+A2A = {}
 Values = {}
 
-def api_handler(a):
-    if type(a) != pycprof.API:
+def api_handler(api):
+    if type(api) != pycprof.API:
         return
 
-    for val_in in a.inputs:
-        vin = Values[val_in]
-        ain_id = vin.allocation_id
-        ain = Allocations[ain_id]
-        if vin.size == 0:
-            # print "input value size 0"
-            vin.size = ain.size
-        TransfersOut[ain_id] += [vin.size]
+    name = api.functionName
+    if name == "cudaLaunch" or "cublas" in name or "cudnn" in name:
+        dev = api.device
+        for v_id in api.inputs:
+            v = Values[v_id]
+            a_id = v.allocation_id
+            a = Allocations[a_id]
+            if v.size == 0:
+                v.size = a.size
+                if dev not in A2D:
+                    A2D[dev] = {}
+                if a_id not in A2D[dev]:
+                    A2D[dev][a_id] = []
+                A2D[dev][a_id] += [v.size]
 
-    for val_out in a.outputs:
-        vout = Values[val_out]
-        aout_id = vout.allocation_id
-        aout = Allocations[aout_id]
-        if vout.size == 0:
-            # print "output value size 0 ->",
-            vout.size = aout.size
-            # print vout.size
-        TransfersIn[aout_id] += [vout.size]
+
+        for v_id in api.outputs:
+            v = Values[v_id]
+            a_id = v.allocation_id
+            a = Allocations[a_id]
+            if v.size == 0:
+                v.size = a.size
+                if dev not in D2A:
+                    D2A[dev] = {}
+                if a_id not in D2A[dev]:
+                    D2A[dev][a_id] = []
+                D2A[dev][a_id] += [v.size]
+
+    else:
+        for vin_id in api.inputs:
+            vin = Values[vin_id]
+            ain_id = vin.allocation_id
+            if ain_id not in A2A:
+                A2A[ain_id] = {}
+            for vout_id in api.outputs:
+                vout = Values[vout_id]
+                aout_id = vout.allocation_id
+                if aout_id not in A2A[ain_id]:
+                    A2A[ain_id][aout_id] = []
+                assert(vin.size == vout.size)
+                A2A[ain_id][aout_id] += [vin.size]
+
+    
 
 def allocation_handler(a):
     if type(a) != pycprof.Allocation:
         return
     Allocations[a.id_] = a
-    TransfersIn[a.id_] = []
-    TransfersOut[a.id_] = []
+
+    loc = a.mem.location
+    Id = a.mem.id_
+    if loc not in Memories:
+        Memories[loc] = {}
+    if Id not in Memories[loc]:
+        Memories[loc][Id] = {}
+    
+    Memories[loc][Id][a.id_] = a
 
 def value_handler(v):
     if type(v) != pycprof.Value:
@@ -50,18 +83,6 @@ def value_handler(v):
         print "duplicate value", v.id_, "overwriting..."
     Values[v.id_] = v
 
-# def handler(o):
-#     pass
-
-# def api_handler(o):
-        # for i in self.inputs:
-        #     for o in self.outputs:
-        #         if self.name == "cuLaunch":
-        #             edgewriter.writerow([i, o, float(Values[o].size), self.symbol, self.symbol])
-        #         else:
-        #             edgewriter.writerow([i, o, float(Values[o].size), self.name, self.name])
-    # pass
-
 pycprof.run_handler(allocation_handler)
 print len(Allocations), "allocations found"
 
@@ -69,12 +90,29 @@ pycprof.run_handler(value_handler)
 print len(Values), "values found"
 
 pycprof.run_handler(api_handler)
+print max(len(D2A), len(A2D)), "devices"
 
-print sum(len(ts) for _,ts in TransfersIn.iteritems()), "xfers in to allocs"
-print sum(len(ts) for _,ts in TransfersOut.iteritems()), "xfers out of allocs"
+pycprof.set_edge_fields(["count"])
+pycprof.set_node_fields(["pos", "size"])
 
-print sum(sum(ts) for _,ts in TransfersIn.iteritems()), "bytes in to allocs"
-print sum(sum(ts) for _,ts in TransfersOut.iteritems()), "bytes out of allocs"
+# Add allocation nodes
+for aid, alloc in Allocations.iteritems():
+    node = {"pos": alloc.pos, "size": alloc.size}
+    pycprof.add_node(aid, node)
 
-pycprof.edge_fields(["id", "src", "dst"])
-pycprof.node_fields(["id", "pos", "size"])
+# add device nodes
+for dev in D2A:
+    pycprof.add_node(dev, {})
+for dev in A2D:
+    pycprof.add_node(dev, {})
+
+# add edges
+for dev, xfers in D2A.iteritems():
+    for aid, sizes in xfers.iteritems():
+        pycprof.add_edge(dev, aid, {"count:", sum(sizes)})
+for dev, xfers in A2D.iteritems():
+    for aid, sizes in xfers.iteritems():
+        pycprof.add_edge(aid, dev, {"count:", sum(sizes)})        
+
+pycprof.write_nodes("nodes")
+pycprof.write_edges("edges")
