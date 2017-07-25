@@ -27,7 +27,9 @@ CXXFLAGS= -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedanti
 NVCC=nvcc
 NVCCFLAGS= -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer
 INC = -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
-LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt -ldl -lnuma
+LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti \
+      -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt \
+      -ldl -lnuma
 
 all: $(TARGETS)
 
@@ -35,7 +37,7 @@ clean:
 	rm -f $(OBJECTS) $(DEPS) $(TARGETS)
 
 prof.so: $(OBJECTS)
-	$(CXX) -shared $(LIB) $^ -o $@
+	$(CXX) -shared $^ -o $@ $(LIB)
 
 %.o : %.cpp
 	cppcheck $<
