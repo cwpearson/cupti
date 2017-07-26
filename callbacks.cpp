@@ -27,9 +27,7 @@
 #include "value.hpp"
 #include "values.hpp"
 
-CUpti_SubscriberHandle SUBSCRIBER;
-bool SUBSCRIBER_ACTIVE = 0;
-
+// FIXME: this should be per-thread
 typedef struct {
   dim3 gridDim;
   dim3 blockDim;
@@ -743,32 +741,3 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     }
   }
 }
-
-int activateCallbacks() {
-  CUptiResult cuptierr;
-
-  cuptierr = cuptiSubscribe(&SUBSCRIBER, (CUpti_CallbackFunc)callback, nullptr);
-  CUPTI_CHECK(cuptierr);
-  cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_RUNTIME_API);
-  CUPTI_CHECK(cuptierr);
-  cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_DRIVER_API);
-  CUPTI_CHECK(cuptierr);
-  return 0;
-}
-
-// start callbacks only the first time
-void onceActivateCallbacks() {
-  static bool done = false;
-  if (!done) {
-    printf("Activating callbacks for first time!\n");
-    activateCallbacks();
-    done = true;
-  }
-}
-
-// static int stopCallbacks() {
-//   CUptiResult cuptierr;
-//   cuptierr = cuptiUnsubscribe(SUBSCRIBER);
-//   CUPTI_CHECK(cuptierr, "cuptiUnsubscribe");
-//   return 0;
-// }

@@ -7,6 +7,7 @@ allocations.o \
 api_record.o \
 apis.o \
 callbacks.o \
+cupti_subscriber.o \
 driver_state.o \
 extent.o \
 memory.o \
