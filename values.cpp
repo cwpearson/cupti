@@ -11,7 +11,7 @@ const Values::id_type Values::noid = Value::noid;
 // AddressSpace mask
 std::pair<Values::id_type, Values::value_type>
 Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
-  std::lock_guard<std::mutex> guard(modify_mutex_);
+  std::lock_guard<std::mutex> guard(access_mutex_);
   if (values_.empty())
     return std::make_pair(reinterpret_cast<Values::id_type>(nullptr),
                           std::shared_ptr<Value>(nullptr));
@@ -39,7 +39,7 @@ Values::find_live(uintptr_t pos, const AddressSpace &as) {
 
 std::pair<Values::id_type, Values::value_type>
 Values::find_live_device(const uintptr_t pos, const size_t size) {
-  std::lock_guard<std::mutex> guard(modify_mutex_);
+  std::lock_guard<std::mutex> guard(access_mutex_);
   if (values_.empty())
     return std::make_pair(reinterpret_cast<Values::id_type>(nullptr),
                           std::shared_ptr<Value>(nullptr));
@@ -78,7 +78,7 @@ Values::insert(const value_type &v) {
   assert(v.get() && "Inserting invalid value!");
   const auto &valIdx = reinterpret_cast<id_type>(v.get());
 
-  std::lock_guard<std::mutex> guard(modify_mutex_);
+  std::lock_guard<std::mutex> guard(access_mutex_);
   value_order_.push_back(valIdx);
 
   std::ofstream buf(env::output_path(), std::ofstream::app);
