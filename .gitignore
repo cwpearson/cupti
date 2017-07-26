@@ -2,7 +2,13 @@
 *.d
 *.so
 *.pyc
+
+*.pdf
+*.dot
+*.cprof
+
 .vscode/*
+
 examples/samples/matrixMul/mm
 examples/samples/vectorAdd/vec
 examples/samples/deviceQuery/query
