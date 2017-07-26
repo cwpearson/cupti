@@ -12,7 +12,6 @@ driver_state.o \
 extent.o \
 memory.o \
 numa.o \
-output_path.o \
 preload_cublas.o \
 preload_cudart.o \
 preload_cudnn.o \

@@ -51,6 +51,7 @@
         "utility": "cpp",
         "*.ipp": "cpp",
         "optional": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "string": "cpp"
     }
 }

@@ -1,5 +1,5 @@
 #include "allocations.hpp"
-#include "output_path.hpp"
+#include "env.hpp"
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -26,7 +26,7 @@ Allocations::insert(const Allocations::value_type &v) {
     printf("WARN: inserting size %lu allocation", v->size());
   }
   const auto &valIdx = reinterpret_cast<id_type>(v.get());
-  std::ofstream buf(output_path::get(), std::ofstream::app);
+  std::ofstream buf(env::output_path(), std::ofstream::app);
   buf << *v;
   buf.flush();
   std::lock_guard<std::mutex> guard(access_mutex_);
