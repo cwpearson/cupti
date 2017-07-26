@@ -4,7 +4,7 @@
 #include <dlfcn.h>
 #include <list>
 
-#include <cudnn.h>
+#include <cudnn_v6.h>
 
 #include "allocations.hpp"
 #include "apis.hpp"
