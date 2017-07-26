@@ -16,8 +16,7 @@ public:
 
 private:
   bool is_initialized_;
-  AllocationRecord::id_type
-      allocation_id_; // allocation that this value lives in
+  AllocationRecord::id_type allocation_id_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const Value &v);

@@ -7,6 +7,9 @@
 #include "allocations.hpp"
 #include "value.hpp"
 
+// FIXME: implement overlap with interval tree
+// could use boost icl with map of positions to std::set<value_type>
+
 class Values {
 public:
   typedef Value::id_type id_type;
@@ -15,9 +18,10 @@ public:
 
 private:
   typedef std::map<id_type, value_type> map_type;
+
   map_type values_;
-  std::vector<id_type> value_order_;
-  std::mutex modify_mutex_;
+  std::map<id_type, size_t> order_;
+  std::mutex access_mutex_;
 
 public:
   std::pair<bool, id_type> get_last_overlapping_value(uintptr_t pos,
