@@ -52,6 +52,7 @@
         "*.ipp": "cpp",
         "optional": "cpp",
         "algorithm": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "list": "cpp"
     }
 }

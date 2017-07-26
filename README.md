@@ -8,9 +8,13 @@ Install some dependencies
 
 Install CUDA and CUDNN.
 
-    ...
+As an additional step, make sure the CUPTI library is in your `LD_LIBRARY_PATH`. For example:
 
-Modify `env.sh` to point to the right libraries.
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/extras/CUPTI/lib64"
+
+Modify `env.sh` to point `CPROF_ROOT` to wherever you checked out cupti. For example
+
+    export CPROF_ROOT="/home/pearson/cupti"
 
 Build the profiling library (`prof.so`).
 
