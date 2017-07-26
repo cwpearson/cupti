@@ -6,6 +6,7 @@
 *.pdf
 *.dot
 *.cprof
+*.csv
 
 .vscode/*
 
