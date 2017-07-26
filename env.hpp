@@ -16,7 +16,7 @@
   }
 
 namespace env {
-READ_ENV_STR("CPROF_OUT", output_path, "")
+READ_ENV_STR("CPROF_OUT", output_path, "output.cprof")
 }
 
 #endif
