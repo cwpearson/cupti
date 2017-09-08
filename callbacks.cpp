@@ -227,8 +227,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   }
 
   // There may not be a source value, because it may have been initialized
-  // on
-  // the host
+  // on the host
   Values::id_type srcValId;
   bool found;
   std::tie(found, srcValId) =
