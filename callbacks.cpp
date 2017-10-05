@@ -1,5 +1,6 @@
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -16,8 +17,10 @@
 #include "allocations.hpp"
 #include "apis.hpp"
 #include "backtrace.hpp"
+#include "boost/date_time/posix_time/posix_time.hpp"
 #include "driver_state.hpp"
 #include "hash.hpp"
+#include "kernel_time.hpp"
 #include "memory.hpp"
 #include "memorycopykind.hpp"
 #include "numa.hpp"
@@ -42,8 +45,11 @@ ConfiguredCall_t &ConfiguredCall() {
   return cc;
 }
 
+// Function that is called when a Kernel is called
+// Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch preamble\n");
+  auto kernelTimer = KernelCallTime::instance();
 
   print_backtrace();
 
@@ -76,7 +82,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   // static std::map<Value::id_type, hash_t> arg_hashes;
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    // printf("callback: cudaLaunch entry\n");
+    printf("callback: cudaLaunch entry\n");
+    kernelTimer.kernel_start_time(cbInfo);
     // const auto params = ((cudaLaunch_v3020_params
     // *)(cbInfo->functionParams));
     // const uintptr_t func = (uintptr_t) params->func;
@@ -96,6 +103,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     printf("callback: cudaLaunch exit\n");
+    kernelTimer.kernel_end_time(cbInfo);
 
     auto api = std::make_shared<ApiRecord>(
         cbInfo->functionName, cbInfo->symbolName,
@@ -127,6 +135,9 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     APIs::record(api);
     ConfiguredCall().valid = false;
     ConfiguredCall().args.clear();
+
+    kernelTimer.write_to_file();
+
   } else {
     assert(0 && "How did we get here?");
   }
@@ -736,7 +747,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-      // printf("tid=%d about to reduce api stack\n", get_thread_id());
+      // printf("tid=%d about maketo reduce api stack\n", get_thread_id());
       DriverState::this_thread().api_exit(domain, cbid, cbInfo);
     }
   }

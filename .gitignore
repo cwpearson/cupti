@@ -2,6 +2,7 @@
 *.d
 *.so
 *.pyc
+*.cprof
 .vscode/*
 examples/samples/matrixMul/mm
 examples/samples/vectorAdd/vec

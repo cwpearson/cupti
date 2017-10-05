@@ -1,6 +1,7 @@
 TARGETS = prof.so
 
 OBJECTS = \
+kernel_time.o \
 address_space.o \
 allocation_record.o \
 allocations.o \
@@ -29,7 +30,8 @@ NVCCFLAGS= -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-fr
 INC = -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
 LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti \
       -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt \
-      -ldl -lnuma
+      -ldl -lnuma \
+	  -L/usr/include/boost
 
 all: $(TARGETS)
 
