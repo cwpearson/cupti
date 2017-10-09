@@ -2,6 +2,8 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <inttypes.h>
+
 
 #include "kernel_time.hpp"
 
@@ -45,6 +47,6 @@ void KernelCallTime::write_to_file() {
 
   for (auto iter = this->tid_to_time.begin(); iter != this->tid_to_time.end();
        iter++) {
-    printf("%s - Time - %ul ns\n", this->correlation_to_function.find(iter->first)->second, iter->second.end_time - iter->second.start_time);
+    printf("%s - Time - %lld ns\n", (long long)this->correlation_to_function.find(iter->first)->second, iter->second.end_time - iter->second.start_time);
   }
 }

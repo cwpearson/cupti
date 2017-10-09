@@ -102,6 +102,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    cudaDeviceSynchronize();  
     printf("callback: cudaLaunch exit\n");
     kernelTimer.kernel_end_time(cbInfo);
 
