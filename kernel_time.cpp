@@ -18,18 +18,18 @@ KernelCallTime &KernelCallTime::instance() {
 KernelCallTime::KernelCallTime() {}
 
 void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
-
   uint64_t startTimeStamp;
   cuptiDeviceGetTimestamp(cbInfo->context, &startTimeStamp);
   time_points_t time_point;
   time_point.start_time = startTimeStamp;
+  printf("-- %d -- The start time stamp is %ul\n", cbInfo->correlationId, startTimeStamp);
+  
   this->tid_to_time.insert(
       std::pair<uint32_t, time_points_t>(cbInfo->correlationId, time_point));
   this->correlation_to_function.insert(std::pair<uint32_t, const char *>(
-      cbInfo->correlationId, cbInfo->symbolName));
+      cbInfo->correlationId, cbInfo->functionName));
 
-  std::cout << cbInfo->correlationId << " - The start timestamp is "
-            << startTimeStamp << std::endl;
+            
 }
 
 void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
@@ -37,16 +37,14 @@ void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
   cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
   auto time_point_iterator = this->tid_to_time.find(cbInfo->correlationId);
   time_point_iterator->second.end_time = endTimeStamp;
-
-  std::cout << cbInfo->correlationId << " - The end timestamp is "
-            << endTimeStamp << std::endl;
+  printf("-- %d -- The end time stamp is %ul\n", cbInfo->correlationId, endTimeStamp);
 }
 
 void KernelCallTime::write_to_file() {
+  printf("KernelCallTime write to file\n");
+
   for (auto iter = this->tid_to_time.begin(); iter != this->tid_to_time.end();
        iter++) {
-    std::cout << this->correlation_to_function.find(iter->first)->second
-              << " -Time- " << iter->second.end_time - iter->second.start_time
-              << "ns\n";
+    printf("%s - Time - %ul ns\n", this->correlation_to_function.find(iter->first)->second, iter->second.end_time - iter->second.start_time);
   }
 }
