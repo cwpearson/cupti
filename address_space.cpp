@@ -16,7 +16,8 @@ static std::string to_string(const AddressSpace::Type &t) {
   case AddressSpace::Type::Unknown:
     return "unknown";
   default:
-    assert(0 && "Unhandled AddressSpace::Type");
+    return "default";
+   assert(0 && "Unhandled AddressSpace::Type");
   }
 }
 
@@ -29,6 +30,6 @@ std::string AddressSpace::json() const {
 }
 
 bool AddressSpace::maybe_equal(const AddressSpace &other) const {
-  assert(is_valid());
+  //assert(is_valid());
   return other == *this || is_unknown() || other.is_unknown();
 }

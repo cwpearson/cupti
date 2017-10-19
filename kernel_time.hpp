@@ -25,6 +25,8 @@ public:
   static KernelCallTime &instance();
   static std::map<uint32_t, time_points_t> tid_to_time;
   static std::map<uint32_t, const char *> correlation_to_function;
+  static std::map<uint32_t, const char *> KernelCallTime::correlation_to_symbol;
+  
 };
 
 #endif
