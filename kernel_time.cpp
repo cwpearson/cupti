@@ -1,3 +1,7 @@
+#define __STDC_FORMAT_MACROS
+
+#include <inttypes.h>
+
 #include <chrono>
 #include <ctime>
 #include <iomanip>
@@ -27,7 +31,7 @@ void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
   cuptiDeviceGetTimestamp(cbInfo->context, &startTimeStamp);
   time_points_t time_point;
   time_point.start_time = startTimeStamp;
-  printf("-- %d -- The start time stamp is %ul\n", cbInfo->correlationId, startTimeStamp);
+  std::cout << cbInfo->correlationId << " start time stamp " << startTimeStamp << std::endl;
   
   this->tid_to_time.insert(
       std::pair<uint32_t, time_points_t>(cbInfo->correlationId, time_point));
@@ -41,7 +45,7 @@ void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
   cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
   auto time_point_iterator = this->tid_to_time.find(cbInfo->correlationId);
   time_point_iterator->second.end_time = endTimeStamp;
-  printf("-- %d -- The end time stamp is %ul\n", cbInfo->correlationId, endTimeStamp);
+  std::cout << cbInfo->correlationId << " End time stamp " << endTimeStamp << std::endl;
 }
 
 void KernelCallTime::write_to_file() {
@@ -53,11 +57,20 @@ void KernelCallTime::write_to_file() {
   long long tempTime;
   for (auto iter = this->tid_to_time.begin(); iter != this->tid_to_time.end();
        iter++) {
-     
-    tempTime = (long long)this->correlation_to_function.find(iter->first)->second, iter->second.end_time - iter->second.start_time;
-    pt.put("id", std::to_string(iter->first));
+    tempTime =  iter->second.end_time - iter->second.start_time;
+    pt.put("correlationId", std::to_string(iter->first));
+
+    auto cStrSymbol = this->correlation_to_symbol.find(iter->first)->second;
+    //Symbol name is only valid for driver and runtime launch callbacks
+    if (cStrSymbol != NULL){
+      std::string s(cStrSymbol);
+      pt.put("symbol", s);
+    }
+  
+    pt.put("functionName", this->correlation_to_function.find(iter->first)->second);
     pt.put("startTime", std::to_string(iter->second.start_time));
     pt.put("endTime", std::to_string(iter->second.end_time));
+    pt.put("timeSpan", std::to_string(tempTime));
     write_json(std::cout, pt);  
     pt.clear();
   }
