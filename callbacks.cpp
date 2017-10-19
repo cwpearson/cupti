@@ -1,5 +1,6 @@
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -16,8 +17,10 @@
 #include "allocations.hpp"
 #include "apis.hpp"
 #include "backtrace.hpp"
+#include "boost/date_time/posix_time/posix_time.hpp"
 #include "driver_state.hpp"
 #include "hash.hpp"
+#include "kernel_time.hpp"
 #include "memory.hpp"
 #include "memorycopykind.hpp"
 #include "numa.hpp"
@@ -42,8 +45,11 @@ ConfiguredCall_t &ConfiguredCall() {
   return cc;
 }
 
+// Function that is called when a Kernel is called
+// Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch preamble\n");
+  auto kernelTimer = KernelCallTime::instance();
 
   print_backtrace();
 
@@ -76,7 +82,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   // static std::map<Value::id_type, hash_t> arg_hashes;
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    // printf("callback: cudaLaunch entry\n");
+    printf("callback: cudaLaunch entry\n");
+    kernelTimer.kernel_start_time(cbInfo);
     // const auto params = ((cudaLaunch_v3020_params
     // *)(cbInfo->functionParams));
     // const uintptr_t func = (uintptr_t) params->func;
@@ -95,7 +102,9 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    cudaDeviceSynchronize();  
     printf("callback: cudaLaunch exit\n");
+    kernelTimer.kernel_end_time(cbInfo);
 
     auto api = std::make_shared<ApiRecord>(
         cbInfo->functionName, cbInfo->symbolName,
@@ -127,6 +136,9 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     APIs::record(api);
     ConfiguredCall().valid = false;
     ConfiguredCall().args.clear();
+
+    kernelTimer.write_to_file();
+
   } else {
     assert(0 && "How did we get here?");
   }
@@ -138,7 +150,7 @@ Allocations::id_type best_effort_allocation(const uintptr_t p,
                                             const size_t count) {
   Allocations::id_type srcAllocId;
   auto &allocations = Allocations::instance();
-
+  
   // Look in Host address space
   std::tie(srcAllocId, std::ignore) =
       allocations.find_live(p, count, AddressSpace::Host());
@@ -159,7 +171,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
                    Values &values, const ApiRecordRef &api, const uintptr_t dst,
                    const uintptr_t src, const MemoryCopyKind &kind,
                    const size_t count, const int peerSrc, const int peerDst) {
-
+  
   Allocations::id_type srcAllocId = 0, dstAllocId = 0;
   AddressSpace srcAS, dstAS;
 
@@ -251,7 +263,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   std::tie(dstValId, dstVal) = values.new_value(dst, count, dstAllocId);
   dstVal->add_depends_on(srcValId);
   dstVal->record_meta_append(cbInfo->functionName);
-
+  
   api->add_input(srcValId);
   api->add_output(dstValId);
   APIs::record(api);
@@ -259,6 +271,8 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 
 static void handleCudaMemcpy(Allocations &allocations, Values &values,
                              const CUpti_CallbackData *cbInfo) {
+                               
+  auto kernelTimer = KernelCallTime::instance();
   // extract API call parameters
   auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
   const uintptr_t dst = (uintptr_t)params->dst;
@@ -275,8 +289,16 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
     api->record_start_time(start);
 
+    kernelTimer.kernel_start_time(cbInfo);
+  
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-
+    uint64_t endTimeStamp;
+    cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
+    printf("The end timestamp is %ul\n", endTimeStamp);
+    // std::cout << "The end time is " << cbInfo->end_time;
+    kernelTimer.kernel_end_time(cbInfo);   
+    kernelTimer.write_to_file();    
+    printf("callback: cudaMemcpy end func exec\n");
     uint64_t end;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
     auto api = DriverState::this_thread().current_api();
@@ -287,6 +309,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     record_memcpy(cbInfo, allocations, values, api, dst, src,
                   MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
 
+                  
   } else {
     assert(0 && "How did we get here?");
   }
@@ -730,12 +753,12 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   }
   default:
     break;
-  }
+  } 
 
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-      // printf("tid=%d about to reduce api stack\n", get_thread_id());
+      // printf("tid=%d about maketo reduce api stack\n", get_thread_id());
       DriverState::this_thread().api_exit(domain, cbid, cbInfo);
     }
   }

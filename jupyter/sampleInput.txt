@@ -1,0 +1,293 @@
+Activating callbacks!
+[Matrix Multiply Using CUDA] - Starting...
+LD_PRELOAD intercept: cudaSetDevice
+callback: cudaSetDevice entry
+GPU Device 0: "GeForce GTX 560M" with compute capability 2.1
+
+MatrixA(1600,1600), MatrixB(640,1600)
+LD_PRELOAD intercept: cudaMalloc
+[cudaMalloc] 25795624960[10240000]
+[cudaMalloc] new alloc id=55319776
+LD_PRELOAD intercept: cudaMalloc
+[cudaMalloc] 25805979648[4096000]
+[cudaMalloc] new alloc id=55360384
+LD_PRELOAD intercept: cudaMalloc
+[cudaMalloc] 25810173952[4096000]
+[cudaMalloc] new alloc id=55354880
+callback: cudaMemcpy entry
+94 start time stamp 1508411722939906112
+The end timestamp is 1493173600l
+94 End time stamp 1508411722942130720
+KernelCallTime write to file
+{
+    "correlationId": "94",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722939906112",
+    "endTime": "1508411722942130720",
+    "timeSpan": "2224608"
+}
+callback: cudaMemcpy end func exec
+140537605689360 --[h2d]--> 25795624960
+WARN: Couldn't find src alloc. Created implict host allocation=140537605689360.
+WARN: creating implicit src value during memcpy
+callback: cudaMemcpy entry
+95 start time stamp 1508411722943728928
+The end timestamp is 1495775712l
+95 End time stamp 1508411722944728704
+KernelCallTime write to file
+{
+    "correlationId": "94",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722939906112",
+    "endTime": "1508411722942130720",
+    "timeSpan": "2224608"
+}
+{
+    "correlationId": "95",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722943728928",
+    "endTime": "1508411722944728704",
+    "timeSpan": "999776"
+}
+callback: cudaMemcpy end func exec
+140537601589264 --[h2d]--> 25805979648
+WARN: Couldn't find src alloc. Created implict host allocation=140537601589264.
+WARN: creating implicit src value during memcpy
+Computing result using CUDA Kernel...
+callback: cudaConfigureCall entry
+callback: cudaSetupArgument entry
+callback: cudaSetupArgument entry
+callback: cudaSetupArgument entry
+callback: cudaSetupArgument entry
+callback: cudaSetupArgument entry
+callback: cudaLaunch preamble
+/home/dominic/uiuc/thesis/cupti/prof.so(_Z15print_backtracev+0x2e) [0x7fd17a7c7fba]
+/home/dominic/uiuc/thesis/cupti/prof.so(+0x9c0f7) [0x7fd17a7c80f7]
+/home/dominic/uiuc/thesis/cupti/prof.so(_Z8callbackPv20CUpti_CallbackDomainjPK18CUpti_CallbackData+0x29f) [0x7fd17a7cade8]
+/usr/local/cuda/extras/CUPTI/lib64/libcupti.so.8.0(+0xeca95) [0x7fd179b2ca95]
+/usr/local/cuda/extras/CUPTI/lib64/libcupti.so.8.0(+0xe8bab) [0x7fd179b28bab]
+/usr/lib/x86_64-linux-gnu/libcuda.so.1(+0x2ef343) [0x7fd17780a343]
+/usr/lib/x86_64-linux-gnu/libcudart.so.7.5(cudaLaunch+0x13b) [0x7fd17a4fccdb]
+examples/samples/matrixMul/mm() [0x40210e]
+examples/samples/matrixMul/mm() [0x401fd0]
+examples/samples/matrixMul/mm() [0x402029]
+examples/samples/matrixMul/mm() [0x4021d3]
+examples/samples/matrixMul/mm() [0x4013c8]
+examples/samples/matrixMul/mm() [0x401d73]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf0) [0x7fd17a124830]
+examples/samples/matrixMul/mm() [0x400dd9]
+launching _Z13matrixMulCUDAILi32EEvPfS0_S0_ii
+found val 55358448 for kernel arg=25810173952
+found val 55357696 for kernel arg=25795624960
+found val 55353760 for kernel arg=25805979648
+callback: cudaLaunch entry
+102 start time stamp 1508411722946406432
+callback: cudaLaunch: done
+callback: cudaLaunch preamble
+/home/dominic/uiuc/thesis/cupti/prof.so(_Z15print_backtracev+0x2e) [0x7fd17a7c7fba]
+/home/dominic/uiuc/thesis/cupti/prof.so(+0x9c0f7) [0x7fd17a7c80f7]
+/home/dominic/uiuc/thesis/cupti/prof.so(_Z8callbackPv20CUpti_CallbackDomainjPK18CUpti_CallbackData+0x29f) [0x7fd17a7cade8]
+/usr/local/cuda/extras/CUPTI/lib64/libcupti.so.8.0(+0xecb4e) [0x7fd179b2cb4e]
+/usr/local/cuda/extras/CUPTI/lib64/libcupti.so.8.0(+0xe8bab) [0x7fd179b28bab]
+/usr/lib/x86_64-linux-gnu/libcuda.so.1(+0x2ef343) [0x7fd17780a343]
+/usr/lib/x86_64-linux-gnu/libcudart.so.7.5(cudaLaunch+0x17e) [0x7fd17a4fcd1e]
+examples/samples/matrixMul/mm() [0x40210e]
+examples/samples/matrixMul/mm() [0x401fd0]
+examples/samples/matrixMul/mm() [0x402029]
+examples/samples/matrixMul/mm() [0x4021d3]
+examples/samples/matrixMul/mm() [0x4013c8]
+examples/samples/matrixMul/mm() [0x401d73]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf0) [0x7fd17a124830]
+examples/samples/matrixMul/mm() [0x400dd9]
+launching _Z13matrixMulCUDAILi32EEvPfS0_S0_ii
+found val 55358448 for kernel arg=25810173952
+found val 55357696 for kernel arg=25795624960
+found val 55353760 for kernel arg=25805979648
+callback: cudaLaunch exit
+102 End time stamp 1508411722996092960
+launch: 55354560 deps on 55358448
+launch: 55354560 deps on 55357696
+launch: 55354560 deps on 55353760
+launch: 55353872 deps on 55358448
+launch: 55353872 deps on 55357696
+launch: 55353872 deps on 55353760
+launch: 55357760 deps on 55358448
+launch: 55357760 deps on 55357696
+launch: 55357760 deps on 55353760
+KernelCallTime write to file
+{
+    "correlationId": "94",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722939906112",
+    "endTime": "1508411722942130720",
+    "timeSpan": "2224608"
+}
+{
+    "correlationId": "95",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722943728928",
+    "endTime": "1508411722944728704",
+    "timeSpan": "999776"
+}
+{
+    "correlationId": "102",
+    "symbol": "_Z13matrixMulCUDAILi32EEvPfS0_S0_ii",
+    "functionName": "cudaLaunch",
+    "startTime": "1508411722946406432",
+    "endTime": "1508411722996092960",
+    "timeSpan": "49686528"
+}
+callback: cudaLaunch: done
+done
+callback: cudaConfigureCall entry
+callback: cudaSetupArgument entry
+callback: cudaSetupArgument entry
+callback: cudaSetupArgument entry
+callback: cudaSetupArgument entry
+callback: cudaSetupArgument entry
+callback: cudaLaunch preamble
+/home/dominic/uiuc/thesis/cupti/prof.so(_Z15print_backtracev+0x2e) [0x7fd17a7c7fba]
+/home/dominic/uiuc/thesis/cupti/prof.so(+0x9c0f7) [0x7fd17a7c80f7]
+/home/dominic/uiuc/thesis/cupti/prof.so(_Z8callbackPv20CUpti_CallbackDomainjPK18CUpti_CallbackData+0x29f) [0x7fd17a7cade8]
+/usr/local/cuda/extras/CUPTI/lib64/libcupti.so.8.0(+0xeca95) [0x7fd179b2ca95]
+/usr/local/cuda/extras/CUPTI/lib64/libcupti.so.8.0(+0xe8bab) [0x7fd179b28bab]
+/usr/lib/x86_64-linux-gnu/libcuda.so.1(+0x2ef343) [0x7fd17780a343]
+/usr/lib/x86_64-linux-gnu/libcudart.so.7.5(cudaLaunch+0x13b) [0x7fd17a4fccdb]
+examples/samples/matrixMul/mm() [0x40210e]
+examples/samples/matrixMul/mm() [0x401fd0]
+examples/samples/matrixMul/mm() [0x402029]
+examples/samples/matrixMul/mm() [0x4021d3]
+examples/samples/matrixMul/mm() [0x4015c0]
+examples/samples/matrixMul/mm() [0x401d73]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf0) [0x7fd17a124830]
+examples/samples/matrixMul/mm() [0x400dd9]
+launching _Z13matrixMulCUDAILi32EEvPfS0_S0_ii
+found val 55354560 for kernel arg=25810173952
+found val 55353872 for kernel arg=25795624960
+found val 55357760 for kernel arg=25805979648
+callback: cudaLaunch entry
+114 start time stamp 1508411722998903040
+callback: cudaLaunch: done
+callback: cudaLaunch preamble
+/home/dominic/uiuc/thesis/cupti/prof.so(_Z15print_backtracev+0x2e) [0x7fd17a7c7fba]
+/home/dominic/uiuc/thesis/cupti/prof.so(+0x9c0f7) [0x7fd17a7c80f7]
+/home/dominic/uiuc/thesis/cupti/prof.so(_Z8callbackPv20CUpti_CallbackDomainjPK18CUpti_CallbackData+0x29f) [0x7fd17a7cade8]
+/usr/local/cuda/extras/CUPTI/lib64/libcupti.so.8.0(+0xecb4e) [0x7fd179b2cb4e]
+/usr/local/cuda/extras/CUPTI/lib64/libcupti.so.8.0(+0xe8bab) [0x7fd179b28bab]
+/usr/lib/x86_64-linux-gnu/libcuda.so.1(+0x2ef343) [0x7fd17780a343]
+/usr/lib/x86_64-linux-gnu/libcudart.so.7.5(cudaLaunch+0x17e) [0x7fd17a4fcd1e]
+examples/samples/matrixMul/mm() [0x40210e]
+examples/samples/matrixMul/mm() [0x401fd0]
+examples/samples/matrixMul/mm() [0x402029]
+examples/samples/matrixMul/mm() [0x4021d3]
+examples/samples/matrixMul/mm() [0x4015c0]
+examples/samples/matrixMul/mm() [0x401d73]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf0) [0x7fd17a124830]
+examples/samples/matrixMul/mm() [0x400dd9]
+launching _Z13matrixMulCUDAILi32EEvPfS0_S0_ii
+found val 55354560 for kernel arg=25810173952
+found val 55353872 for kernel arg=25795624960
+found val 55357760 for kernel arg=25805979648
+callback: cudaLaunch exit
+114 End time stamp 1508411723048400448
+launch: 55370544 deps on 55354560
+launch: 55370544 deps on 55353872
+launch: 55370544 deps on 55357760
+launch: 55371552 deps on 55354560
+launch: 55371552 deps on 55353872
+launch: 55371552 deps on 55357760
+launch: 55371152 deps on 55354560
+launch: 55371152 deps on 55353872
+launch: 55371152 deps on 55357760
+KernelCallTime write to file
+{
+    "correlationId": "94",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722939906112",
+    "endTime": "1508411722942130720",
+    "timeSpan": "2224608"
+}
+{
+    "correlationId": "95",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722943728928",
+    "endTime": "1508411722944728704",
+    "timeSpan": "999776"
+}
+{
+    "correlationId": "102",
+    "symbol": "_Z13matrixMulCUDAILi32EEvPfS0_S0_ii",
+    "functionName": "cudaLaunch",
+    "startTime": "1508411722946406432",
+    "endTime": "1508411722996092960",
+    "timeSpan": "49686528"
+}
+{
+    "correlationId": "114",
+    "symbol": "_Z13matrixMulCUDAILi32EEvPfS0_S0_ii",
+    "functionName": "cudaLaunch",
+    "startTime": "1508411722998903040",
+    "endTime": "1508411723048400448",
+    "timeSpan": "49497408"
+}
+callback: cudaLaunch: done
+Performance= 62.78 GFlop/s, Time= 52.193 msec, Size= 3276800000 Ops, WorkgroupSize= 1024 threads/block
+callback: cudaMemcpy entry
+119 start time stamp 1508411723050891840
+The end timestamp is 1604694016l
+119 End time stamp 1508411723053646304
+KernelCallTime write to file
+{
+    "correlationId": "94",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722939906112",
+    "endTime": "1508411722942130720",
+    "timeSpan": "2224608"
+}
+{
+    "correlationId": "95",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411722943728928",
+    "endTime": "1508411722944728704",
+    "timeSpan": "999776"
+}
+{
+    "correlationId": "102",
+    "symbol": "_Z13matrixMulCUDAILi32EEvPfS0_S0_ii",
+    "functionName": "cudaLaunch",
+    "startTime": "1508411722946406432",
+    "endTime": "1508411722996092960",
+    "timeSpan": "49686528"
+}
+{
+    "correlationId": "114",
+    "symbol": "_Z13matrixMulCUDAILi32EEvPfS0_S0_ii",
+    "functionName": "cudaLaunch",
+    "startTime": "1508411722998903040",
+    "endTime": "1508411723048400448",
+    "timeSpan": "49497408"
+}
+{
+    "correlationId": "119",
+    "functionName": "cudaMemcpy",
+    "startTime": "1508411723050891840",
+    "endTime": "1508411723053646304",
+    "timeSpan": "2754464"
+}
+callback: cudaMemcpy end func exec
+25810173952 --[d2h]--> 140537597489168
+WARN: Couldn't find dst alloc. Created implict host allocation=25810173952.
+memcpy: found src value srcId=55370544
+Checking computed result for correctness: Result = PASS
+callback: cudaFree entry
+[cudaFree] 25795624960
+Looking for 25795624960
+callback: cudaFree entry
+[cudaFree] 25805979648
+Looking for 25805979648
+callback: cudaFree entry
+[cudaFree] 25810173952
+Looking for 25810173952
+
+NOTE: The CUDA Samples are not meant for performance measurements. Results may vary when GPU Boost is enabled.
+Deactivating callbacks!
