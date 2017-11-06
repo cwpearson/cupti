@@ -6,9 +6,12 @@
 #include <map>
 #include <string>
 
+#include "callbacks.hpp"
 #include "optional.hpp"
 #include "thread.hpp"
 #include <zipkin/opentracing.h>
+#include <zipkin/zipkin_core_types.h>
+#include <zipkin/span_context.h>
 
 typedef struct {
   uint64_t start_time;
@@ -36,6 +39,10 @@ public:
   static std::map<uint32_t, const char *> correlation_to_symbol;
   static std::map<uint32_t, std::chrono::time_point<std::chrono::system_clock> > correlation_to_start;
   static std::map<uint32_t, memcpy_info_t> correlation_id_to_info;
+  static std::map<uint32_t, uintptr_t>  correlation_to_dest;
+  static zipkin::SpanContext hey;
+  static std::map<uintptr_t, zipkin::SpanContext> ptr_to_span;
+  
 
 private: 
   char* memcpy_type_to_string(cudaMemcpyKind kind);

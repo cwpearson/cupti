@@ -1,7 +1,6 @@
 #define __STDC_FORMAT_MACROS
 
 #include <inttypes.h>
-
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <chrono>
@@ -11,7 +10,9 @@
 #include <iomanip>
 #include <iostream>
 
+#include "callbacks.hpp"
 #include "kernel_time.hpp"
+#include <zipkin/span_context.h>
 
 using namespace std::chrono;
 using namespace zipkin;
@@ -23,16 +24,27 @@ std::map<uint32_t, const char *> KernelCallTime::correlation_to_symbol;
 std::map<uint32_t, std::chrono::time_point<std::chrono::system_clock>>
     KernelCallTime::correlation_to_start;
 std::map<uint32_t, memcpy_info_t> KernelCallTime::correlation_id_to_info;
+std::map<uint32_t, uintptr_t> KernelCallTime::correlation_to_dest;
+std::map<uintptr_t, zipkin::SpanContext> KernelCallTime::ptr_to_span;
+
 
 static ZipkinOtTracerOptions options;
+static ZipkinOtTracerOptions memcpy_tracer_options;
+static ZipkinOtTracerOptions launch_tracer_options;
 static std::shared_ptr<opentracing::Tracer> tracer;
+static std::shared_ptr<opentracing::Tracer> memcpy_tracer;
+static std::shared_ptr<opentracing::Tracer> launch_tracer;
 static span_t parent_span;
 
 KernelCallTime &KernelCallTime::instance() {
-  options.service_name = "CUPTI";
+  options.service_name = "Parent";
+  memcpy_tracer_options.service_name = "Memory Copy";
+  launch_tracer_options.service_name = "Kernel Launch";
   if (!tracer) {
-    opentracing::Tracer::InitGlobal(tracer);
+    // opentracing::Tracer::InitGlobal(tracer);
     tracer = makeZipkinOtTracer(options);
+    memcpy_tracer = makeZipkinOtTracer(memcpy_tracer_options);
+    launch_tracer = makeZipkinOtTracer(launch_tracer_options);
     
     parent_span = tracer->StartSpan("Parent");
   }
@@ -56,13 +68,14 @@ std::shared_ptr<char> cppDemangle(const char *abiName) {
 KernelCallTime::KernelCallTime() {}
 
 void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
+
+  char* cudaMem = "cudaMemcpy";
+
   auto correlationId = cbInfo->correlationId;
   uint64_t startTimeStamp;
   cuptiDeviceGetTimestamp(cbInfo->context, &startTimeStamp);
   time_points_t time_point;
   time_point.start_time = startTimeStamp;
-  // //std::cout << cbInfo->correlationId << " start time stamp " <<
-  // startTimeStamp << std::endl;
   const char *memcpy = "cudaMemcpy";
 
   if (strcmp(cbInfo->functionName, memcpy) == 0) {
@@ -70,11 +83,16 @@ void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
     memcpy_info_t memInfo;
     std::cout << "Memcpy id: " << correlationId << std::endl;
     std::cout << "Memcpy size: " << params->count << std::endl;
+    std::cout << "Source: " << (uintptr_t *) params->src << std::endl;
+    std::cout << "Destination: " << (uintptr_t *) params->dst << std::endl;
+
+    this->correlation_to_dest.insert(std::pair<uint32_t, uintptr_t>(correlationId, (uintptr_t)params->dst));
+    
     memInfo.memcpyType = params->kind;
     memInfo.memcpySize = params->count;
     this->correlation_id_to_info.insert(
         std::pair<uint32_t, memcpy_info_t>(correlationId, memInfo));
-  }
+  } 
 
   auto t1 = SystemClock::now();
   this->correlation_to_start.insert(
@@ -94,9 +112,44 @@ void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
   auto correlationId = cbInfo->correlationId;
   auto t2 = SystemClock::now();
   auto t1 = this->correlation_to_start.find(correlationId)->second;
-  span_t current_span =
-      tracer->StartSpan(std::to_string(correlationId),
-                        {ChildOf(&parent_span->context())});
+  span_t current_span;
+  const char *launchVal = "cudaLaunch";
+
+  ZipkinOtTracerOptions options;
+  options.service_name = "Kernel Launch " + std::to_string(correlationId);
+  std::shared_ptr<opentracing::Tracer> temp_launch_tracer = makeZipkinOtTracer(options);
+  
+  if (strcmp(cbInfo->functionName, launchVal) == 0){
+    
+        for (auto iter = this->correlation_to_dest.begin(); iter != this->correlation_to_dest.end(); iter++) {
+          for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size(); ++argIdx) { 
+            if (ConfiguredCall().args[argIdx] == iter->second){
+              //Dependency exists!
+              auto spanIter = this->ptr_to_span.find(ConfiguredCall().args[argIdx]);
+              if (spanIter != this->ptr_to_span.end()){
+                auto memContext = spanIter->second;
+                printf("Before segfault\n");
+                current_span = temp_launch_tracer->StartSpan(std::to_string(correlationId),
+                {ChildOf(&memContext)});
+                temp_launch_tracer->Close();
+                printf("After segfault\n");
+              }
+  
+              break;
+            }
+       
+          }
+        }
+  } else {
+    current_span = memcpy_tracer->StartSpan(std::to_string(correlationId),
+                      {ChildOf(&parent_span->context())});
+
+    auto iter = this->correlation_to_dest.find(correlationId);
+    zipkin::SpanContext tempContext();
+    this->ptr_to_span.insert(std::pair<uintptr_t, const zipkin::SpanContext>(iter->second, tempContext));
+
+  }
+   
   current_span->SetTag(
       "Function Name",
       this->correlation_to_function.find(correlationId)->second);
@@ -119,8 +172,7 @@ void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
   cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
   auto time_point_iterator = this->tid_to_time.find(cbInfo->correlationId);
   time_point_iterator->second.end_time = endTimeStamp;
-  // //std::cout << cbInfo->correlationId << " End time stamp " << endTimeStamp
-  // << std::endl;
+
 }
 
 char *KernelCallTime::memcpy_type_to_string(cudaMemcpyKind kind) {
@@ -153,31 +205,8 @@ char *KernelCallTime::memcpy_type_to_string(cudaMemcpyKind kind) {
 }
 
 void KernelCallTime::write_to_file() {
+  parent_span->Finish();
   tracer->Close();
-  // printf("KernelCallTime write to file\n");
-  using boost::property_tree::ptree;
-  using boost::property_tree::write_json;
-  ptree pt;
-
-  long long tempTime;
-  for (auto iter = this->tid_to_time.begin(); iter != this->tid_to_time.end();
-       iter++) {
-    tempTime = iter->second.end_time - iter->second.start_time;
-    pt.put("correlationId", std::to_string(iter->first));
-
-    auto cStrSymbol = this->correlation_to_symbol.find(iter->first)->second;
-    // Symbol name is only valid for driver and runtime launch callbacks
-    if (cStrSymbol != NULL) {
-      std::string s(cStrSymbol);
-      pt.put("symbol", s);
-    }
-
-    pt.put("functionName",
-           this->correlation_to_function.find(iter->first)->second);
-    pt.put("startTime", std::to_string(iter->second.start_time));
-    pt.put("endTime", std::to_string(iter->second.end_time));
-    pt.put("timeSpan", std::to_string(tempTime));
-    // write_json(//std::cout, pt);
-    pt.clear();
-  }
+  memcpy_tracer->Close();
+  launch_tracer->Close();
 }

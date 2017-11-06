@@ -31,14 +31,14 @@
 #include "values.hpp"
 
 // FIXME: this should be per-thread
-typedef struct {
-  dim3 gridDim;
-  dim3 blockDim;
-  size_t sharedMem;
-  cudaStream_t stream;
-  std::vector<uintptr_t> args;
-  bool valid = false;
-} ConfiguredCall_t;
+// typedef struct {
+//   dim3 gridDim;
+//   dim3 blockDim;
+//   size_t sharedMem;
+//   cudaStream_t stream;
+//   std::vector<uintptr_t> args;
+//   bool valid = false;
+// } ConfiguredCall_t;
 
 ConfiguredCall_t &ConfiguredCall() {
   static ConfiguredCall_t cc;
@@ -51,7 +51,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   //printf("callback: cudaLaunch preamble\n");
   auto kernelTimer = KernelCallTime::instance();
 
-  print_backtrace();
+  // print_backtrace();
 
   // Get the current stream
   const cudaStream_t stream = ConfiguredCall().stream;
@@ -67,7 +67,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // FIXME: assuming with p2p access, it could be on any device?
     const auto &kv =
         values.find_live_device(ConfiguredCall().args[argIdx], 1 /*size*/);
-
+    if (kv.second != 0)
+      std::cout << "kv? " << *(kv.second) << std::endl;
     const auto &key = kv.first;
     if (key != uintptr_t(nullptr)) {
       kernelArgIds.push_back(kv.first);
@@ -83,6 +84,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     //printf("callback: cudaLaunch entry\n");
+    
+    
     kernelTimer.kernel_start_time(cbInfo);
     // const auto params = ((cudaLaunch_v3020_params
     // *)(cbInfo->functionParams));
@@ -100,7 +103,6 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // //printf("digest: %llu\n", digest);
     // arg_hashes[argKey] = digest;
     // }
-
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     cudaDeviceSynchronize();  
     //printf("callback: cudaLaunch exit\n");
@@ -272,7 +274,6 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 
 static void handleCudaMemcpy(Allocations &allocations, Values &values,
                              const CUpti_CallbackData *cbInfo) {
-                               
   auto kernelTimer = KernelCallTime::instance();
   // extract API call parameters
   auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
@@ -612,6 +613,7 @@ static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
 }
 
 static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
+  auto kernelTimer = KernelCallTime::instance();  
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     //printf("callback: cudaSetupArgument entry\n");
     const auto params =
@@ -619,8 +621,17 @@ static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
     const uintptr_t arg =
         (uintptr_t) * static_cast<const void *const *>(
                           params->arg); // arg is a pointer to the arg.
-    // const size_t size     = params->size;
-    // const size_t offset   = params->offset;
+
+    const size_t size     = params->size;
+    const size_t offset   = params->offset;
+
+    std::cout << "Handle arg!" << std::endl;
+    std::cout << "Size: " << size << std::endl;
+    std::cout << "Offset: " << offset << std::endl;
+    
+    // if (arg != NULL)
+      // std::cout << *((char *)arg) << std::endl;
+    // kernelTimer.correlation_to_dest.insert(std::pair<uint32_t, uintptr_t>(cbInfo->correlationId, arg));
 
     assert(ConfiguredCall().valid);
     ConfiguredCall().args.push_back(arg);
