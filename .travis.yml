@@ -10,6 +10,7 @@ addons:
       - libnuma-dev
 
 install:
+  - dpkg-query -S 'xcolor.sty'
   - wget https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run -O cuda9.run
   - chmod +x cuda9.run
   - ./cuda9.run --silent --toolkit --toolkitpath=`pwd`/cuda-9.0
