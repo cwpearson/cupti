@@ -8,11 +8,11 @@ sudo: false
 install:
   - wget https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run -O cuda9.run
   - chmod +x cuda9.run
-  - ./cuda9.run --silent --toolkit
+  - ./cuda9.run --silent --toolkit --tolkitpath=cuda-9.0
 
 script:
   - ln -s Makefile.config.travis Makefile.config
-  - make
+  - make CUDA_ROOT=cuda-9.0
   - export DATE=`date +%Y%m%d`
   - echo $DATE
   - mkdir -p latest
