@@ -5,11 +5,9 @@ addons:
       - cppcheck
       - doxygen
       - texlive
-      - texlive-pictures
+      - texlive-latex-recommended
       - graphviz
       - libnuma-dev
-
-sudo: false
 
 install:
   - wget https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run -O cuda9.run
