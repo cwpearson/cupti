@@ -2,6 +2,7 @@ addons:
   apt:
     packages:
       - libboost-dev
+      - cppcheck
 
 sudo: false
 
