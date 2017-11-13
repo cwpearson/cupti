@@ -23,7 +23,7 @@ Allocations::insert(const Allocations::value_type &v) {
   assert(v.get() && "Trying to insert invalid value");
   assert(v->pos() && "Inserting allocation at nullptr");
   if (v->size() == 0) {
-    printf("WARN: inserting size %lu allocation", v->size());
+    // printf("WARN: inserting size %lu allocation", v->size());
   }
   const auto &valIdx = reinterpret_cast<id_type>(v.get());
   std::ofstream buf(env::output_path(), std::ofstream::app);

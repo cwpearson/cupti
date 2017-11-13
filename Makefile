@@ -18,7 +18,8 @@ preload_cudart.o \
 preload_cudnn.o \
 thread.o \
 value.o \
-values.o
+values.o \
+activity_callbacks.o
 
 DEPS=$(patsubst %.o,%.d,$(OBJECTS))
 
@@ -27,12 +28,14 @@ CXX = g++
 CXXFLAGS= -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC -Wl,-rpath=/usr/local/lib
 NVCC=nvcc
 NVCCFLAGS= -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer
-INC = -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
+INC = -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include -I/home/dcgrand2/lib/include \
+		-I/home/dcgrand2/lib/boost/include
 LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti \
       -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt \
       -ldl -lnuma \
 	  -L/usr/include/boost \
-	  -L/usr/local/lib -lzipkin -lzipkin_opentracing -lopentracing
+	  -L/usr/local/lib -lopentracing -lzipkin -lzipkin_opentracing  \
+	  -L/home/dcgrand2/lib/boost/lib
 
 all: $(TARGETS)
 
@@ -58,4 +61,5 @@ prof.so: $(OBJECTS)
 #	$(CXX) -shared $(LIB) $^ test.o -o $@
 #%.o : %.cu
 #	$(NVCC) $(NVCCFLAGS) -dc $^ -lcudadevrt -lcudart -o $@	
+
 

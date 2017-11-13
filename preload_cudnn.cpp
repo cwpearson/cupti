@@ -18,7 +18,7 @@ typedef cudnnStatus_t (*cudnnCreateFunc)(cudnnHandle_t *handle);
 extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
   SAME_LD_PRELOAD_BOILERPLATE(cudnnCreate);
 
-  printf("WARN: disabling CUPTI callbacks during cudnnCreate call\n");
+  //printf("WARN: disabling CUPTI callbacks during cudnnCreate call\n");
   DriverState::this_thread().pause_cupti_callbacks();
 
   const cudnnStatus_t ret = real_cudnnCreate(handle);
@@ -32,7 +32,7 @@ typedef cudnnStatus_t (*cudnnDestroyFunc)(cudnnHandle_t handle);
 extern "C" cudnnStatus_t cudnnDestroy(cudnnHandle_t handle) {
   SAME_LD_PRELOAD_BOILERPLATE(cudnnDestroy);
 
-  printf("WARN: disabling CUPTI callbacks during cudnnDestroy call\n");
+  //printf("WARN: disabling CUPTI callbacks during cudnnDestroy call\n");
   DriverState::this_thread().pause_cupti_callbacks();
 
   const cudnnStatus_t ret = real_cudnnDestroy(handle);
@@ -78,8 +78,8 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   api->add_input(xId);
   APIs::record(api);
 
-  printf(
-      "WARN: disabling CUPTI callbacks during cudnnActivationForward call\n");
+  //printf(
+    //   "WARN: disabling CUPTI callbacks during cudnnActivationForward call\n");
   DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnActivationForward(
       handle, activationDesc, alpha, xDesc, x, beta, yDesc, y);
@@ -127,7 +127,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   api->add_input(cId);
   APIs::record(api);
 
-  printf("WARN: disabling CUPTI callbacks during cudnnAddTensor call\n");
+  //printf("WARN: disabling CUPTI callbacks during cudnnAddTensor call\n");
   DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret =
       real_cudnnAddTensor(handle, alpha, aDesc, A, beta, cDesc, C);
@@ -186,8 +186,8 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   api->add_input(dyId);
   APIs::record(api);
 
-  printf(
-      "WARN: disabling CUPTI callbacks during cudnnActivationBackward call\n");
+  //printf(
+    //   "WARN: disabling CUPTI callbacks during cudnnActivationBackward call\n");
   DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret =
       real_cudnnActivationBackward(handle, activationDesc, alpha, yDesc, y,
@@ -245,8 +245,8 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   APIs::record(api);
 
   // Do the actual call
-  printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardData "
-         "call\n");
+  //printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardData "
+        //  "call\n");
   DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionBackwardData(
       handle, alpha, wDesc, w, dyDesc, dy, convDesc, algo, workSpace,
@@ -294,8 +294,8 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   APIs::record(api);
 
   // Do the actual call
-  printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardBias "
-         "call\n");
+  //printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardBias "
+        //  "call\n");
   DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionBackwardBias(
       handle, alpha, dyDesc, dy, beta, dbDesc, db);
@@ -346,8 +346,8 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   outVal->add_depends_on(dyId);
   outVal->add_depends_on(workSpaceId);
   outVal->add_depends_on(dwId);
-  printf("[cudnnConvolutionBackwardFilter] %lu deps on %lu %lu %lu %lu\n",
-         outId, xId, dyId, workSpaceId, dwId);
+  //printf("[cudnnConvolutionBackwardFilter] %lu deps on %lu %lu %lu %lu\n",
+        //  outId, xId, dyId, workSpaceId, dwId);
 
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionForward", DriverState::device_from_cudnn_handle(handle));
@@ -358,8 +358,8 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   api->add_input(dwId);
   APIs::record(api);
 
-  printf("WARN: disabling CUPTI callbacks during "
-         "cudnnConvolutionBackwardFilter call\n");
+  //printf("WARN: disabling CUPTI callbacks during "
+        //  "cudnnConvolutionBackwardFilter call\n");
   DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionBackwardFilter(
       handle, alpha, xDesc, x, dyDesc, dy, convDesc, algo, workSpace,
@@ -391,8 +391,8 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   auto &values = Values::instance();
 
   // Find input values
-  printf("Looking for x=%lu, w=%lu, workSpace=%lu\n", (uintptr_t)x,
-         (uintptr_t)w, (uintptr_t)workSpace);
+  //printf("Looking for x=%lu, w=%lu, workSpace=%lu\n", (uintptr_t)x,
+        //  (uintptr_t)w, (uintptr_t)workSpace);
   Values::id_type xId, wId, workSpaceId, yId;
   Values::value_type yVal;
   std::tie(xId, std::ignore) =
@@ -413,8 +413,8 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   outVal->add_depends_on(wId);
   outVal->add_depends_on(workSpaceId);
   outVal->add_depends_on(yId);
-  printf("[cudnnConvolutionForward] %lu deps on %lu %lu %lu %lu\n", outId, yId,
-         xId, wId, workSpaceId);
+  //printf("[cudnnConvolutionForward] %lu deps on %lu %lu %lu %lu\n", outId, yId,
+        //  xId, wId, workSpaceId);
 
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionForward", DriverState::device_from_cudnn_handle(handle));
@@ -425,8 +425,8 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   api->add_input(yId);
   APIs::record(api);
 
-  printf(
-      "WARN: disabling CUPTI callbacks during cudnnConvolutionForward call\n");
+  //printf(
+    //   "WARN: disabling CUPTI callbacks during cudnnConvolutionForward call\n");
   DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionForward(
       handle, alpha, xDesc, x, wDesc, w, convDesc, algo, workSpace,
@@ -473,7 +473,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   APIs::record(api);
 
   // Do the actual call
-  printf("WARN: disabling CUPTI callbacks during cudnnSoftmaxForward call\n");
+  //printf("WARN: disabling CUPTI callbacks during cudnnSoftmaxForward call\n");
   DriverState::this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnSoftmaxForward(handle, algo, mode, alpha,
                                                      xDesc, x, beta, yDesc, y);

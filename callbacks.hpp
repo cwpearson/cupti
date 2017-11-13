@@ -7,7 +7,6 @@
 void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo);
 
-
 typedef struct {
     dim3 gridDim;
     dim3 blockDim;

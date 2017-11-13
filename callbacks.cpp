@@ -40,6 +40,8 @@
 //   bool valid = false;
 // } ConfiguredCall_t;
 
+static int counter = 0;
+
 ConfiguredCall_t &ConfiguredCall() {
   static ConfiguredCall_t cc;
   return cc;
@@ -48,6 +50,8 @@ ConfiguredCall_t &ConfiguredCall() {
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
+  // cudaDeviceSynchronize();
+ 
   //printf("callback: cudaLaunch preamble\n");
   auto kernelTimer = KernelCallTime::instance();
 
@@ -67,8 +71,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // FIXME: assuming with p2p access, it could be on any device?
     const auto &kv =
         values.find_live_device(ConfiguredCall().args[argIdx], 1 /*size*/);
-    if (kv.second != 0)
-      std::cout << "kv? " << *(kv.second) << std::endl;
+    // if (kv.second != 0)
+    //   std::cout << "kv? " << *(kv.second) << std::endl;
     const auto &key = kv.first;
     if (key != uintptr_t(nullptr)) {
       kernelArgIds.push_back(kv.first);
@@ -83,9 +87,6 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   // static std::map<Value::id_type, hash_t> arg_hashes;
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    //printf("callback: cudaLaunch entry\n");
-    
-    
     kernelTimer.kernel_start_time(cbInfo);
     // const auto params = ((cudaLaunch_v3020_params
     // *)(cbInfo->functionParams));
@@ -104,10 +105,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // arg_hashes[argKey] = digest;
     // }
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    cudaDeviceSynchronize();  
-    //printf("callback: cudaLaunch exit\n");
     kernelTimer.kernel_end_time(cbInfo);
-
+    
     auto api = std::make_shared<ApiRecord>(
         cbInfo->functionName, cbInfo->symbolName,
         DriverState::this_thread().current_device());
@@ -134,18 +133,21 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       }
       api->add_output(newId);
       // }
+      // auto timeElapsed = api->get_end_time() - api->get_start_time();
+      // std::cout << "Carl time elapsed " << timeElapsed << std::endl;
     }
     APIs::record(api);
     ConfiguredCall().valid = false;
     ConfiguredCall().args.clear();
 
-    kernelTimer.write_to_file();
+    // kernelTimer.write_to_file();
 
   } else {
     assert(0 && "How did we get here?");
   }
 
-  //printf("callback: cudaLaunch: done\n");
+  if (ConfiguredCall().valid)
+    kernelTimer.save_configured_call(cbInfo->correlationId, ConfiguredCall().args);
 }
 
 Allocations::id_type best_effort_allocation(const uintptr_t p,
@@ -598,7 +600,7 @@ static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     //printf("callback: cudaConfigureCall entry\n");
 
-    assert(!ConfiguredCall().valid && "call is already configured?\n");
+    // assert(!ConfiguredCall().valid && "call is already configured?\n");
 
     auto params = ((cudaConfigureCall_v3020_params *)(cbInfo->functionParams));
     ConfiguredCall().gridDim = params->gridDim;
@@ -625,15 +627,15 @@ static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
     const size_t size     = params->size;
     const size_t offset   = params->offset;
 
-    std::cout << "Handle arg!" << std::endl;
-    std::cout << "Size: " << size << std::endl;
-    std::cout << "Offset: " << offset << std::endl;
+    // std::cout << "Handle arg!" << std::endl;
+    // std::cout << "Size: " << size << std::endl;
+    // std::cout << "Offset: " << offset << std::endl;
     
     // if (arg != NULL)
       // std::cout << *((char *)arg) << std::endl;
     // kernelTimer.correlation_to_dest.insert(std::pair<uint32_t, uintptr_t>(cbInfo->correlationId, arg));
 
-    assert(ConfiguredCall().valid);
+    // assert(ConfiguredCall().valid);
     ConfiguredCall().args.push_back(arg);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
@@ -687,6 +689,13 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     return;
   }
 
+  if (counter == 100000){
+    cuptiActivityFlushAll(0);
+    counter = 0;
+  }
+
+  counter++;
+ 
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_ENTER) {
@@ -734,7 +743,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
       handleCudaLaunch(Values::instance(), cbInfo);
-      break;
+      break;           
     case CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020:
       handleCudaSetDevice(cbInfo);
       break;

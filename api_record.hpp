@@ -56,6 +56,8 @@ public:
   CUpti_CallbackDomain domain() const { return domain_; }
   CUpti_CallbackId cbid() const { return cbid_; }
   const CUpti_CallbackData *cb_info() const { return cbInfo_; }
+  uint32_t get_end_time() { return end_; }
+  uint32_t get_start_time(){ return start_; }
 };
 
 typedef std::shared_ptr<ApiRecord> ApiRecordRef;
