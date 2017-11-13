@@ -4,8 +4,7 @@ addons:
       - libboost-dev
       - cppcheck
       - doxygen
-      - texlive
-      - texlive-latex-recommended
+      - texlive-full
       - graphviz
       - libnuma-dev
 
