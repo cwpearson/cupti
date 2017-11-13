@@ -4,6 +4,7 @@ addons:
       - libboost-dev
       - cppcheck
       - doxygen
+      - texlive
 
 sudo: false
 
