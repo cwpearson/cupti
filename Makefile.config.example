@@ -1,1 +1,3 @@
 BOOST_ROOT=$(HOME)/software/boost_1_65_1
+
+CUDA_ROOT ?= /usr/local/cuda

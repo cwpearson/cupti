@@ -33,16 +33,19 @@ ifdef BOOST_ROOT
 endif
 
 # Set CUDA-related variables
+ifndef CUDA_ROOT
+  $(error set CUDA_ROOT in Makefile.config)
+endif
 NVCC = $(CUDA_ROOT)/bin/nvcc
-INC += -isystem$(CUDA_ROOT)/include -isystem/extras/CUPTI/include
+INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
 LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt 
+
 
 CXX = g++
 
 LD = ld
 CXXFLAGS += -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
 NVCCFLAGS += -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer
-INC += -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
 LIB += -ldl -lnuma
 
 all: $(TARGETS)
