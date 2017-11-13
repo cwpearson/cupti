@@ -6,6 +6,7 @@ addons:
       - doxygen
       - texlive
       - texlive-pictures
+      - graphviz
 
 sudo: false
 

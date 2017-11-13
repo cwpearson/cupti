@@ -34,20 +34,16 @@ endif
 
 # Set CUDA-related variables
 NVCC = $(CUDA_ROOT)/bin/nvcc
-INC += -isystem$(CUDA_ROOT)/include
-LIB += -L$(CUDA_ROOT)/lib64
+INC += -isystem$(CUDA_ROOT)/include -isystem/extras/CUPTI/include
+LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt 
 
 CXX = g++
-
 
 LD = ld
 CXXFLAGS += -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
 NVCCFLAGS += -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer
 INC += -I/usr/local/cuda/include -I/usr/local/cuda/extras/CUPTI/include
-LIB += -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti \
-      -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt \
-      -ldl -lnuma \
-	  -L/usr/include/boost
+LIB += -ldl -lnuma
 
 all: $(TARGETS)
 
