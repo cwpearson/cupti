@@ -5,6 +5,7 @@ addons:
       - cppcheck
       - doxygen
       - texlive
+      - texlive-pictures
 
 sudo: false
 
