@@ -77,13 +77,10 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.cu
 
 .PHONY: docs
 docs:
-	mkdir -p docs
 	doxygen doxygen.config
 	make -C docs/latex
 
 -include $(DEPS)
-
-
 
 #prof.so: $(OBJECTS)
 #	$(CXX) -shared $(LIB) $^ test.o -o $@

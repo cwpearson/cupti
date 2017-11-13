@@ -12,7 +12,13 @@ Install some dependencies
 
 Install CUDA and CUDNN.
 
-As an additional step, make sure the CUPTI library is in your `LD_LIBRARY_PATH`. For example:
+Create a `Makfile.config`
+
+    cp Makefile.config.example Makefile.config
+
+Edit that makefile to match your system setup.
+
+Make sure the CUPTI library is in your `LD_LIBRARY_PATH`. For example:
 
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/extras/CUPTI/lib64"
 
