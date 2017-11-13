@@ -1,5 +1,9 @@
 # CUPTI
 
+| master | develop |
+|--------|---------|
+| coming soon... | [![Build Status](https://travis-ci.org/cwpearson/cupti.svg?branch=develop)](https://travis-ci.org/cwpearson/cupti)
+
 ## Setup
 
 Install some dependencies
