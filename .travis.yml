@@ -3,6 +3,7 @@ addons:
     packages:
       - libboost-dev
       - cppcheck
+      - doxygen
 
 sudo: false
 
@@ -10,14 +11,17 @@ install:
   - wget https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run -O cuda9.run
   - chmod +x cuda9.run
   - ./cuda9.run --silent --toolkit --toolkitpath=`pwd`/cuda-9.0
+  - ln -s Makefile.config.travis Makefile.config
 
 script:
-  - ln -s Makefile.config.travis Makefile.config
   - make CUDA_ROOT=cuda-9.0
+  - make docs
   - export DATE=`date +%Y%m%d`
   - echo $DATE
   - mkdir -p latest
   - cp lib/libcprof.so latest/libcprof.so
+  - cp env.sh latest/env.sh
+  - cp -r docs latest/docs
 
 deploy:
   provider: gcs

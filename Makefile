@@ -32,12 +32,13 @@ ifdef BOOST_ROOT
   LIB += -L$(BOOST_LIB)
 endif
 
+# Set CUDA-related variables
+NVCC = $(CUDA_ROOT)/bin/nvcc
+INC += -isystem$(CUDA_ROOT)/include
+LIB += -L$(CUDA_ROOT)/lib64
+
 CXX = g++
-ifdef CUDA_ROOT
-	NVCC = $(CUDA_ROOT)/bin/nvcc
-else
-	NVCC = nvcc
-endif
+
 
 LD = ld
 CXXFLAGS += -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
