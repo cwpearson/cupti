@@ -6,17 +6,26 @@ addons:
       - doxygen
       - texlive
       - latex-xcolor
+      - texlive-latex-extra
       - graphviz
       - libnuma-dev
 
 install:
-  - wget https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run -O cuda9.run
-  - chmod +x cuda9.run
-  - ./cuda9.run --silent --toolkit --toolkitpath=`pwd`/cuda-9.0
+  - export CUDNN_URL="https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v7.0.3/prod/9.0_20170926/cudnn-9.0-linux-x64-v7-tgz"
+  - export CUDNN_PATH=cudnn.tar.gz
+  - export CUDA_ROOT=`pwd`/cuda-9.0
+  - export CUDASDK_URL="https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run"
+  - export CUDASDK_PATH="cudasdk.run"
+  - mkdir -p $CUDA_ROOT
+  - wget $CUDNN_URL -O $CUDNN_PATH
+  - tar -xvf $CUDNN_PATH $CUDA_ROOT
+  - wget $CUDASDK_URL -O $CUDASDK_PATH
+  - chmod +x $CUDASDK_PATH
+  - ./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT
   - ln -s Makefile.config.travis Makefile.config
 
 script:
-  - make CUDA_ROOT=cuda-9.0
+  - make CUDA_ROOT=$CUDA_ROOT
   - make docs
   - export DATE=`date +%Y%m%d`
   - echo $DATE
