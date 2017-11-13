@@ -5,7 +5,7 @@ addons:
       - cppcheck
       - doxygen
       - texlive
-      - texlive-xcolor
+      - latex-xcolor
       - graphviz
       - libnuma-dev
 
