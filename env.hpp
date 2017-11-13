@@ -1,3 +1,9 @@
+/*
+
+  
+
+*/
+
 #ifndef ENV_HPP
 #define ENV_HPP
 
@@ -17,6 +23,8 @@
 
 namespace env {
 READ_ENV_STR("CPROF_OUT", output_path, "output.cprof")
+READ_ENV_STR("ZIPKIN_ENDPOINT", zipkin_endpoint, "")
+READ_ENV_STR("MONGODB_ENDPOINT", mongodb_endpoint, "")
 }
 
 #endif

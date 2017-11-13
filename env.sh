@@ -4,7 +4,7 @@
 # CUPTI should be in the LD_LIBRARY_PATH
 export LD_LIBRARY_PATH="/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH"
 # where to look for prof.so
-export CPROF_ROOT="$HOME/cupti"
+export CPROF_ROOT="$HOME/repos/cupti"
 
 
 
