@@ -8,9 +8,44 @@
 
 Install some dependencies
 
-    sudo apt install libnuma-dev libboost-all-dev
+    sudo apt install libnuma-dev libboost-all-dev, libcurl4-openssl-dev
 
 Install CUDA and CUDNN.
+
+Install opentracing-cpp and and zipkin-opentracing-cpp.
+
+1. opentracing-cpp
+
+```bash
+    git clone https://github.com/opentracing/opentracing-cpp.git
+    cd opentracing-cpp
+    mkdir .build
+    cd .build
+    cmake ..
+    make
+    sudo make install
+```
+
+
+2. zipkin-opentracing-cpp
+
+```bash
+    git clone https://github.com/rnburn/zipkin-cpp-opentracing.git
+    cd opentracing-cpp
+    mkdir .build
+    cd .build
+    cmake ..
+    make
+    sudo make install
+```
+
+
+If you wish to install either opentracing-cpp or zipkin-opentracing-cpp in a different
+location you can use the DCMAKE_INSTALL_PREFIX flag to change the installation location like so:
+
+```bash
+-DCMAKE_INSTALL_PREFIX=/custom/installation/path
+```
 
 Create a `Makfile.config`
 

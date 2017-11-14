@@ -20,16 +20,32 @@ CPP_OBJECTS = $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(CPP_SRCS))
 CPP_DEPS=$(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$(CPP_OBJECTS))
 DEPS = $(CPP_DEPS)
 
-
-INC += -Iinclude/cprof
-LIB += -L$(LIBDIR)
+INC += -Iinclude/cprof -I$(OPENTRACING_INCLUDE) -I$(ZIPKIN_OPENTRACING_INCLUDE)
+LIB += -L$(LIBDIR) -L$(OPENTRACING_LIB) -L$(ZIPKIN_OPENTRACING_LIB)
 
 # Use BOOST_ROOT if set
 ifdef BOOST_ROOT
   BOOST_INC=$(BOOST_ROOT)/include
   BOOST_LIB=$(BOOST_ROOT)/lib
-  INC += -isystem$(BOOST_INC)
-  LIB += -L$(BOOST_LIB)
+  INC += -isystem$(BOOST_INC) 
+  LIB += -L$(BOOST_LIB) 
+endif
+
+
+ifndef OPENTRACING_INCLUDE 
+$(error OPENTRACING_INCLUDE is not set)
+endif
+
+ifndef ZIPKIN_OPENTRACING_INCLUDE 
+$(error ZIPKIN_OPENTRACING_INCLUDE is not set)
+endif
+
+ifndef ZIPKIN_OPENTRACING_LIB 
+$(error ZIPKIN_OPENTRACING_LIB is not set)
+endif
+
+ifndef OPENTRACING_LIB 
+$(error OPENTRACING_LIB is not set)
 endif
 
 # Set CUDA-related variables
@@ -44,9 +60,9 @@ LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti -L$(CUDA_ROOT)/lib64 -lcuda -lc
 CXX = g++
 
 LD = ld
-CXXFLAGS += -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC
-NVCCFLAGS += -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer
-LIB += -ldl -lnuma
+CXXFLAGS += -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC -Ofast
+NVCCFLAGS += -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer -Ofast
+LIB += -ldl -lnuma -lopentracing -lzipkin -lzipkin_opentracing
 
 all: $(TARGETS)
 
@@ -63,7 +79,7 @@ disclean: clean
 
 $(LIBDIR)/libcprof.so: $(CPP_OBJECTS)
 	mkdir -p $(LIBDIR)
-	$(CXX) -shared $^ -o $@ $(LIB)
+	$(CXX) -O3 -shared $^ -o $@ $(LIB)
 
 $(BUILDDIR)/%.o : $(SRCDIR)/%.cpp
 	cppcheck $< 
@@ -86,4 +102,5 @@ docs:
 #	$(CXX) -shared $(LIB) $^ test.o -o $@
 #%.o : %.cu
 #	$(NVCC) $(NVCCFLAGS) -dc $^ -lcudadevrt -lcudart -o $@	
+
 

@@ -29,6 +29,7 @@
 #include "util_cupti.hpp"
 #include "value.hpp"
 #include "values.hpp"
+#include "activity_callbacks.hpp"
 
 // FIXME: this should be per-thread
 typedef struct {
@@ -45,13 +46,15 @@ ConfiguredCall_t &ConfiguredCall() {
   return cc;
 }
 
+static int counter = 0;
+
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch preamble\n");
   auto kernelTimer = KernelCallTime::instance();
 
-  print_backtrace();
+  // print_backtrace();
 
   // Get the current stream
   const cudaStream_t stream = ConfiguredCall().stream;
@@ -102,8 +105,6 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    cudaDeviceSynchronize();  
-    printf("callback: cudaLaunch exit\n");
     kernelTimer.kernel_end_time(cbInfo);
 
     auto api = std::make_shared<ApiRecord>(
@@ -144,6 +145,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   }
 
   printf("callback: cudaLaunch: done\n");
+  if (ConfiguredCall().valid)
+    kernelTimer.save_configured_call(cbInfo->correlationId, ConfiguredCall().args);
 }
 
 Allocations::id_type best_effort_allocation(const uintptr_t p,
@@ -297,7 +300,6 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     printf("The end timestamp is %ul\n", endTimeStamp);
     // std::cout << "The end time is " << cbInfo->end_time;
     kernelTimer.kernel_end_time(cbInfo);   
-    kernelTimer.write_to_file();    
     printf("callback: cudaMemcpy end func exec\n");
     uint64_t end;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
@@ -675,6 +677,12 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   if (!DriverState::this_thread().is_cupti_callbacks_enabled()) {
     return;
   }
+
+  if (counter == BUFFER_SIZE){
+    cuptiActivityFlushAll(0);
+    counter = 0;
+  }
+  counter++;
 
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
