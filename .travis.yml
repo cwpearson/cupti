@@ -42,6 +42,7 @@ install:
   - echo $HOME && ls $HOME
   - echo $CUDA_ROOT && ls $CUDA_ROOT
   - ls $CUDA_ROOT/lib64
+  - ls $CUDA_ROOT/lib64/stubs
   - rm -v $CUDASDK_PATH
   - wget $CUDNN_URL -O $CUDNN_PATH
   - tar -xvf $CUDNN_PATH
