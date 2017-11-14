@@ -48,7 +48,12 @@ install:
   - ln -s Makefile.config.travis Makefile.config
 
 script:
-  - make CUDA_ROOT=$CUDA_ROOT
+  - make \
+      CUDA_ROOT=$CUDA_ROOT \
+      OPENTRACING_INCLUDE=$OPENTRACING_INCLUDE \
+      OPENTRACING_LIB=$OPENTRACING_ROOT/lib \
+      ZIPKIN_OPENTRACING_INCLUDE=$ZIPKIN_INCLUDE \
+      ZIPKIN_OPENTRACING_LIB=$ZIPKIN_ROOT/lib
   - export DATE=`date +%Y%m%d`
   - echo $DATE
   - mkdir -p latest
