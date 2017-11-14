@@ -15,7 +15,7 @@ sudo: required
 services: docker
 
 install:
-  - export CUDNN_URL="https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v7.0.3/prod/9.0_20170926/cudnn-9.0-linux-x64-v7-tgz"
+  - export CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-9.0-linux-x64-v7.tgz"
   - export CUDNN_PATH=cudnn.tar.gz
   - export CUDA_ROOT=`pwd`/cuda-9.0
   - export CUDASDK_URL="https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run"
