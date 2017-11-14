@@ -3,11 +3,6 @@ addons:
     packages:
       - libboost-dev
       - cppcheck
-      - doxygen
-      - texlive
-      - latex-xcolor
-      - texlive-latex-extra
-      - graphviz
       - libnuma-dev
 
 sudo: required
@@ -17,12 +12,14 @@ services: docker
 install:
   - export CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-9.0-linux-x64-v7.tgz"
   - export CUDNN_PATH=cudnn.tar.gz
-  - export CUDA_ROOT=`pwd`/cuda-9.0
+  - export CUDA_ROOT=$HOME/cuda-9.0
   - export CUDASDK_URL="https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run"
   - export CUDASDK_PATH="cudasdk.run"
   - mkdir -p $CUDA_ROOT
   - wget $CUDNN_URL -O $CUDNN_PATH
-  - tar -xvf $CUDNN_PATH $CUDA_ROOT
+  - tar -xvf $CUDNN_PATH
+  - mv -v cuda/* $CUDA_ROOT/.
+  - rm -v $CUDNN_PATH
   - wget $CUDASDK_URL -O $CUDASDK_PATH
   - chmod +x $CUDASDK_PATH
   - ./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT
