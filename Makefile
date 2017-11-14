@@ -96,8 +96,9 @@ docs:
 	doxygen doxygen.config
 	make -C docs/latex
 docker_docs:
-	docker run -it --rm -v `pwd`:/data cwpearson/doxygen  doxygen doxygen.config
-	docker run -it --rm -v `readlink -f docs/latex`:/data cwpearson/doxygen make
+	@docker pull cwpearson/doxygen
+	@docker run -it --rm -v `pwd`:/data cwpearson/doxygen  doxygen doxygen.config
+	@docker run -it --rm -v `readlink -f docs/latex`:/data cwpearson/doxygen make
 
 
 -include $(DEPS)
