@@ -38,9 +38,9 @@ install:
   - mkdir -p $CUDA_ROOT
   - wget $CUDASDK_URL -O $CUDASDK_PATH
   - chmod +x $CUDASDK_PATH
-  - ./$CUDASDK_PATH --silent --toolkit --toolkitpath=$HOME
-  - ls $HOME
-  - ls $CUDA_ROOT
+  - ./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT
+  - echo $HOME && ls $HOME
+  - echo $CUDA_ROOT && ls $CUDA_ROOT
   - rm -v $CUDASDK_PATH
   - wget $CUDNN_URL -O $CUDNN_PATH
   - tar -xvf $CUDNN_PATH
