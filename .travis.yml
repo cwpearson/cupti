@@ -27,11 +27,11 @@ env:
 install:
   - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC_PATH
   - cd $OPENTRACING_SRC_PATH && mkdir .build && cd .build
-  - cmake .. -DCMAKE_INSTALL_REPFIX=$OPENTRACING_INSTALL_PATH
+  - cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_INSTALL_PATH
   - make && make install
   - git clone https://github.com/rnburn/zipkin-cpp-opentracing.git $ZIPKIN_SRC_PATH
   - cd $ZIPKIN_SRC_PATH && mkdir .build && cd .build
-  - cmake .. -DCMAKE_INSTALL_REPFIX=$ZIPKIN_INSTALL_PATH
+  - cmake .. -DCMAKE_INSTALL_PREFIX=$ZIPKIN_INSTALL_PATH
   - make && make install
   - mkdir -p $CUDA_ROOT
   - wget $CUDNN_URL -O $CUDNN_PATH
