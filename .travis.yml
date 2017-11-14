@@ -53,13 +53,12 @@ install:
 
 script:
   - cd $TRAVIS_BUILD_DIR
-  - echo "#Passing all vars on command line" > Makefile.config
-  - make \
-      CUDA_ROOT=$CUDA_ROOT \
-      OPENTRACING_INCLUDE=$OPENTRACING_INCLUDE \
-      OPENTRACING_LIB=$OPENTRACING_ROOT/lib \
-      ZIPKIN_OPENTRACING_INCLUDE=$ZIPKIN_INCLUDE \
-      ZIPKIN_OPENTRACING_LIB=$ZIPKIN_ROOT/lib
+  - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
+  - echo OPENTRACING_INCLUDE = $OPENTRACING_INCLUDE >> Makefile.config
+  - echo OPENTRACING_LIB = $OPENTRACING_ROOT/lib >> Makefile.config
+  - echo ZIPKIN_OPENTRACING_INCLUDE = $ZIPKIN_INCLUDE >> Makefile.config
+  - echo ZIPKIN_OPENTRACING_LIB = $ZIPKIN_ROOT >> Makefile.config
+  - make
   - export DATE=`date +%Y%m%d`
   - echo $DATE
   - mkdir -p latest
