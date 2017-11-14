@@ -15,3 +15,7 @@ examples/samples/vectorAdd/vec
 examples/samples/deviceQuery/query
 examples/samples/simpleMultiGPU/mgpu
 examples/samples/UnifiedMemoryStreams/ums
+examples/caffe-master-10-22-2017/*
+
+.DS_Store
+._.DS_Store
