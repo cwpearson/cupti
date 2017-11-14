@@ -35,12 +35,13 @@ install:
   - cd $ZIPKIN_SRC && mkdir .build && cd .build
   - cmake .. -DCMAKE_INSTALL_PREFIX=$ZIPKIN_ROOT -DOPENTRACING_INCLUDE_DIR=$OPENTRACING_INCLUDE -DOPENTRACING_LIB=$OPENTRACING_ROOT/lib/libopentracing.so
   - make && make install
-  - mkdir -p $CUDA_ROOT
+  - mkdir -vp $CUDA_ROOT
   - wget $CUDASDK_URL -O $CUDASDK_PATH
   - chmod +x $CUDASDK_PATH
   - ./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT
   - echo $HOME && ls $HOME
   - echo $CUDA_ROOT && ls $CUDA_ROOT
+  - ls $CUDA_ROOT/lib64
   - rm -v $CUDASDK_PATH
   - wget $CUDNN_URL -O $CUDNN_PATH
   - tar -xvf $CUDNN_PATH
