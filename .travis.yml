@@ -53,7 +53,7 @@ script:
 - echo OPENTRACING_INCLUDE = $OPENTRACING_INCLUDE >> Makefile.config
 - echo OPENTRACING_LIB = $OPENTRACING_ROOT/lib >> Makefile.config
 - echo ZIPKIN_OPENTRACING_INCLUDE = $ZIPKIN_INCLUDE >> Makefile.config
-- echo ZIPKIN_OPENTRACING_LIB = $ZIPKIN_ROOT >> Makefile.config
+- echo ZIPKIN_OPENTRACING_LIB = $ZIPKIN_ROOT/lib >> Makefile.config
 - make
 - export DATE=`date +%Y%m%d`
 - echo $DATE
