@@ -31,7 +31,7 @@ install:
   - make && make install
   - git clone https://github.com/rnburn/zipkin-cpp-opentracing.git $ZIPKIN_SRC_PATH
   - cd $ZIPKIN_SRC_PATH && mkdir .build && cd .build
-  - cmake .. -DCMAKE_INSTALL_PREFIX=$ZIPKIN_INSTALL_PATH
+  - cmake .. -DCMAKE_INSTALL_PREFIX=$ZIPKIN_INSTALL_PATH -DOPENTRACING_INCLUDE_DIR=$OPENTRACING_INSTALL_PATH/include -DOPENTRACING_LIB=$OPENTRACING_INSTALL_PATH/lib
   - make && make install
   - mkdir -p $CUDA_ROOT
   - wget $CUDNN_URL -O $CUDNN_PATH
