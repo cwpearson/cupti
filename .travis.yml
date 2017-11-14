@@ -1,79 +1,73 @@
 addons:
   apt:
     packages:
-      - libboost-dev
-      - cppcheck
-      - libnuma-dev
-      - libcurl4-openssl-dev
-      - cmake
-      - git
-
+    - libboost-dev
+    - cppcheck
+    - libnuma-dev
+    - libcurl4-openssl-dev
+    - cmake
+    - git
 sudo: required
-
 services: docker
-
 env:
   global:
-    - CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-8.0-linux-x64-v6.0.tgz"
-    - CUDNN_PATH=cudnn.tar.gz
-    - CUDA_ROOT=$HOME/cuda
-    - CUDASDK_URL="https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run"
-    - CUDASDK_PATH="cudasdk.run"
-    - OPENTRACING_SRC=$HOME/opentracing-cpp
-    - OPENTRACING_ROOT=$HOME/opentracing
-    - OPENTRACING_INCLUDE=$OPENTRACING_ROOT/include
-    - ZIPKIN_SRC=$HOME/zipkin-cpp-opentracing
-    - ZIPKIN_ROOT=$HOME/zipkin
-    - ZIPKIN_INCLUDE=$ZIPKIN_ROOT/include
-
+  - CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-8.0-linux-x64-v6.0.tgz"
+  - CUDNN_PATH=cudnn.tar.gz
+  - CUDA_ROOT=$HOME/cuda
+  - CUDASDK_URL="https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run"
+  - CUDASDK_PATH="cudasdk.run"
+  - OPENTRACING_SRC=$HOME/opentracing-cpp
+  - OPENTRACING_ROOT=$HOME/opentracing
+  - OPENTRACING_INCLUDE=$OPENTRACING_ROOT/include
+  - ZIPKIN_SRC=$HOME/zipkin-cpp-opentracing
+  - ZIPKIN_ROOT=$HOME/zipkin
+  - ZIPKIN_INCLUDE=$ZIPKIN_ROOT/include
 install:
-  - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
-  - cd $OPENTRACING_SRC && mkdir .build && cd .build
-  - cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
-  - make && make install
-  - git clone https://github.com/rnburn/zipkin-cpp-opentracing.git $ZIPKIN_SRC
-  - cd $ZIPKIN_SRC && mkdir .build && cd .build
-  - cmake .. -DCMAKE_INSTALL_PREFIX=$ZIPKIN_ROOT -DOPENTRACING_INCLUDE_DIR=$OPENTRACING_INCLUDE -DOPENTRACING_LIB=$OPENTRACING_ROOT/lib/libopentracing.so
-  - make && make install
-  - mkdir -vp $CUDA_ROOT
-  - wget $CUDASDK_URL -O $CUDASDK_PATH
-  - chmod +x $CUDASDK_PATH
-  - ./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT
-  - echo $HOME && ls $HOME
-  - echo $CUDA_ROOT && ls $CUDA_ROOT
-  - ls $CUDA_ROOT/lib64
-  - ls $CUDA_ROOT/lib64/stubs
-  - ln -s $CUDA_ROOT/lib64/stubs/libcuda.so $CUDA_ROOT/lib64/libcuda.so
-  - rm -v $CUDASDK_PATH
-  - wget $CUDNN_URL -O $CUDNN_PATH
-  - tar -xvf $CUDNN_PATH
-  - mv -v cuda/include/* $CUDA_ROOT/include/.
-  - mv -v cuda/lib64/* $CUDA_ROOT/lib64/.
-  - rm -v $CUDNN_PATH
-
+- git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
+- cd $OPENTRACING_SRC && mkdir .build && cd .build
+- cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
+- make && make install
+- git clone https://github.com/rnburn/zipkin-cpp-opentracing.git $ZIPKIN_SRC
+- cd $ZIPKIN_SRC && mkdir .build && cd .build
+- cmake .. -DCMAKE_INSTALL_PREFIX=$ZIPKIN_ROOT -DOPENTRACING_INCLUDE_DIR=$OPENTRACING_INCLUDE
+  -DOPENTRACING_LIB=$OPENTRACING_ROOT/lib/libopentracing.so
+- make && make install
+- mkdir -vp $CUDA_ROOT
+- wget $CUDASDK_URL -O $CUDASDK_PATH
+- chmod +x $CUDASDK_PATH
+- "./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT"
+- echo $HOME && ls $HOME
+- echo $CUDA_ROOT && ls $CUDA_ROOT
+- ls $CUDA_ROOT/lib64
+- ls $CUDA_ROOT/lib64/stubs
+- ln -s $CUDA_ROOT/lib64/stubs/libcuda.so $CUDA_ROOT/lib64/libcuda.so
+- rm -v $CUDASDK_PATH
+- wget $CUDNN_URL -O $CUDNN_PATH
+- tar -xvf $CUDNN_PATH
+- mv -v cuda/include/* $CUDA_ROOT/include/.
+- mv -v cuda/lib64/* $CUDA_ROOT/lib64/.
+- rm -v $CUDNN_PATH
 script:
-  - cd $TRAVIS_BUILD_DIR
-  - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
-  - echo OPENTRACING_INCLUDE = $OPENTRACING_INCLUDE >> Makefile.config
-  - echo OPENTRACING_LIB = $OPENTRACING_ROOT/lib >> Makefile.config
-  - echo ZIPKIN_OPENTRACING_INCLUDE = $ZIPKIN_INCLUDE >> Makefile.config
-  - echo ZIPKIN_OPENTRACING_LIB = $ZIPKIN_ROOT >> Makefile.config
-  - make
-  - export DATE=`date +%Y%m%d`
-  - echo $DATE
-  - mkdir -p latest
-  - cp lib/libcprof.so latest/libcprof.so
-  - cp env.sh latest/env.sh
-
+- cd $TRAVIS_BUILD_DIR
+- echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
+- echo OPENTRACING_INCLUDE = $OPENTRACING_INCLUDE >> Makefile.config
+- echo OPENTRACING_LIB = $OPENTRACING_ROOT/lib >> Makefile.config
+- echo ZIPKIN_OPENTRACING_INCLUDE = $ZIPKIN_INCLUDE >> Makefile.config
+- echo ZIPKIN_OPENTRACING_LIB = $ZIPKIN_ROOT >> Makefile.config
+- make
+- export DATE=`date +%Y%m%d`
+- echo $DATE
+- mkdir -p latest
+- cp lib/libcprof.so latest/libcprof.so
+- cp env.sh latest/env.sh
 after_success:
-  - make docker_docs
-  - cp -r docs latest/docs
-
+- make docker_docs
+- cp -r docs latest/docs
 deploy:
   provider: gcs
-  access_key_id: GOOGEQY5LDVKHTFZ6AQJ 	
+  access_key_id: GOOGEQY5LDVKHTFZ6AQJ
   secret_access_key:
-    secure: aY6WZbH5VZTaHCmkMW1Wic9IeLYyso//B/fTcPcVGJHbivKMcSwELsS5/OgKG6H30rNAMdRu7RxfR35v42oT5BDOs7IdPNOd8mcTvU401tbx+6DFqExLe4O2dkp6CLcazv/4JEoTOuLxBpj9Xo/el9a+v9e9Dwti6WusYyDcHXbgwVC4RXB1LiW2sDJ9Whj6hM7z0fSlkvFco8CZPFr4IQd18QGBSo2Cut4WcnMuN4dOo76YV4MsOkvMxv18/G9ACw4aRp/K47ZF5ALbIhN6676XyqqPaghmYgpO4m9CSYiXcWX0g4A9weZzK5WBqdMKDe2zsyznha4guHc4OMsPoQgocG+PwbxGHFn1ElG2GjQxAwzhKEmGu3CbyXJjvY7cbNUiU7ZKWxkuy4RrcuSlcDNgxXazLIpFaKq5o72EO5DA6XNodigEFiV5/w0fwuqKrKKWR2xvlkF0ujvWYkdEhYhD1EmDLrf0VAAd2oj/qx6LZnZReqHbSRa871SJNJv0/raPBhy23L9uAbKu8R2SAmRUvDnl5KiDyhpN7cZFoRzkXoOMwf8xFl+odNVhTt6tC8f870YBfmrEHW7ydWiFVddYeXg2ULr8ayyu83zps8RXFKzQgzjeGXNbC6+7i2NYXPTYqx4loFIN5UQsu0m//fYX0SuYUK+5XYehbS1gkA8=
+    secure: PlTpBD2n9702BjgwHkYWpIu51SLcr0ru5Rfba9eSV10175gdB45H3Y5sslwGuyX3ihTDsR4i28kp9eiFLuLajzG22ndtT/MjjLJlsOUcdroF4z3HkZqklncbjH+18x6yxc1uTWsxEMl3gFjpVaBsMviPdVTkK9WBzcPmydpQYD91QX3woJmYMc5O6DYfkvDYk3s6T2rnb8M71Hi88RzLayMGpETYfSEZzlhEhO7T3nm/pN1CwpAEjjKLCvIQF1+h6Klz6f+eloQPbbnTICwlkfyVVgBtpuZuXtsUZbpH+zvE2+7xRaauxpMxR+jSQrDUlEdzG+sY6uLqwgjR9IBiPGDGvtI2sHCyP893VQKS/5tcYorKr3ZGFJ9KDdsJw7YlJ0n4JklJnN+MJ5sCLYXmA3+deFZ9G9WTJ3umB/vLGAuITnE6Q5qTvC7E8Ou9/6fWYYZfXWngSRBY0i32nAffMDZ6hHkYJokIwDhFMgUHjbNKIwqZyOVD9TDBj8bXiZcTDgg9lcglpPb2BKdYBwEtntLnIEo7HrNAvtsZYYrz8s8u6Hxag+6d8Etj7BMaOoXhtO5lQ+y51Yn+2VtK5KCH0Y6pftZLCg2CrVPp0biEZ/iBoGgZq4PHf1FpiNyQIR81D/EFTMVgiIDmoQ+RfrUrLp5awHGYI9R0jl3uOEAvg7g=
   bucket: cwpearson-cprof
   skip_cleanup: true
   local_dir: latest
