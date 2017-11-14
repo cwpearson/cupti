@@ -14,10 +14,10 @@ services: docker
 
 env:
   global:
-    - CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-9.0-linux-x64-v7.tgz"
+    - CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-8.0-linux-x64-v6.0.tgz"
     - CUDNN_PATH=cudnn.tar.gz
-    - CUDA_ROOT=$HOME/cuda-9.0
-    - CUDASDK_URL="https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run"
+    - CUDA_ROOT=$HOME/cuda-8.0
+    - CUDASDK_URL="https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run"
     - CUDASDK_PATH="cudasdk.run"
     - OPENTRACING_SRC=$HOME/opentracing-cpp
     - OPENTRACING_ROOT=$HOME/opentracing
@@ -36,15 +36,15 @@ install:
   - cmake .. -DCMAKE_INSTALL_PREFIX=$ZIPKIN_ROOT -DOPENTRACING_INCLUDE_DIR=$OPENTRACING_INCLUDE -DOPENTRACING_LIB=$OPENTRACING_ROOT/lib/libopentracing.so
   - make && make install
   - mkdir -p $CUDA_ROOT
-  - wget $CUDNN_URL -O $CUDNN_PATH
-  - tar -xvf $CUDNN_PATH
-  - mv -v cuda/* $CUDA_ROOT/.
-  - rm -v $CUDNN_PATH
   - wget $CUDASDK_URL -O $CUDASDK_PATH
   - chmod +x $CUDASDK_PATH
   - ./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT
   - rm -v $CUDASDK_PATH
   - cd $TRAVIS_BUILD_DIR
+  - wget $CUDNN_URL -O $CUDNN_PATH
+  - tar -xvf $CUDNN_PATH
+  - mv -v cuda/* $CUDA_ROOT/.
+  - rm -v $CUDNN_PATH
   - ln -s Makefile.config.travis Makefile.config
 
 script:
