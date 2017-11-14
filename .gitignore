@@ -8,6 +8,8 @@
 *.cprof
 *.csv
 
+docs/
+
 .vscode/*
 
 examples/samples/matrixMul/mm
