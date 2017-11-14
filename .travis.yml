@@ -65,7 +65,7 @@ after_success:
 - export COMMIT=dist/amd64/$TRAVIS_COMMIT
 - mkdir -p $COMMIT
 - cp -r $LATEST/* $COMMIT/.
-- export CBRANCH=dist/amd64/$TRAVIS_BRANCH
+- export BRANCH=dist/amd64/$TRAVIS_BRANCH
 - mkdir -p $BRANCH
 - cp -r $LATEST/* $BRANCH/.
 
