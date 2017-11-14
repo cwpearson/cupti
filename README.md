@@ -31,7 +31,7 @@ Install opentracing-cpp and and zipkin-opentracing-cpp.
 
 ```bash
     git clone https://github.com/rnburn/zipkin-cpp-opentracing.git
-    cd opentracing-cpp
+    cd zipkin-cpp-opentracing
     mkdir .build
     cd .build
     cmake ..
