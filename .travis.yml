@@ -55,14 +55,20 @@ script:
 - echo ZIPKIN_OPENTRACING_INCLUDE = $ZIPKIN_INCLUDE >> Makefile.config
 - echo ZIPKIN_OPENTRACING_LIB = $ZIPKIN_ROOT/lib >> Makefile.config
 - make
-- export DATE=`date +%Y%m%d`
-- echo $DATE
-- mkdir -p latest
-- cp lib/libcprof.so latest/libcprof.so
-- cp env.sh latest/env.sh
-after_success:
 - make docker_docs
-- cp -rv $TRAVIS_BUILD_DIR/docs/latex/refman.pdf latest/cprof.pdf
+after_success:
+- export LATEST=dist/amd64/latest
+- mkdir -p $LATEST
+- cp -v lib/libcprof.so $LATEST/libcprof.so
+- cp -v env.sh $LATEST/env.sh
+- cp -v $TRAVIS_BUILD_DIR/docs/latex/refman.pdf latest/cprof.pdf
+- export COMMIT=dist/amd64/$TRAVIS_COMMIT
+- mkdir -p $COMMIT
+- cp -r $LATEST/* $COMMIT/.
+- export CBRANCH=dist/amd64/$TRAVIS_BRANCH
+- mkdir -p $BRANCH
+- cp -r $LATEST/* $BRANCH/.
+
 deploy:
   provider: gcs
   access_key_id: GOOGEQY5LDVKHTFZ6AQJ
@@ -70,6 +76,6 @@ deploy:
     secure: PlTpBD2n9702BjgwHkYWpIu51SLcr0ru5Rfba9eSV10175gdB45H3Y5sslwGuyX3ihTDsR4i28kp9eiFLuLajzG22ndtT/MjjLJlsOUcdroF4z3HkZqklncbjH+18x6yxc1uTWsxEMl3gFjpVaBsMviPdVTkK9WBzcPmydpQYD91QX3woJmYMc5O6DYfkvDYk3s6T2rnb8M71Hi88RzLayMGpETYfSEZzlhEhO7T3nm/pN1CwpAEjjKLCvIQF1+h6Klz6f+eloQPbbnTICwlkfyVVgBtpuZuXtsUZbpH+zvE2+7xRaauxpMxR+jSQrDUlEdzG+sY6uLqwgjR9IBiPGDGvtI2sHCyP893VQKS/5tcYorKr3ZGFJ9KDdsJw7YlJ0n4JklJnN+MJ5sCLYXmA3+deFZ9G9WTJ3umB/vLGAuITnE6Q5qTvC7E8Ou9/6fWYYZfXWngSRBY0i32nAffMDZ6hHkYJokIwDhFMgUHjbNKIwqZyOVD9TDBj8bXiZcTDgg9lcglpPb2BKdYBwEtntLnIEo7HrNAvtsZYYrz8s8u6Hxag+6d8Etj7BMaOoXhtO5lQ+y51Yn+2VtK5KCH0Y6pftZLCg2CrVPp0biEZ/iBoGgZq4PHf1FpiNyQIR81D/EFTMVgiIDmoQ+RfrUrLp5awHGYI9R0jl3uOEAvg7g=
   bucket: cwpearson-cprof
   skip_cleanup: true
-  local_dir: latest
+  local_dir: $LATEST $COMMIT $BRANCH
   on:
     all_branches: true
