@@ -12,7 +12,7 @@ const AllocationRecord::id_type AllocationRecord::noid =
 AllocationRecord::AllocationRecord(uintptr_t pos, size_t size,
                                    const AddressSpace &as, const Memory &mem,
                                    PageType pt)
-    : Extent(pos, size), address_space_(as), memory_(mem), type_(pt) {
+    : Extent(pos, size), address_space_(as), memory_(mem), type_(pt), freed_(false) {
   assert(address_space_.is_valid());
 }
 

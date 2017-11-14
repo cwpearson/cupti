@@ -27,7 +27,6 @@ std::unordered_map<std::string, std::string> KernelCallTime::text_map;
 std::map<uint32_t, std::vector<uintptr_t> > KernelCallTime::cid_to_call;
 
 
-
 static ZipkinOtTracerOptions options;
 static ZipkinOtTracerOptions memcpy_tracer_options;
 static ZipkinOtTracerOptions launch_tracer_options;

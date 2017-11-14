@@ -183,6 +183,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     printf("%lu --[h2d]--> %lu\n", src, dst);
 
     // Look for, or create a source allocation
+    
     srcAllocId = best_effort_allocation(src, count);
     if (!srcAllocId) {
       Memory M(Memory::Host, get_numa_node(dst));

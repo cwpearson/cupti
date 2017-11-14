@@ -23,6 +23,7 @@ private:
   Memory memory_;
   PageType type_;
   tid_t thread_id_;
+  bool freed_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const AllocationRecord &v);
@@ -36,6 +37,9 @@ public:
            Extent::overlaps(other);
   }
 
+  bool contains(uintptr_t pos, size_t size, const AddressSpace &as) {
+    return address_space_ == as && Extent::contains(Extent(pos, size));
+  }
   bool contains(const AllocationRecord &other) {
     return (address_space_.maybe_equal(other.address_space_)) &&
            Extent::contains(other);
@@ -44,6 +48,11 @@ public:
   id_type Id() const { return reinterpret_cast<id_type>(this); }
   AddressSpace address_space() const { return address_space_; }
   Memory memory() const { return memory_; }
+
+  void mark_free() { freed_ = true; }
+  bool freed() const { return freed_; }
 };
+
+typedef std::shared_ptr<AllocationRecord> Allocation;
 
 #endif

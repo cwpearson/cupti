@@ -16,7 +16,7 @@ public:
 
 private:
   bool is_initialized_;
-  AllocationRecord::id_type allocation_id_;
+  Allocation allocation_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const Value &v);
@@ -31,13 +31,13 @@ public:
 
   id_type Id() const { return reinterpret_cast<id_type>(this); }
 
-  Value(uintptr_t pos, size_t size, AllocationRecord::id_type allocation)
-      : Extent(pos, size), is_initialized_(false), allocation_id_(allocation) {}
-
-  Value(uintptr_t pos, size_t size, AllocationRecord::id_type allocation,
+  Value(uintptr_t pos, size_t size, const Allocation &allocation,
         bool initialized)
       : Extent(pos, size), is_initialized_(initialized),
-        allocation_id_(allocation) {}
+        allocation_(allocation) {}
+
+  Value(uintptr_t pos, size_t size, const Allocation &allocation)
+      : Value(pos, size, allocation, false) {}
 
   void record_meta_append(const std::string &s);
   void record_meta_set(const std::string &s);

@@ -36,6 +36,18 @@ public:
     }
   }
 
+  std::string str() const {
+    switch(type_) {
+      case Type::CudaHostToDevice: return "cudaMemcpyHostToDevice";
+      case Type::CudaDeviceToHost: return "cudaMemcpyDeviceToHost";
+      case Type::CudaHostToHost: return "cudaMemcpyHostToHost";
+      case Type::CudaDeviceToDevice: return "cudaMemcpyDeviceToDevice";
+      case Type::CudaDefault: return "cudaMemcpyDefault";
+      case Type::CudaPeer: return "cudaMemcpyPeer";
+      default: assert(0 && "Unhandled MemoryCopyKind");
+    }
+  }
+
   bool operator==(const MemoryCopyKind &rhs) const {
     return type_ == rhs.type_;
   }

@@ -64,12 +64,10 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   assert(xId && "x should be on device");
 
   // Get dst allocation
-  Allocations::id_type yAllocId;
-  std::tie(yAllocId, std::ignore) =
-      allocations.find_live((uintptr_t)y, AddressSpace::Cuda());
-  assert(yAllocId && "y alloc should be on device");
+  auto yAlloc = allocations.find((uintptr_t)y, AddressSpace::Cuda());
+  assert(yAlloc && "y alloc should be on device");
 
-  std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAllocId, true);
+  std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAlloc, true);
   yVal->add_depends_on(xId);
 
   auto api = std::make_shared<ApiRecord>(
@@ -166,13 +164,11 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   assert(xId && "x should be on device");
 
   // Get dst allocation
-  Allocations::id_type dxAllocId;
-  std::tie(dxAllocId, std::ignore) =
-      allocations.find_live((uintptr_t)dx, AddressSpace::Cuda());
-  assert(dxAllocId && "dx alloc should be on device");
+  auto dxAlloc = allocations.find((uintptr_t)dx, AddressSpace::Cuda());
+  assert(dxAlloc && "dx alloc should be on device");
 
   // FIXME - this size is wrong
-  std::tie(dxId, dxVal) = values.new_value((uintptr_t)dx, 0, dxAllocId, true);
+  std::tie(dxId, dxVal) = values.new_value((uintptr_t)dx, 0, dxAlloc, true);
   dxVal->add_depends_on(xId);
   dxVal->add_depends_on(yId);
   dxVal->add_depends_on(dyId);
@@ -278,11 +274,9 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
          "Couldn't find cudnnConvolutionBackwardBias dy value on device");
 
   // Create output value
-  Allocations::id_type dbAllocId;
-  std::tie(dbAllocId, std::ignore) =
-      allocations.find_live((uintptr_t)db, 1, AddressSpace::Cuda());
-  assert(dbAllocId && "y allocation should be on device");
-  std::tie(dbId, dbVal) = values.new_value((uintptr_t)db, 0, dbAllocId);
+  auto dbAlloc = allocations.find((uintptr_t)db, 1, AddressSpace::Cuda());
+  assert(dbAlloc && "y allocation should be on device");
+  std::tie(dbId, dbVal) = values.new_value((uintptr_t)db, 0, dbAlloc);
   dbVal->add_depends_on(dyId);
 
   // track api
@@ -458,11 +452,9 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   assert(xId && "Couldn't find cudnnSoftmaxForward x value on device");
 
   // Create output value
-  Allocations::id_type yAllocId;
-  std::tie(yAllocId, std::ignore) =
-      allocations.find_live((uintptr_t)y, 1, AddressSpace::Cuda());
-  assert(yAllocId && "y allocation should be on device");
-  std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAllocId);
+  auto yAlloc = allocations.find((uintptr_t)y, 1, AddressSpace::Cuda());
+  assert(yAlloc && "y allocation should be on device");
+  std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAlloc);
   yVal->add_depends_on(xId);
 
   // track api

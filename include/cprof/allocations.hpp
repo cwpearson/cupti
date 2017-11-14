@@ -1,14 +1,13 @@
-#ifndef ALLOCATIONS_HPP
-#define ALLOCATIONS_HPP
+#ifndef CPROF_ALLOCATIONS_HPP
+#define CPROF_ALLOCATIONS_HPP
 
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <mutex>
-#include <set>
+#include <vector>
 
 #include "address_space.hpp"
 #include "allocation_record.hpp"
@@ -16,45 +15,41 @@
 
 class Allocations {
 public:
-  typedef AllocationRecord::id_type id_type;
   typedef std::shared_ptr<AllocationRecord> value_type;
-  static const id_type noid;
 
 private:
-  typedef std::map<id_type, value_type> map_type;
-  map_type allocations_;
+  typedef std::vector<value_type> container_type;
+
+public:
+  typedef container_type::iterator iterator;
+  typedef container_type::const_iterator const_iterator;
+
+private:
+  container_type allocations_;
   std::mutex access_mutex_;
 
 public:
-  // void lock() { access_mutex_.lock(); }
-  // void unlock() { access_mutex_.unlock(); }
+  // simple implementations
+  iterator end() { return allocations_.end(); }
 
-  std::pair<map_type::iterator, bool> insert(const value_type &v);
-  std::tuple<id_type, value_type> find_live(uintptr_t pos, size_t size,
-                                            const AddressSpace &as);
-  std::tuple<id_type, value_type> find_live(uintptr_t pos,
-                                            const AddressSpace &as) {
-    return find_live(pos, 1, as);
-  }
+/*! \brief Lookup allocation by position, size, and address space.
+ */
+  value_type find(uintptr_t pos, size_t size, const AddressSpace &as);
+  value_type find(uintptr_t pos, const AddressSpace &as) { return find(pos, 0, as); }
+  value_type find_exact(uintptr_t pos, const AddressSpace &as);
 
-  std::tuple<id_type, value_type>
-  new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
+  value_type new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
                  const Memory &am, const AllocationRecord::PageType &ty);
 
-  size_t free(const id_type &k) {
-    std::lock_guard<std::mutex> guard(access_mutex_);
-    const size_t numErased = allocations_.erase(k);
-    assert(numErased);
-    return numErased;
-  }
+  size_t free(uintptr_t pos, const AddressSpace &as) {
+    auto i = find_exact(pos, as);
+    if (i) {
+      i->mark_free();
+      return 1;
+    }
+    assert(0 && "Expecting to erase an allocation.");
+    return 0;
 
-  value_type &at(const id_type &k) {
-    std::lock_guard<std::mutex> guard(access_mutex_);
-    return allocations_.at(k);
-  }
-  value_type &at(id_type &&k) {
-    std::lock_guard<std::mutex> guard(access_mutex_);
-    return allocations_.at(k);
   }
 
   static Allocations &instance();

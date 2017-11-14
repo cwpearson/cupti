@@ -48,17 +48,17 @@ public:
 
   std::pair<id_type, value_type> new_value(const uintptr_t pos,
                                            const size_t size,
-                                           const Allocations::id_type allocId) {
-    return new_value(pos, size, allocId, false);
+                                           const Allocation alloc) {
+    return new_value(pos, size, alloc, false);
   }
 
   std::pair<id_type, value_type> new_value(const uintptr_t pos,
                                            const size_t size,
-                                           const Allocations::id_type allocId,
+                                           const Allocation alloc,
                                            const bool initialized) {
-    assert((allocId != noid) && "Allocation should be valid");
+    assert(alloc.get() && "Allocation should be valid");
 
-    auto v = new Value(pos, size, allocId, initialized);
+    auto v = new Value(pos, size, alloc, initialized);
     auto p = insert(std::shared_ptr<Value>(v));
     assert(p.second && "Expecting new value");
     return *p.first;
