@@ -8,8 +8,8 @@
 #include <iomanip>
 #include <iostream>
 
-#include "callbacks.hpp"
-#include "kernel_time.hpp"
+#include "cprof/callbacks.hpp"
+#include "cprof/kernel_time.hpp"
 
 using namespace std::chrono;
 using namespace zipkin;

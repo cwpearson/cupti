@@ -12,24 +12,24 @@
 
 #include <cuda.h>
 #include <cupti.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
-#include "allocation_record.hpp"
-#include "allocations.hpp"
-#include "apis.hpp"
-#include "backtrace.hpp"
-#include "boost/date_time/posix_time/posix_time.hpp"
-#include "driver_state.hpp"
-#include "hash.hpp"
-#include "kernel_time.hpp"
-#include "memory.hpp"
-#include "memorycopykind.hpp"
-#include "numa.hpp"
-#include "thread.hpp"
-#include "util_cuda.hpp"
-#include "util_cupti.hpp"
-#include "value.hpp"
-#include "values.hpp"
-#include "activity_callbacks.hpp"
+#include "cprof/allocation_record.hpp"
+#include "cprof/allocations.hpp"
+#include "cprof/apis.hpp"
+#include "cprof/backtrace.hpp"
+#include "cprof/driver_state.hpp"
+#include "cprof/hash.hpp"
+#include "cprof/kernel_time.hpp"
+#include "cprof/memory.hpp"
+#include "cprof/memorycopykind.hpp"
+#include "cprof/numa.hpp"
+#include "cprof/thread.hpp"
+#include "cprof/util_cuda.hpp"
+#include "cprof/util_cupti.hpp"
+#include "cprof/value.hpp"
+#include "cprof/values.hpp"
+#include "cprof/activity_callbacks.hpp"
 
 // FIXME: this should be per-thread
 typedef struct {

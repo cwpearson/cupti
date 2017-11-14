@@ -6,13 +6,13 @@
 
 #include <cudnn.h>
 
-#include "allocations.hpp"
-#include "apis.hpp"
-#include "callbacks.hpp"
-#include "driver_state.hpp"
-#include "preload.hpp"
-#include "thread.hpp"
-#include "values.hpp"
+#include "cprof/allocations.hpp"
+#include "cprof/apis.hpp"
+#include "cprof/callbacks.hpp"
+#include "cprof/driver_state.hpp"
+#include "cprof/preload.hpp"
+#include "cprof/thread.hpp"
+#include "cprof/values.hpp"
 
 typedef cudnnStatus_t (*cudnnCreateFunc)(cudnnHandle_t *handle);
 extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {

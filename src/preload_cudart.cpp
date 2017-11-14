@@ -3,12 +3,12 @@
 #include <cuda_runtime.h>
 #include <dlfcn.h>
 
-#include "allocations.hpp"
-#include "callbacks.hpp"
-#include "driver_state.hpp"
-#include "preload.hpp"
-#include "thread.hpp"
-#include "values.hpp"
+#include "cprof/allocations.hpp"
+#include "cprof/callbacks.hpp"
+#include "cprof/driver_state.hpp"
+#include "cprof/preload.hpp"
+#include "cprof/thread.hpp"
+#include "cprof/values.hpp"
 
 typedef cudaError_t (*cudaFreeHostFunc)(void *ptr);
 extern "C" cudaError_t cudaFreeHost(void *ptr) {

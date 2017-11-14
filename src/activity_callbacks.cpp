@@ -2,7 +2,7 @@
 #include <vector>
 #include <thread>
 
-#include "activity_callbacks.hpp"
+#include "cprof/activity_callbacks.hpp"
 
 void handleCuptiKindKernel(CUpti_Activity *record){
     auto kernelTimer = KernelCallTime::instance();      

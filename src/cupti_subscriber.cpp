@@ -1,7 +1,8 @@
-#include "callbacks.hpp"
-#include "activity_callbacks.hpp"
-#include "util_cupti.hpp"
 #include <iostream>
+
+#include "cprof/callbacks.hpp"
+#include "cprof/activity_callbacks.hpp"
+#include "cprof/util_cupti.hpp"
 
 #define ALIGN_SIZE (8)
 #define ALIGN_BUFFER(buffer, align)                                            \

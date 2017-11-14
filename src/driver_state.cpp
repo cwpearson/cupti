@@ -1,7 +1,9 @@
-#include "driver_state.hpp"
-#include "util_cupti.hpp"
-
 #include <cassert>
+
+#include "cprof/driver_state.hpp"
+#include "cprof/util_cupti.hpp"
+
+
 
 DriverState &DriverState::instance() {
   static DriverState s;

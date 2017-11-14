@@ -1,4 +1,4 @@
-#include "extent.hpp"
+#include "cprof/extent.hpp"
 
 bool Extent::contains(const Extent::pos_t pos) const {
   if (pos >= pos_ && pos < pos_ + size_) {

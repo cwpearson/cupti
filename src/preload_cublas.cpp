@@ -5,13 +5,13 @@
 
 #include <cublas_v2.h>
 
-#include "allocations.hpp"
-#include "apis.hpp"
-#include "callbacks.hpp"
-#include "driver_state.hpp"
-#include "preload.hpp"
-#include "thread.hpp"
-#include "values.hpp"
+#include "cprof/allocations.hpp"
+#include "cprof/apis.hpp"
+#include "cprof/callbacks.hpp"
+#include "cprof/driver_state.hpp"
+#include "cprof/preload.hpp"
+#include "cprof/thread.hpp"
+#include "cprof/values.hpp"
 
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
 extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
