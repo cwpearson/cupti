@@ -62,7 +62,7 @@ script:
 - cp env.sh latest/env.sh
 after_success:
 - make docker_docs
-- cp -r docs latest/docs
+- cp -rv $TRAVIS_BUILD_DIR/docs/latex/refman.pdf latest/cprof.pdf
 deploy:
   provider: gcs
   access_key_id: GOOGEQY5LDVKHTFZ6AQJ
