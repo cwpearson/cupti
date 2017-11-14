@@ -10,6 +10,10 @@ addons:
       - graphviz
       - libnuma-dev
 
+sudo: required
+
+services: docker
+
 install:
   - export CUDNN_URL="https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v7.0.3/prod/9.0_20170926/cudnn-9.0-linux-x64-v7-tgz"
   - export CUDNN_PATH=cudnn.tar.gz
@@ -26,12 +30,14 @@ install:
 
 script:
   - make CUDA_ROOT=$CUDA_ROOT
-  - make docs
   - export DATE=`date +%Y%m%d`
   - echo $DATE
   - mkdir -p latest
   - cp lib/libcprof.so latest/libcprof.so
   - cp env.sh latest/env.sh
+
+after_success:
+  - make docker_docs
   - cp -r docs latest/docs
 
 deploy:

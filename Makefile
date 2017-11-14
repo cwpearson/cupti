@@ -91,10 +91,14 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.cu
 	$(NVCC) -std=c++11 -arch=sm_35 -dc  -Xcompiler -fPIC $^ -o test.o
 	$(NVCC) -std=c++11 -arch=sm_35 -Xcompiler -fPIC -dlink test.o -lcudadevrt -lcudart -o $@	
 
-.PHONY: docs
+.PHONY: docs docker_docs
 docs:
 	doxygen doxygen.config
 	make -C docs/latex
+docker_docs:
+	docker run -it --rm -v `pwd`:/data cwpearson/doxygen  doxygen doxygen.config
+	docker run -it --rm -v `readlink -f docs/latex`:/data cwpearson/doxygen make
+
 
 -include $(DEPS)
 
