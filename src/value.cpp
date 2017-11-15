@@ -3,11 +3,9 @@
 #include <map>
 #include <sstream>
 
-#include "cprof/value.hpp"
 #include "cprof/allocations.hpp"
 #include "cprof/env.hpp"
-
-
+#include "cprof/value.hpp"
 
 using boost::property_tree::ptree;
 using boost::property_tree::read_json;
@@ -30,7 +28,7 @@ std::string Value::json() const {
   pt.put("val.id", Id());
   pt.put("val.pos", pos_);
   pt.put("val.size", size_);
-  pt.put("val.allocation_id", allocation_id_);
+  pt.put("val.allocation_", allocation_);
   pt.put("val.initialized", is_initialized_);
   std::stringstream buf;
   write_json(buf, pt, false);
@@ -55,11 +53,11 @@ void Value::record_meta_set(const std::string &s) {
   buf.flush();
 }
 
-/*
-FIXME - not thread-safe, allications may be modified while calling this function
-*/
 AddressSpace Value::address_space() const {
-  return Allocations::instance().at(allocation_id_)->address_space();
+  // FIXME - allocations may be modified during this function call. Not
+  // thread-safe
+  assert(allocation_);
+  return allocation_->address_space();
 }
 
 void Value::set_size(size_t size) {
