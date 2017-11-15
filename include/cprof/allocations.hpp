@@ -33,12 +33,16 @@ public:
   // simple implementations
   iterator end() { return allocations_.end(); }
 
-  /*! \brief Lookup allocation by position, size, and address space.
+  /*! \brief Lookup allocation that contains pos, size, and address space.
    */
   value_type find(uintptr_t pos, size_t size, const AddressSpace &as);
+  /*! \brief Lookup allocation containing pos and address space
+   */
   value_type find(uintptr_t pos, const AddressSpace &as) {
-    return find(pos, 0, as);
+    return find(pos, 1, as);
   }
+  /*! \brief Lookup allocation starting at pos in address space
+   */
   value_type find_exact(uintptr_t pos, const AddressSpace &as);
 
   value_type new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
