@@ -324,7 +324,8 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
     rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float),
                                         AddressSpace::Cuda(), AM,
                                         AllocationRecord::PageType::Unknown);
-    printf("WARN: new allocId=%lu for result=%lu\n", rAlloc, (uintptr_t)result);
+    printf("WARN: new allocId=%lu for result=%lu\n", rAlloc.get(),
+           (uintptr_t)result);
   }
   assert(rAlloc && "If there is no allocation, we need to make one");
 
@@ -425,7 +426,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
                                         AllocationRecord::PageType::Unknown);
     assert(rAlloc);
   }
-  printf("result allocId=%lu\n", rAlloc);
+  printf("result allocId=%lu\n", rAlloc.get());
   // Make a new value
   Values::id_type rId;
   Values::value_type rVal;
