@@ -63,7 +63,7 @@ Allocations::new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
 size_t Allocations::free(uintptr_t pos, const AddressSpace &as) {
   auto i = find_exact(pos, as);
   if (i->freed()) {
-    printf("WARN: allocation %lu double-free?\n", i);
+    printf("WARN: allocation %lu double-free?\n", i->pos());
   }
   if (i) {
     i->mark_free();
