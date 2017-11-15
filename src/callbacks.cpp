@@ -10,10 +10,11 @@
 #include <string>
 #include <vector>
 
-#include <cuda.h>
-#include <cupti.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <cuda_runtime_api.h>
+#include <cupti.h>
 
+#include "cprof/activity_callbacks.hpp"
 #include "cprof/allocation_record.hpp"
 #include "cprof/allocations.hpp"
 #include "cprof/apis.hpp"
@@ -29,7 +30,6 @@
 #include "cprof/util_cupti.hpp"
 #include "cprof/value.hpp"
 #include "cprof/values.hpp"
-#include "cprof/activity_callbacks.hpp"
 
 // FIXME: this should be per-thread
 typedef struct {
@@ -146,48 +146,28 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
 
   printf("callback: cudaLaunch: done\n");
   if (ConfiguredCall().valid)
-    kernelTimer.save_configured_call(cbInfo->correlationId, ConfiguredCall().args);
-}
-
-Allocations::id_type best_effort_allocation(const uintptr_t p,
-                                            const size_t count) {
-  Allocations::id_type srcAllocId;
-  auto &allocations = Allocations::instance();
-  
-  // Look in Host address space
-  std::tie(srcAllocId, std::ignore) =
-      allocations.find_live(p, count, AddressSpace::Host());
-  if (srcAllocId != Allocations::noid) {
-    return srcAllocId;
-  }
-
-  std::tie(srcAllocId, std::ignore) =
-      allocations.find_live(p, count, AddressSpace::Cuda());
-  if (srcAllocId != Allocations::noid) {
-    return srcAllocId;
-  }
-
-  return Allocations::noid;
+    kernelTimer.save_configured_call(cbInfo->correlationId,
+                                     ConfiguredCall().args);
 }
 
 void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
                    Values &values, const ApiRecordRef &api, const uintptr_t dst,
                    const uintptr_t src, const MemoryCopyKind &kind,
                    const size_t count, const int peerSrc, const int peerDst) {
-  
-  Allocations::id_type srcAllocId = 0, dstAllocId = 0;
+
   AddressSpace srcAS, dstAS;
+  Allocation srcAlloc(nullptr), dstAlloc(nullptr);
 
   // Set address space, and create missing allocations along the way
   if (MemoryCopyKind::CudaHostToDevice() == kind) {
     printf("%lu --[h2d]--> %lu\n", src, dst);
 
     // Look for, or create a source allocation
-    
-    srcAllocId = best_effort_allocation(src, count);
-    if (!srcAllocId) {
-      Memory M(Memory::Host, get_numa_node(dst));
-      std::tie(srcAllocId, std::ignore) =
+    // FIXME: address space depends on UVA
+    srcAlloc = allocations.find(src, count, AddressSpace::Cuda());
+    if (!srcAlloc) {
+      Memory M(Memory::Host, get_numa_node(src));
+      srcAlloc =
           allocations.new_allocation(src, count, AddressSpace::Host(), M,
                                      AllocationRecord::PageType::Unknown);
       printf("WARN: Couldn't find src alloc. Created implict host "
@@ -195,25 +175,24 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
              src);
     }
 
-    srcAS = allocations.at(srcAllocId)->address_space();
+    srcAS = srcAlloc->address_space();
     dstAS = AddressSpace::Cuda();
   } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
     printf("%lu --[d2h]--> %lu\n", src, dst);
 
     // Look for, or create a destination allocation
-    dstAllocId = best_effort_allocation(dst, count);
-    if (!dstAllocId) {
+    dstAlloc = allocations.find(dst, count, AddressSpace::Cuda());
+    if (!dstAlloc) {
       Memory M(Memory::Host, get_numa_node(dst));
-      std::tie(dstAllocId, std::ignore) =
-          allocations.new_allocation(dst, count, AddressSpace::Host(), M,
+      dstAlloc =
+          allocations.new_allocation(src, count, AddressSpace::Host(), M,
                                      AllocationRecord::PageType::Unknown);
       printf("WARN: Couldn't find dst alloc. Created implict host "
              "allocation=%lu.\n",
-             src);
+             dst);
     }
-
     srcAS = AddressSpace::Cuda();
-    dstAS = allocations.at(dstAllocId)->address_space();
+    dstAS = dstAlloc->address_space();
   } else if (MemoryCopyKind::CudaDeviceToDevice() == kind) {
     srcAS = AddressSpace::Cuda();
     dstAS = AddressSpace::Cuda();
@@ -231,17 +210,17 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 
   // Look for existing src / dst allocations.
   // Either we just made it, or it should already exist.
-  if (!srcAllocId) {
-    std::tie(srcAllocId, std::ignore) =
-        allocations.find_live(src, count, srcAS);
-    assert(srcAllocId != Allocations::noid);
+  if (!srcAlloc) {
+    srcAlloc = allocations.find(src, count, srcAS);
+    assert(srcAlloc);
   }
-  if (!dstAllocId) {
-    std::tie(dstAllocId, std::ignore) =
-        allocations.find_live(dst, count, dstAS);
-    assert(dstAllocId != Allocations::noid);
+  if (!dstAlloc) {
+    dstAlloc = allocations.find(dst, count, dstAS);
+    assert(dstAlloc);
   }
 
+  assert(srcAlloc && "Couldn't find or create src allocation");
+  assert(dstAlloc && "Couldn't find or create dst allocation");
   // There may not be a source value, because it may have been initialized
   // on the host
   Values::id_type srcValId;
@@ -256,7 +235,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     }
   } else {
     printf("WARN: creating implicit src value during memcpy\n");
-    auto srcVal = std::shared_ptr<Value>(new Value(src, count, srcAllocId));
+    auto srcVal = std::shared_ptr<Value>(new Value(src, count, srcAlloc));
     values.insert(srcVal);
     srcValId = srcVal->Id();
   }
@@ -264,10 +243,10 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   // always create a new dst value
   Values::id_type dstValId;
   Values::value_type dstVal;
-  std::tie(dstValId, dstVal) = values.new_value(dst, count, dstAllocId);
+  std::tie(dstValId, dstVal) = values.new_value(dst, count, dstAlloc);
   dstVal->add_depends_on(srcValId);
   dstVal->record_meta_append(cbInfo->functionName);
-  
+
   api->add_input(srcValId);
   api->add_output(dstValId);
   APIs::record(api);
@@ -275,7 +254,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 
 static void handleCudaMemcpy(Allocations &allocations, Values &values,
                              const CUpti_CallbackData *cbInfo) {
-                               
+
   auto kernelTimer = KernelCallTime::instance();
   // extract API call parameters
   auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
@@ -294,13 +273,13 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     api->record_start_time(start);
 
     kernelTimer.kernel_start_time(cbInfo);
-  
+
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     uint64_t endTimeStamp;
     cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
     printf("The end timestamp is %ul\n", endTimeStamp);
     // std::cout << "The end time is " << cbInfo->end_time;
-    kernelTimer.kernel_end_time(cbInfo);   
+    kernelTimer.kernel_end_time(cbInfo);
     printf("callback: cudaMemcpy end func exec\n");
     uint64_t end;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
@@ -312,7 +291,6 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     record_memcpy(cbInfo, allocations, values, api, dst, src,
                   MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
 
-                  
   } else {
     assert(0 && "How did we get here?");
   }
@@ -399,13 +377,11 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
 
     // Create the new allocation
     Memory AM(Memory::CudaDevice, DriverState::this_thread().current_device());
-    Allocations::id_type aId;
-    std::tie(aId, std::ignore) =
-        allocations.new_allocation(devPtr, size, AddressSpace::Cuda(), AM,
-                                   AllocationRecord::PageType::Pageable);
+    auto a = allocations.new_allocation(devPtr, size, AddressSpace::Cuda(), AM,
+                                        AllocationRecord::PageType::Pageable);
 
     // Create the new value
-    values.new_value(devPtr, size, aId, false /*initialized*/);
+    values.new_value(devPtr, size, a, false /*initialized*/);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -414,21 +390,19 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
 void record_mallochost(Allocations &allocations, Values &values,
                        const uintptr_t ptr, const size_t size) {
 
-  Allocations::id_type aId;
+  Allocation alloc;
   // Check if the allocation exists
-  std::tie(aId, std::ignore) =
-      allocations.find_live(ptr, size, AddressSpace::Cuda());
+  alloc = allocations.find(ptr, size, AddressSpace::Cuda());
 
   // If not, create a new one
-  if (aId == Allocations::noid) {
+  if (!alloc) {
     Memory AM(Memory::Host, get_numa_node(ptr)); // FIXME - is this right
-    std::tie(aId, std::ignore) =
-        allocations.new_allocation(ptr, size, AddressSpace::Cuda(), AM,
-                                   AllocationRecord::PageType::Pinned);
+    alloc = allocations.new_allocation(ptr, size, AddressSpace::Cuda(), AM,
+                                       AllocationRecord::PageType::Pinned);
   }
 
   // Create the new value
-  values.new_value(ptr, size, aId, false /*initialized*/);
+  values.new_value(ptr, size, alloc, false /*initialized*/);
 }
 
 static void handleCudaMallocHost(Allocations &allocations, Values &values,
@@ -504,16 +478,12 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
     assert(ptr &&
            "Must have been initialized by cudaMallocHost or cudaHostAlloc");
 
-    // Find the live matching allocation
-    Allocations::id_type allocId;
-    std::tie(allocId, std::ignore) =
-        allocations.find_live(ptr, AddressSpace::Cuda());
-    if (allocId != Allocations::noid) { // FIXME
-      allocations.free(allocId);
+    auto alloc = allocations.find_exact(ptr, AddressSpace::Cuda());
+    if (alloc) { // FIXME
+      allocations.free(alloc->pos(), alloc->address_space());
     } else {
-      // assert(0 && "Freeing unallocated memory?");
+      assert(0 && "Freeing unallocated memory?");
     }
-
   } else {
     assert(0 && "How did we get here?");
   }
@@ -535,14 +505,14 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     // FIXME: need to check which address space this is in
     Memory AM =
         Memory(Memory::CudaDevice, DriverState::this_thread().current_device());
-    std::shared_ptr<AllocationRecord> a(
-        new AllocationRecord(devPtr, size, AddressSpace::Cuda(), AM,
-                             AllocationRecord::PageType::Pageable));
-    Allocations::id_type aId = allocations.insert(a).first->first;
-    printf("[cudaMalloc] new alloc id=%lu\n", aId);
+
+    Allocation a =
+        allocations.new_allocation(devPtr, size, AddressSpace::Cuda(), AM,
+                                   AllocationRecord::PageType::Pageable);
+    printf("[cudaMalloc] new alloc id=%lu\n", a);
 
     values.insert(std::shared_ptr<Value>(
-        new Value(devPtr, size, aId, false /*initialized*/)));
+        new Value(devPtr, size, a, false /*initialized*/)));
     // auto digest = hash_device(devPtr, size);
     // printf("uninitialized digest: %llu\n", digest);
   } else {
@@ -567,16 +537,13 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     }
 
     // Find the live matching allocation
-    Allocations::id_type allocId;
     printf("Looking for %lu\n", devPtr);
-    std::tie(allocId, std::ignore) =
-        allocations.find_live(devPtr, AddressSpace::Cuda());
-    if (allocId != Allocations::noid) { // FIXME
-      allocations.free(allocId);
+    auto alloc = allocations.find_exact(devPtr, AddressSpace::Cuda());
+    if (alloc) { // FIXME
+      allocations.free(alloc->pos(), alloc->address_space());
     } else {
       assert(0 && "Freeing unallocated memory?"); // FIXME - could be async
     }
-
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
@@ -679,7 +646,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     return;
   }
 
-  if (counter == BUFFER_SIZE){
+  if (counter == BUFFER_SIZE) {
     cuptiActivityFlushAll(0);
     counter = 0;
   }
@@ -762,7 +729,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   }
   default:
     break;
-  } 
+  }
 
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
