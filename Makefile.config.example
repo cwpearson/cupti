@@ -7,3 +7,6 @@ ZIPKIN_OPENTRACING_LIB ?= $(HOME)/lib/lib
 OPENTRACING_LIB ?= $(HOME)/lib/lib
 
 CUDA_ROOT ?= /usr/local/cuda
+
+# Debug or Release
+BUILD_TYPE ?= Debug

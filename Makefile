@@ -56,15 +56,26 @@ ifndef CUDA_ROOT
 endif
 NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
-LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt 
+LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
+       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt \
+	   -ldl -lnuma -lopentracing -lzipkin -lzipkin_opentracing
 
 
 CXX = g++
-
 LD = ld
-CXXFLAGS += -std=c++11 -g -fno-omit-frame-pointer -Wall -Wextra -Wshadow -Wpedantic -fPIC -Ofast
-NVCCFLAGS += -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer -Ofast
-LIB += -ldl -lnuma -lopentracing -lzipkin -lzipkin_opentracing
+
+CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC
+NVCCFLAGS += -std=c++11 -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC
+
+ifeq ($(BUILD_TYPE),Release)
+  CXXFLAGS +=  -Ofast
+  NVCCFLAGS += -Xcompiler -Ofast
+else ifeq ($(BUILD_TYPE),Debug)
+  CXXFLAGS += -g -fno-omit-frame-pointer
+  NVCCFLAGS += -G -g -arch=sm_35 -Xcompiler -fno-omit-frame-pointer
+else
+  $(error BUILD_TYPE must be Release or Debug)
+endif
 
 all: $(TARGETS)
 
@@ -81,7 +92,7 @@ disclean: clean
 
 $(LIBDIR)/libcprof.so: $(CPP_OBJECTS)
 	mkdir -p $(LIBDIR)
-	$(CXX) -O3 -shared $^ -o $@ $(LIB)
+	$(CXX) $(CXXFLAGS) -shared $^ -o $@ $(LIB)
 
 $(BUILDDIR)/%.o : $(SRCDIR)/%.cpp
 	cppcheck $< 
