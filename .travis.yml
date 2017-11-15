@@ -10,8 +10,6 @@ addons:
 sudo: required
 services: docker
 env:
-  - BUILD_TYPE=Release
-  - BUILD_TYPE=Debug
   global:
   - CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-8.0-linux-x64-v6.0.tgz"
   - CUDNN_PATH=cudnn.tar.gz
@@ -25,6 +23,10 @@ env:
   - ZIPKIN_ROOT=$HOME/zipkin
   - ZIPKIN_INCLUDE=$ZIPKIN_ROOT/include
   
+matrix:
+  include:
+    - env: BUILD_TYPE=Release
+    - env: BUILD_TYPE=Debug
 
 install:
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
