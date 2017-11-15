@@ -17,8 +17,8 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size,
                                           const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
-  for (iterator i = allocations_.end() - 1, b = allocations_.begin(); i != b;
-       --i) {
+  for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
+       i != e; ++i) {
     Allocation a = *i;
     if (a->contains(pos, size, as) && !a->freed()) {
       return *i;
@@ -31,7 +31,8 @@ Allocations::value_type Allocations::find_exact(uintptr_t pos,
                                                 const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
-  for (iterator i = allocations_.end(), b = allocations_.begin(); i != b; --i) {
+  for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
+       i != e; ++i) {
     if ((*i)->pos() == pos && (*i)->address_space() == as && !(*i)->freed()) {
       return *i;
     }

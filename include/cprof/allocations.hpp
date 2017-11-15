@@ -22,6 +22,7 @@ private:
 
 public:
   typedef container_type::iterator iterator;
+  typedef container_type::reverse_iterator reverse_iterator;
   typedef container_type::const_iterator const_iterator;
 
 private:

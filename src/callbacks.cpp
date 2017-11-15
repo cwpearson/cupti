@@ -509,7 +509,7 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     Allocation a =
         allocations.new_allocation(devPtr, size, AddressSpace::Cuda(), AM,
                                    AllocationRecord::PageType::Pageable);
-    printf("[cudaMalloc] new alloc id=%lu\n", a);
+    printf("[cudaMalloc] new alloc=%lu pos=%lu\n", a, a->pos());
 
     values.insert(std::shared_ptr<Value>(
         new Value(devPtr, size, a, false /*initialized*/)));
