@@ -86,3 +86,4 @@ deploy:
   local_dir: $DEPLOY
   on:
     all_branches: true
+    condition: $BUILD_TYPE = Release
