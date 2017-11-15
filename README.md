@@ -81,3 +81,11 @@ Do something with the result:
 Other info
 
 `env.sh` sets `LD_PRELOAD` to load the profiling library and its dependences.
+
+## Run with gdb
+
+Build the library with debug symbols.
+
+Modify `env.sh` so that the final line calls `gdb` before the arguments, like so:
+
+    LD_PRELOAD="$LD_PRELOAD:$CPROF_ROOT/lib/libcprof.so" gdb $@
