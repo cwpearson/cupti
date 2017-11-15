@@ -20,7 +20,7 @@ public:
 
 private:
   AddressSpace address_space_;
-  Memory memory_;
+  // Memory memory_;
   PageType type_;
   tid_t thread_id_;
   bool freed_;
@@ -28,7 +28,8 @@ private:
 public:
   friend std::ostream &operator<<(std::ostream &os, const AllocationRecord &v);
   AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
-                   const Memory &mem, PageType pt);
+                   // const Memory &mem,
+                   PageType pt);
 
   std::string json() const;
 
@@ -47,7 +48,7 @@ public:
 
   id_type Id() const { return reinterpret_cast<id_type>(this); }
   AddressSpace address_space() const { return address_space_; }
-  Memory memory() const { return memory_; }
+  // Memory memory() const { return memory_; }
 
   void mark_free() { freed_ = true; }
   bool freed() const { return freed_; }

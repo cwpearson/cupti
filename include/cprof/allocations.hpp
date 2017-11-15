@@ -46,7 +46,7 @@ public:
   value_type find_exact(uintptr_t pos, const AddressSpace &as);
 
   value_type new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
-                            const Memory &am,
+                            // const Memory &am,
                             const AllocationRecord::PageType &ty);
 
   size_t free(uintptr_t pos, const AddressSpace &as);

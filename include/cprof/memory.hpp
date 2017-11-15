@@ -1,8 +1,10 @@
-#ifndef MEMORY_HPP
-#define MEMORY_HPP
+#ifndef CPROF_MEMORY_HPP
+#define CPROF_MEMORY_HPP
 
 #include <cstdint>
 #include <string>
+
+/*
 
 #include "optional.hpp"
 
@@ -16,9 +18,7 @@ public:
   static const loc_t CudaAny;
   static const loc_t Any;
 
-  /*
-  numa region, device id, etc
-  */
+  // numa region, device id, etc
   loc_t loc_;
   optional<int> id_;
 
@@ -28,5 +28,7 @@ public:
 
   std::string json() const;
 };
+
+*/
 
 #endif

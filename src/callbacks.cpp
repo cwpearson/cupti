@@ -25,6 +25,7 @@
 #include "cprof/memory.hpp"
 #include "cprof/memorycopykind.hpp"
 #include "cprof/numa.hpp"
+#include "cprof/profiler.hpp"
 #include "cprof/thread.hpp"
 #include "cprof/util_cuda.hpp"
 #include "cprof/util_cupti.hpp"
@@ -503,8 +504,9 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
 
     // Create the new allocation
     // FIXME: need to check which address space this is in
-    Memory AM =
-        Memory(Memory::CudaDevice, DriverState::this_thread().current_device());
+    int devId = DriverState::this_thread().current_device();
+
+    Memory AM = Memory(Memory::CudaDevice, devId);
 
     Allocation a =
         allocations.new_allocation(devPtr, size, AddressSpace::Cuda(), AM,

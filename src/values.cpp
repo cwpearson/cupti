@@ -2,8 +2,8 @@
 #include <fstream>
 #include <map>
 
-#include "cprof/values.hpp"
 #include "cprof/env.hpp"
+#include "cprof/values.hpp"
 
 const Values::id_type Values::noid = Value::noid;
 
@@ -48,7 +48,8 @@ Values::find_live_device(const uintptr_t pos, const size_t size) {
   for (size_t i = value_order_.size() - 1; true; i--) {
     const auto valKey = value_order_[i];
     const auto &val = values_[valKey];
-    if (val->overlaps(e) && val->address_space().is_cuda())
+    assert(0 && "Fix this is_cuda_device");
+    if (val->overlaps(e) && val->address_space().is_cuda_device())
       return std::make_pair(valKey, val);
 
     if (i == 0)

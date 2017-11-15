@@ -42,9 +42,11 @@ Allocations::value_type Allocations::find_exact(uintptr_t pos,
 
 Allocations::value_type
 Allocations::new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
-                            const Memory &am,
+                            // const Memory &am,
                             const AllocationRecord::PageType &ty) {
-  auto val = value_type(new AllocationRecord(pos, size, as, am, ty));
+  auto val = value_type(new AllocationRecord(pos, size, as,
+                                             //  am,
+                                             ty));
   assert(val.get());
 
   if (val->size() == 0) {

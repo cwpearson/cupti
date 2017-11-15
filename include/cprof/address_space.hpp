@@ -6,12 +6,21 @@
 
 class AddressSpace {
 public:
-  enum class Type { Unknown, Host, Cuda, Invalid };
+  enum class Type {
+    Unknown,
+    Host,       ///< CUDA <4.0 host address space
+    CudaDevice, ///< CUDA <4.0 address space for a single device,
+    CudaUVA,    ///< CUDA >4.0 UVA
+    Invalid
+  };
   AddressSpace() : type_(Type::Invalid) {}
   AddressSpace(const AddressSpace &other) : type_(other.type_) {}
 
 private:
-  AddressSpace(Type type) : type_(type) {}
+  AddressSpace(Type type, int device) : type_(type), device_(device) {}
+  AddressSpace(Type type) : AddressSpace(type, -1) {}
+  Type type_;
+  int device_; ///< which device the address space is associated with
 
 public:
   bool operator==(const AddressSpace &rhs) const { return type_ == rhs.type_; }
@@ -19,7 +28,8 @@ public:
 
   bool is_valid() const { return type_ != Type::Invalid; }
   bool is_host() const { return type_ == Type::Host; }
-  bool is_cuda() const { return type_ == Type::Cuda; }
+  bool is_cuda_device() const { return type_ == Type::CudaDevice; }
+  bool is_cuda_uva() const { return type_ == Type::CudaUVA; }
   bool is_unknown() const { return type_ == Type::Unknown; }
 
   bool maybe_equal(const AddressSpace &other) const;
@@ -27,13 +37,15 @@ public:
   std::string json() const;
 
   static AddressSpace Host() { return AddressSpace(AddressSpace::Type::Host); }
-  static AddressSpace Cuda() { return AddressSpace(AddressSpace::Type::Cuda); }
+  static AddressSpace CudaDevice(int device) {
+    return AddressSpace(AddressSpace::Type::CudaDevice, device);
+  }
+  static AddressSpace CudaUVA() {
+    return AddressSpace(AddressSpace::Type::CudaUVA);
+  }
   static AddressSpace Unknown() {
     return AddressSpace(AddressSpace::Type::Unknown);
   }
-
-private:
-  Type type_;
 };
 
 #endif

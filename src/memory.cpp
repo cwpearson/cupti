@@ -3,6 +3,8 @@
 
 #include "cprof/memory.hpp"
 
+/*
+
 using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
@@ -48,3 +50,5 @@ std::string Memory::json() const {
   write_json(buf, pt, false);
   return buf.str();
 }
+
+*/
