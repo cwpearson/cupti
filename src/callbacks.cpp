@@ -57,7 +57,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   // print_backtrace();
 
   // Get the current stream
-  const cudaStream_t stream = ConfiguredCall().stream;
+  // const cudaStream_t stream = ConfiguredCall().stream;
   const char *symbolName = cbInfo->symbolName;
   printf("launching %s\n", symbolName);
 
@@ -277,7 +277,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     uint64_t endTimeStamp;
     cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
-    printf("The end timestamp is %ul\n", endTimeStamp);
+    printf("The end timestamp is %lu\n", endTimeStamp);
     // std::cout << "The end time is " << cbInfo->end_time;
     kernelTimer.kernel_end_time(cbInfo);
     printf("callback: cudaMemcpy end func exec\n");
@@ -304,7 +304,7 @@ static void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
   const uintptr_t src = (uintptr_t)params->src;
   const size_t count = params->count;
   const cudaMemcpyKind kind = params->kind;
-  const cudaStream_t stream = params->stream;
+  // const cudaStream_t stream = params->stream;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpyAsync entry\n");
 
@@ -339,7 +339,7 @@ static void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
   const uintptr_t src = (uintptr_t)params->src;
   const int srcDevice = params->srcDevice;
   const size_t count = params->count;
-  const cudaStream_t stream = params->stream;
+  // const cudaStream_t stream = params->stream;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpyPeerAsync entry\n");
     uint64_t start;
@@ -368,7 +368,7 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
   auto params = ((cudaMallocManaged_v6000_params *)(cbInfo->functionParams));
   const uintptr_t devPtr = (uintptr_t)(*(params->devPtr));
   const size_t size = params->size;
-  const unsigned int flags = params->flags;
+  // const unsigned int flags = params->flags;
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
@@ -509,7 +509,8 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     Allocation a =
         allocations.new_allocation(devPtr, size, AddressSpace::Cuda(), AM,
                                    AllocationRecord::PageType::Pageable);
-    printf("[cudaMalloc] new alloc=%lu pos=%lu\n", a, a->pos());
+    printf("[cudaMalloc] new alloc=%lu pos=%lu\n", (uintptr_t)a.get(),
+           a->pos());
 
     values.insert(std::shared_ptr<Value>(
         new Value(devPtr, size, a, false /*initialized*/)));
@@ -604,9 +605,9 @@ static void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     printf("callback: cudaStreamCreate entry\n");
-    const auto params =
-        ((cudaStreamCreate_v3020_params *)(cbInfo->functionParams));
-    const cudaStream_t stream = *(params->pStream);
+    // const auto params =
+    //     ((cudaStreamCreate_v3020_params *)(cbInfo->functionParams));
+    // const cudaStream_t stream = *(params->pStream);
     printf("WARN: ignoring cudaStreamCreate\n");
   } else {
     assert(0 && "How did we get here?");
@@ -616,9 +617,9 @@ static void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
 static void handleCudaStreamDestroy(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaStreamCreate entry\n");
-    const auto params =
-        ((cudaStreamDestroy_v3020_params *)(cbInfo->functionParams));
-    const cudaStream_t stream = params->stream;
+    // const auto params =
+    //     ((cudaStreamDestroy_v3020_params *)(cbInfo->functionParams));
+    // const cudaStream_t stream = params->stream;
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
@@ -628,9 +629,9 @@ static void handleCudaStreamDestroy(const CUpti_CallbackData *cbInfo) {
 static void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaStreamSynchronize entry\n");
-    const auto params =
-        ((cudaStreamSynchronize_v3020_params *)(cbInfo->functionParams));
-    const cudaStream_t stream = params->stream;
+    // const auto params =
+    //     ((cudaStreamSynchronize_v3020_params *)(cbInfo->functionParams));
+    // const cudaStream_t stream = params->stream;
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
