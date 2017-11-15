@@ -11,8 +11,9 @@ bool Extent::contains(const Extent::pos_t pos) const {
 }
 
 bool Extent::contains(const Extent &other) const {
-  assert(size_ && "Extent of size 0?");
-  assert(other.size_ && "Extent of size 0?");
+  if (0 == size_) {
+    return false;
+  }
   return contains(other.pos_) && contains(other.pos_ + other.size_ - 1);
 }
 
