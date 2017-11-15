@@ -3,6 +3,8 @@
 ## Adjust these variables to match your installation
 # CUPTI should be in the LD_LIBRARY_PATH
 export LD_LIBRARY_PATH="/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$HOME/software/opentracing-cpp/lib:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$HOME/software/zipkin-cpp-opentracing/lib:$LD_LIBRARY_PATH"
 # where to look for prof.so
 export CPROF_ROOT="$HOME/repos/cupti"
 
