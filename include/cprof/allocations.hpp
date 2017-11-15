@@ -32,14 +32,17 @@ public:
   // simple implementations
   iterator end() { return allocations_.end(); }
 
-/*! \brief Lookup allocation by position, size, and address space.
- */
+  /*! \brief Lookup allocation by position, size, and address space.
+   */
   value_type find(uintptr_t pos, size_t size, const AddressSpace &as);
-  value_type find(uintptr_t pos, const AddressSpace &as) { return find(pos, 0, as); }
+  value_type find(uintptr_t pos, const AddressSpace &as) {
+    return find(pos, 0, as);
+  }
   value_type find_exact(uintptr_t pos, const AddressSpace &as);
 
   value_type new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
-                 const Memory &am, const AllocationRecord::PageType &ty);
+                            const Memory &am,
+                            const AllocationRecord::PageType &ty);
 
   size_t free(uintptr_t pos, const AddressSpace &as) {
     auto i = find_exact(pos, as);
@@ -49,13 +52,12 @@ public:
     }
     assert(0 && "Expecting to erase an allocation.");
     return 0;
-
   }
 
   static Allocations &instance();
 
 private:
-  Allocations();
+  Allocations() {}
 };
 
 #endif
