@@ -20,7 +20,7 @@ CPP_OBJECTS = $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(CPP_SRCS))
 CPP_DEPS=$(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$(CPP_OBJECTS))
 DEPS = $(CPP_DEPS)
 
-INC += -Iinclude -I$(ZIPKIN_OPENTRACING_INCLUDE)
+INC += -Iinclude -isystem$(ZIPKIN_OPENTRACING_INCLUDE)
 LIB += -L$(LIBDIR) -L$(OPENTRACING_LIB) -L$(ZIPKIN_OPENTRACING_LIB)
 
 # Use BOOST_ROOT if set
@@ -33,7 +33,7 @@ endif
 
 
 ifdef OPENTRACING_INCLUDE 
-  INC += -I$(OPENTRACING_INCLUDE)
+  INC += -isystem$(OPENTRACING_INCLUDE)
 else
 $(error OPENTRACING_INCLUDE is not set)
 endif
