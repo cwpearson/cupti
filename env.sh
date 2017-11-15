@@ -18,4 +18,4 @@ export CPROF_OUT="output.cprof"
 
 ## Run the provided program. For example
 #   ./env.sh examples/samples/vectorAdd/vec
-LD_PRELOAD="$LD_PRELOAD:$CPROF_ROOT/lib/libcprof.so" $@
+LD_PRELOAD="$LD_PRELOAD:$CPROF_ROOT/lib/libcprof.so" gdb $@

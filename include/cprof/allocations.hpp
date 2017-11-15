@@ -45,15 +45,7 @@ public:
                             const Memory &am,
                             const AllocationRecord::PageType &ty);
 
-  size_t free(uintptr_t pos, const AddressSpace &as) {
-    auto i = find_exact(pos, as);
-    if (i) {
-      i->mark_free();
-      return 1;
-    }
-    assert(0 && "Expecting to erase an allocation.");
-    return 0;
-  }
+  size_t free(uintptr_t pos, const AddressSpace &as);
 
   static Allocations &instance();
 
