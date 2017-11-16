@@ -59,7 +59,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
-  const int devId = cprof::driver().this_thread().current_device();
+  const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Get src value
@@ -73,9 +73,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAlloc, true);
   yVal->add_depends_on(xId);
 
-  auto api = std::make_shared<ApiRecord>(
-      "cudnnActivationForward",
-      cprof::driver().device_from_cudnn_handle(handle));
+  auto api = std::make_shared<ApiRecord>("cudnnActivationForward", devId);
   api->add_output(yId);
   api->add_input(xId);
   APIs::record(api);
@@ -110,7 +108,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
 
   auto &values = Values::instance();
 
-  const int devId = cprof::driver().this_thread().current_device();
+  const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Get src value
@@ -125,8 +123,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   dstVal->add_depends_on(aId);
   dstVal->add_depends_on(cId);
 
-  auto api = std::make_shared<ApiRecord>(
-      "cudnnAddTensor", cprof::driver().device_from_cudnn_handle(handle));
+  auto api = std::make_shared<ApiRecord>("cudnnAddTensor", devId);
   api->add_output(dstId);
   api->add_input(aId);
   api->add_input(cId);
@@ -161,7 +158,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
-  const int devId = cprof::driver().this_thread().current_device();
+  const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Get src value
@@ -219,7 +216,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   SAME_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardData);
   auto &values = Values::instance();
 
-  const int devId = cprof::driver().this_thread().current_device();
+  const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
@@ -278,7 +275,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
-  const int devId = cprof::driver().this_thread().current_device();
+  const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
@@ -334,7 +331,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   SAME_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardFilter);
   auto &values = Values::instance();
 
-  const int devId = cprof::driver().this_thread().current_device();
+  const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
@@ -402,7 +399,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
 
   auto &values = Values::instance();
 
-  const int devId = cprof::driver().this_thread().current_device();
+  const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
@@ -464,7 +461,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
-  const int devId = cprof::driver().this_thread().current_device();
+  const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
@@ -481,8 +478,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   yVal->add_depends_on(xId);
 
   // track api
-  auto api = std::make_shared<ApiRecord>(
-      "cudnnSoftmaxForward", cprof::driver().device_from_cudnn_handle(handle));
+  auto api = std::make_shared<ApiRecord>("cudnnSoftmaxForward", devId);
   api->add_output(yId);
   api->add_input(xId);
   APIs::record(api);
