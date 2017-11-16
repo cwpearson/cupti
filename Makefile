@@ -15,7 +15,8 @@ DEPSDIR = $(BUILDDIR)
 TARGETS = $(LIBDIR)/libcprof.so
 
 # Source and object files
-CPP_SRCS := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/**/*.cpp) 
+CPP_SRCS := $(shell find src -name "*.cpp")
+# CPP_SRCS := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/**/*.cpp) 
 CPP_OBJECTS = $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(CPP_SRCS))
 CPP_DEPS=$(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$(CPP_OBJECTS))
 DEPS = $(CPP_DEPS)
@@ -92,7 +93,7 @@ disclean: clean
 
 $(LIBDIR)/libcprof.so: $(CPP_OBJECTS)
 	mkdir -p $(LIBDIR)
-	$(CXX) $(CXXFLAGS) -shared $^ -o $@ $(LIB)
+	$(CXX) $(CXXFLAGS) -shared -Wl,--no-undefined $^ -o $@ $(LIB)
 
 $(BUILDDIR)/%.o : $(SRCDIR)/%.cpp
 	cppcheck $< 
