@@ -18,6 +18,6 @@ void Hardware::get_device_properties() {
   for (int i = 0; i < numDevices; ++i) {
     cudaDeviceProp prop;
     CUDA_CHECK(cudaGetDeviceProperties(&prop, i));
-    cudaDevices_.push_back(cuda::Device(prop));
+    cudaDevices_.push_back(cuda::Device(prop, i));
   }
 }

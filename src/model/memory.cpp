@@ -3,9 +3,7 @@
 
 #include "cprof/model/memory.hpp"
 
-using namespace cprof::model;
-
-std::string to_string(const Memory &m) {
+std::string cprof::model::to_string(const Memory &m) {
   switch (m) {
   case Memory::Unknown:
     return "unknown";

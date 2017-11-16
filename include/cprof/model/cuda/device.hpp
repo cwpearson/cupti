@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
 
 namespace cprof {
 namespace model {
@@ -11,7 +11,7 @@ namespace cuda {
 
 class Device {
 public:
-  Device(const cudaDeviceProp &prop);
+  Device(const cudaDeviceProp &prop, int id);
 
 public:
   std::string name_;            ///< cudaDeviceProp.name
