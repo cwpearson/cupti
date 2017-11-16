@@ -33,6 +33,10 @@ public:
   // simple implementations
   iterator end() { return allocations_.end(); }
 
+  /*! \brief Lookup allocation that contains pos, size.
+   */
+  value_type find(uintptr_t pos, size_t size);
+
   /*! \brief Lookup allocation that contains pos, size, and address space.
    */
   value_type find(uintptr_t pos, size_t size, const AddressSpace &as);
@@ -46,8 +50,7 @@ public:
   value_type find_exact(uintptr_t pos, const AddressSpace &as);
 
   value_type new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
-                            // const Memory &am,
-                            const AllocationRecord::PageType &ty);
+                            const cprof::model::Memory &am);
 
   size_t free(uintptr_t pos, const AddressSpace &as);
 

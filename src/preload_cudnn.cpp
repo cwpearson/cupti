@@ -9,9 +9,9 @@
 #include "cprof/allocations.hpp"
 #include "cprof/apis.hpp"
 #include "cprof/callbacks.hpp"
-#include "cprof/driver_state.hpp"
+#include "cprof/model/driver.hpp"
+#include "cprof/model/thread.hpp"
 #include "cprof/preload.hpp"
-#include "cprof/thread.hpp"
 #include "cprof/values.hpp"
 
 typedef cudnnStatus_t (*cudnnCreateFunc)(cudnnHandle_t *handle);
@@ -19,12 +19,12 @@ extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
   SAME_LD_PRELOAD_BOILERPLATE(cudnnCreate);
 
   printf("WARN: disabling CUPTI callbacks during cudnnCreate call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
 
   const cudnnStatus_t ret = real_cudnnCreate(handle);
-  DriverState::track_cudnn_handle(*handle,
-                                  DriverState::this_thread().current_device());
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().track_cudnn_handle(
+      *handle, cprof::driver().this_thread().current_device());
+  cprof::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -33,10 +33,10 @@ extern "C" cudnnStatus_t cudnnDestroy(cudnnHandle_t handle) {
   SAME_LD_PRELOAD_BOILERPLATE(cudnnDestroy);
 
   printf("WARN: disabling CUPTI callbacks during cudnnDestroy call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
 
   const cudnnStatus_t ret = real_cudnnDestroy(handle);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -59,29 +59,33 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
+  const int devId = cprof::driver().this_thread().current_device();
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Get src value
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, 1, AddressSpace::Cuda());
+  std::tie(xId, xVal) = values.find_live((uintptr_t)x, 1, AS);
   assert(xId && "x should be on device");
 
   // Get dst allocation
-  auto yAlloc = allocations.find((uintptr_t)y, AddressSpace::Cuda());
+  auto yAlloc = allocations.find((uintptr_t)y, AS);
   assert(yAlloc && "y alloc should be on device");
 
   std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAlloc, true);
   yVal->add_depends_on(xId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnActivationForward", DriverState::device_from_cudnn_handle(handle));
+      "cudnnActivationForward",
+      cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(yId);
   api->add_input(xId);
   APIs::record(api);
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnActivationForward call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnActivationForward(
       handle, activationDesc, alpha, xDesc, x, beta, yDesc, y);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -106,10 +110,13 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
 
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().this_thread().current_device();
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Get src value
-  std::tie(aId, aVal) = values.find_live((uintptr_t)A, 1, AddressSpace::Cuda());
+  std::tie(aId, aVal) = values.find_live((uintptr_t)A, 1, AS);
   assert(aId && "A should be on device");
-  std::tie(cId, cVal) = values.find_live((uintptr_t)C, 1, AddressSpace::Cuda());
+  std::tie(cId, cVal) = values.find_live((uintptr_t)C, 1, AS);
   assert(cId && "C should be on device");
 
   Values::id_type dstId;
@@ -119,17 +126,17 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   dstVal->add_depends_on(cId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnAddTensor", DriverState::device_from_cudnn_handle(handle));
+      "cudnnAddTensor", cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(dstId);
   api->add_input(aId);
   api->add_input(cId);
   APIs::record(api);
 
   printf("WARN: disabling CUPTI callbacks during cudnnAddTensor call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret =
       real_cudnnAddTensor(handle, alpha, aDesc, A, beta, cDesc, C);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -154,17 +161,19 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
+  const int devId = cprof::driver().this_thread().current_device();
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Get src value
-  std::tie(yId, yVal) = values.find_live((uintptr_t)y, 1, AddressSpace::Cuda());
+  std::tie(yId, yVal) = values.find_live((uintptr_t)y, 1, AS);
   assert(yId && "y should be on device");
-  std::tie(dyId, dyVal) =
-      values.find_live((uintptr_t)dy, 1, AddressSpace::Cuda());
+  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, 1, AS);
   assert(dyId && "dy should be on device");
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, 1, AddressSpace::Cuda());
+  std::tie(xId, xVal) = values.find_live((uintptr_t)x, 1, AS);
   assert(xId && "x should be on device");
 
   // Get dst allocation
-  auto dxAlloc = allocations.find((uintptr_t)dx, AddressSpace::Cuda());
+  auto dxAlloc = allocations.find((uintptr_t)dx, AS);
   assert(dxAlloc && "dx alloc should be on device");
 
   // FIXME - this size is wrong
@@ -175,7 +184,8 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
 
   // FIXME: also depends on alpha, beta
   auto api = std::make_shared<ApiRecord>(
-      "cudnnActivationBackward", DriverState::device_from_cudnn_handle(handle));
+      "cudnnActivationBackward",
+      cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(dxId);
   api->add_input(xId);
   api->add_input(yId);
@@ -184,11 +194,11 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnActivationBackward call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret =
       real_cudnnActivationBackward(handle, activationDesc, alpha, yDesc, y,
                                    dyDesc, dy, xDesc, x, beta, dxDesc, dx);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -209,14 +219,17 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   SAME_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardData);
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().this_thread().current_device();
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find input values
   Values::id_type wId, dyId, workSpaceId, dxId;
   Values::value_type wVal, dyVal, workSpaceVal, dxVal;
-  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, AddressSpace::Cuda());
-  std::tie(wId, wVal) = values.find_live((uintptr_t)w, AddressSpace::Cuda());
+  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, AS);
+  std::tie(wId, wVal) = values.find_live((uintptr_t)w, AS);
   std::tie(workSpaceId, workSpaceVal) =
-      values.find_live((uintptr_t)workSpace, AddressSpace::Cuda());
-  std::tie(dxId, dxVal) = values.find_live((uintptr_t)dx, AddressSpace::Cuda());
+      values.find_live((uintptr_t)workSpace, AS);
+  std::tie(dxId, dxVal) = values.find_live((uintptr_t)dx, AS);
 
   assert(dyId &&
          "Couldn't find cudnnConvolutionBackwardData dy value on device");
@@ -232,7 +245,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   // track api
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionBackwardData",
-      DriverState::device_from_cudnn_handle(handle));
+      cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(outId);
   api->add_input(wId);
   api->add_input(dyId);
@@ -243,11 +256,11 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardData "
          "call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionBackwardData(
       handle, alpha, wDesc, w, dyDesc, dy, convDesc, algo, workSpace,
       workSpaceSizeInBytes, beta, dxDesc, dx);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -265,16 +278,19 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
+  const int devId = cprof::driver().this_thread().current_device();
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find input values
   Values::id_type dyId, dbId;
   Values::value_type dyVal, dbVal;
-  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, AddressSpace::Cuda());
+  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, AS);
 
   assert(dyId &&
          "Couldn't find cudnnConvolutionBackwardBias dy value on device");
 
   // Create output value
-  auto dbAlloc = allocations.find((uintptr_t)db, 1, AddressSpace::Cuda());
+  auto dbAlloc = allocations.find((uintptr_t)db, 1, AS);
   assert(dbAlloc && "y allocation should be on device");
   std::tie(dbId, dbVal) = values.new_value((uintptr_t)db, 0, dbAlloc);
   dbVal->add_depends_on(dyId);
@@ -282,7 +298,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   // track api
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionBackwardBias",
-      DriverState::device_from_cudnn_handle(handle));
+      cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(dbId);
   api->add_input(dyId);
   APIs::record(api);
@@ -290,10 +306,10 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cudnnConvolutionBackwardBias "
          "call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionBackwardBias(
       handle, alpha, dyDesc, dy, beta, dbDesc, db);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -318,16 +334,17 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   SAME_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardFilter);
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().this_thread().current_device();
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find input values
   Values::id_type xId, dyId, workSpaceId, dwId;
   Values::value_type dwVal;
-  std::tie(xId, std::ignore) =
-      values.find_live((uintptr_t)x, AddressSpace::Cuda());
-  std::tie(dyId, std::ignore) =
-      values.find_live((uintptr_t)dy, AddressSpace::Cuda());
+  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, AS);
+  std::tie(dyId, std::ignore) = values.find_live((uintptr_t)dy, AS);
   std::tie(workSpaceId, std::ignore) =
-      values.find_live((uintptr_t)workSpace, AddressSpace::Cuda());
-  std::tie(dwId, dwVal) = values.find_live((uintptr_t)dw, AddressSpace::Cuda());
+      values.find_live((uintptr_t)workSpace, AS);
+  std::tie(dwId, dwVal) = values.find_live((uintptr_t)dw, AS);
   assert(
       xId && dyId && workSpaceId && dwId &&
       "Couldn't find cudnnConvolutionBackwardFilter argument value on device");
@@ -344,7 +361,8 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
          outId, xId, dyId, workSpaceId, dwId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnConvolutionForward", DriverState::device_from_cudnn_handle(handle));
+      "cudnnConvolutionForward",
+      cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(outId);
   api->add_input(xId);
   api->add_input(dyId);
@@ -354,11 +372,11 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
 
   printf("WARN: disabling CUPTI callbacks during "
          "cudnnConvolutionBackwardFilter call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionBackwardFilter(
       handle, alpha, xDesc, x, dyDesc, dy, convDesc, algo, workSpace,
       workSpaceSizeInBytes, beta, dwDesc, dw);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -384,18 +402,19 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
 
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().this_thread().current_device();
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find input values
   printf("Looking for x=%lu, w=%lu, workSpace=%lu\n", (uintptr_t)x,
          (uintptr_t)w, (uintptr_t)workSpace);
   Values::id_type xId, wId, workSpaceId, yId;
   Values::value_type yVal;
-  std::tie(xId, std::ignore) =
-      values.find_live((uintptr_t)x, AddressSpace::Cuda());
-  std::tie(wId, std::ignore) =
-      values.find_live((uintptr_t)w, AddressSpace::Cuda());
+  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, AS);
+  std::tie(wId, std::ignore) = values.find_live((uintptr_t)w, AS);
   std::tie(workSpaceId, std::ignore) =
-      values.find_live((uintptr_t)workSpace, AddressSpace::Cuda());
-  std::tie(yId, yVal) = values.find_live((uintptr_t)y, AddressSpace::Cuda());
+      values.find_live((uintptr_t)workSpace, AS);
+  std::tie(yId, yVal) = values.find_live((uintptr_t)y, AS);
   assert(xId && wId && workSpaceId && yId &&
          "Couldn't find cudnnConvolutionForward argument value on device");
 
@@ -411,7 +430,8 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
          xId, wId, workSpaceId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnConvolutionForward", DriverState::device_from_cudnn_handle(handle));
+      "cudnnConvolutionForward",
+      cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(outId);
   api->add_input(xId);
   api->add_input(wId);
@@ -421,11 +441,11 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
 
   printf(
       "WARN: disabling CUPTI callbacks during cudnnConvolutionForward call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionForward(
       handle, alpha, xDesc, x, wDesc, w, convDesc, algo, workSpace,
       workSpaceSizeInBytes, beta, yDesc, y);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -444,32 +464,35 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
+  const int devId = cprof::driver().this_thread().current_device();
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find input values
   Values::id_type xId, yId;
   Values::value_type xVal, yVal;
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AddressSpace::Cuda());
+  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AS);
 
   assert(xId && "Couldn't find cudnnSoftmaxForward x value on device");
 
   // Create output value
-  auto yAlloc = allocations.find((uintptr_t)y, 1, AddressSpace::Cuda());
+  auto yAlloc = allocations.find((uintptr_t)y, 1, AS);
   assert(yAlloc && "y allocation should be on device");
   std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAlloc);
   yVal->add_depends_on(xId);
 
   // track api
   auto api = std::make_shared<ApiRecord>(
-      "cudnnSoftmaxForward", DriverState::device_from_cudnn_handle(handle));
+      "cudnnSoftmaxForward", cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(yId);
   api->add_input(xId);
   APIs::record(api);
 
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cudnnSoftmaxForward call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnSoftmaxForward(handle, algo, mode, alpha,
                                                      xDesc, x, beta, yDesc, y);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }

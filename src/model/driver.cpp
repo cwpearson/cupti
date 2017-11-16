@@ -1,14 +1,9 @@
 #include <cassert>
 
-#include "cprof/driver_state.hpp"
+#include "cprof/model/driver.hpp"
 #include "cprof/util_cupti.hpp"
 
-
-
-DriverState &DriverState::instance() {
-  static DriverState s;
-  return s;
-}
+using namespace cprof::model;
 
 void ThreadState::api_enter(const int device, const CUpti_CallbackDomain domain,
                             const CUpti_CallbackId cbid,

@@ -9,8 +9,8 @@ public:
   enum class Type {
     Unknown,
     Host,       ///< CUDA <4.0 host address space
-    CudaDevice, ///< CUDA <4.0 address space for a single device,
-    CudaUVA,    ///< CUDA >4.0 UVA
+    CudaDevice, ///< CUDA <4.0 address space for a single device
+    CudaUVA,    ///< CUDA >4.0 unified virtual addressing
     Invalid
   };
   AddressSpace() : type_(Type::Invalid) {}

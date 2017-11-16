@@ -8,28 +8,25 @@
 #include <memory>
 
 #include "address_space.hpp"
+#include "cprof/model/memory.hpp"
+#include "cprof/model/thread.hpp"
 #include "extent.hpp"
-#include "memory.hpp"
-#include "thread.hpp"
 
 class AllocationRecord : public Extent {
 public:
-  enum class PageType { Pinned, Pageable, Unknown };
   typedef uintptr_t id_type;
   static const id_type noid;
 
 private:
   AddressSpace address_space_;
-  // Memory memory_;
-  PageType type_;
-  tid_t thread_id_;
+  cprof::model::Memory memory_;
+  cprof::model::tid_t thread_id_;
   bool freed_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const AllocationRecord &v);
   AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
-                   // const Memory &mem,
-                   PageType pt);
+                   const cprof::model::Memory &mem);
 
   std::string json() const;
 
@@ -41,6 +38,11 @@ public:
   bool contains(uintptr_t pos, size_t size, const AddressSpace &as) {
     return address_space_ == as && Extent::contains(Extent(pos, size));
   }
+
+  bool contains(uintptr_t pos, size_t size) {
+    return Extent::contains(Extent(pos, size));
+  }
+
   bool contains(const AllocationRecord &other) {
     return (address_space_.maybe_equal(other.address_space_)) &&
            Extent::contains(other);
@@ -48,7 +50,7 @@ public:
 
   id_type Id() const { return reinterpret_cast<id_type>(this); }
   AddressSpace address_space() const { return address_space_; }
-  // Memory memory() const { return memory_; }
+  cprof::model::Memory memory() const { return memory_; }
 
   void mark_free() { freed_ = true; }
   bool freed() const { return freed_; }

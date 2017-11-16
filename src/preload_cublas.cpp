@@ -1,4 +1,3 @@
-
 #include <cassert>
 #include <cstdio>
 #include <dlfcn.h>
@@ -8,9 +7,9 @@
 #include "cprof/allocations.hpp"
 #include "cprof/apis.hpp"
 #include "cprof/callbacks.hpp"
-#include "cprof/driver_state.hpp"
+#include "cprof/model/driver.hpp"
+#include "cprof/model/thread.hpp"
 #include "cprof/preload.hpp"
-#include "cprof/thread.hpp"
 #include "cprof/values.hpp"
 
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
@@ -18,14 +17,14 @@ extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
   V2_LD_PRELOAD_BOILERPLATE(cublasCreate);
 
   printf("WARN: disabling CUPTI callbacks during cublasCreate call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
 
   const cublasStatus_t ret = real_cublasCreate(handle);
 
-  DriverState::track_cublas_handle(*handle,
-                                   DriverState::this_thread().current_device());
+  cprof::driver().track_cublas_handle(
+      *handle, cprof::driver().this_thread().current_device());
 
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -33,11 +32,11 @@ typedef cublasStatus_t (*cublasDestroyFunc)(cublasHandle_t handle);
 extern "C" cublasStatus_t cublasDestroy(cublasHandle_t handle) {
   V2_LD_PRELOAD_BOILERPLATE(cublasDestroy);
 
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   printf("WARN: tid=%d disabling CUPTI callbacks during cublasDestroy call\n",
-         get_thread_id());
+         cprof::model::get_thread_id());
   const cublasStatus_t ret = real_cublasDestroy(handle);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -73,12 +72,12 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   newVal->add_depends_on(bId);
   newVal->add_depends_on(cId);
 
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasDgemm "
          "call\n");
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasDgemm", DriverState::device_from_cublas_handle(handle));
+      "cublasDgemm", cprof::driver().device_from_cublas_handle(handle));
   api->add_output(newId);
   api->add_input(aId);
   api->add_input(bId);
@@ -87,7 +86,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   const cublasStatus_t ret = real_cublasDgemm(
       handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -105,11 +104,14 @@ cublasSaxpy(cublasHandle_t handle, int n,
 
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().device_from_cublas_handle(handle);
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find input values
   Values::id_type xId, yId;
   Values::value_type xVal, yVal;
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AddressSpace::Cuda());
-  std::tie(yId, yVal) = values.find_live((uintptr_t)y, AddressSpace::Cuda());
+  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AS);
+  std::tie(yId, yVal) = values.find_live((uintptr_t)y, AS);
 
   assert(xId && "Couldn't find cublasSaxpy x value on device");
 
@@ -122,7 +124,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
 
   // track api
   auto api = std::make_shared<ApiRecord>(
-      "cublasSaxpy", DriverState::device_from_cublas_handle(handle));
+      "cublasSaxpy", cprof::driver().device_from_cublas_handle(handle));
   api->add_output(outId);
   api->add_input(xId);
   api->add_input(yId);
@@ -130,10 +132,10 @@ cublasSaxpy(cublasHandle_t handle, int n,
 
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cublasSaxpy call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cublasStatus_t ret =
       real_cublasSaxpy(handle, n, alpha, x, incx, y, incy);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -173,15 +175,15 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   newVal->add_depends_on(bId);
   newVal->add_depends_on(cId);
 
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasSgemm "
          "call\n");
   const cublasStatus_t ret = real_cublasSgemm(
       handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasSgemm", DriverState::device_from_cublas_handle(handle));
+      "cublasSgemm", cprof::driver().device_from_cublas_handle(handle));
   api->add_output(newId);
   api->add_input(aId);
   api->add_input(bId);
@@ -225,15 +227,15 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   newVal->add_depends_on(xKey);
   newVal->add_depends_on(yKey);
 
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasDgemv "
          "call\n");
   const cublasStatus_t ret = real_cublasDgemv(handle, trans, m, n, alpha, A,
                                               lda, x, incx, beta, y, incy);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasDgemv", DriverState::device_from_cublas_handle(handle));
+      "cublasDgemv", cprof::driver().device_from_cublas_handle(handle));
   api->add_output(newId);
   api->add_input(aKey);
   api->add_input(xKey);
@@ -279,15 +281,15 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   newVal->add_depends_on(xKey);
   newVal->add_depends_on(yKey);
 
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasSgemv "
          "call\n");
   const cublasStatus_t ret = real_cublasSgemv(handle, trans, m, n, alpha, A,
                                               lda, x, incx, beta, y, incy);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasSgemv", DriverState::device_from_cublas_handle(handle));
+      "cublasSgemv", cprof::driver().device_from_cublas_handle(handle));
   api->add_output(newId);
   api->add_input(aKey);
   api->add_input(xKey);
@@ -307,23 +309,23 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
+  const int devId = cprof::driver().device_from_cublas_handle(handle);
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   Values::id_type xId;
-  std::tie(xId, std::ignore) =
-      values.find_live((uintptr_t)x, AddressSpace::Cuda());
+  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, AS);
   assert(xId && "Couldn't find Sasum x argument value on device");
 
   // see if we can find an allocation for the result
-  auto rAlloc =
-      allocations.find((uintptr_t)result, sizeof(float), AddressSpace::Cuda());
+  auto rAlloc = allocations.find((uintptr_t)result, sizeof(float), AS);
 
   if (!rAlloc) {
     // FIXME - can we do a better job with some parameters here
-    Memory AM(Memory::Unknown);
-    rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float),
-                                        AddressSpace::Cuda(), AM,
-                                        AllocationRecord::PageType::Unknown);
+    auto AM = cprof::model::Memory::Unknown;
+    rAlloc =
+        allocations.new_allocation((uintptr_t)result, sizeof(float), AS, AM);
     printf("WARN: new allocId=%lu for result=%lu\n", rAlloc.get(),
            (uintptr_t)result);
   }
@@ -336,17 +338,16 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
       values.new_value((uintptr_t)result, sizeof(float), rAlloc);
   rVal->add_depends_on(xId);
 
-  auto api = std::make_shared<ApiRecord>(
-      "cublasSasum", DriverState::device_from_cublas_handle(handle));
+  auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
   api->add_output(rId);
   api->add_input(xId);
   APIs::record(api);
 
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   printf("WARN: tid=%d disabling CUPTI callbacks during cublasSasum call\n",
-         get_thread_id());
+         cprof::model::get_thread_id());
   const cublasStatus_t ret = real_cublasSasum(handle, n, x, incx, result);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
 
@@ -362,10 +363,13 @@ cublasSscal(cublasHandle_t handle, int n,
 
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().device_from_cublas_handle(handle);
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find input values
   Values::id_type xId, outId;
   Values::value_type xVal, outVal;
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AddressSpace::Cuda());
+  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AS);
   assert(xId && "Couldn't find cublasSscal x value on device");
 
   // Create output value
@@ -373,17 +377,16 @@ cublasSscal(cublasHandle_t handle, int n,
   outVal->add_depends_on(xId);
 
   // track api
-  auto api = std::make_shared<ApiRecord>(
-      "cublasSscal", DriverState::device_from_cublas_handle(handle));
+  auto api = std::make_shared<ApiRecord>("cublasSscal", devId);
   api->add_output(outId);
   api->add_input(xId);
   APIs::record(api);
 
   // Do the actual call
   printf("WARN: disabling CUPTI callbacks during cublasSscal call\n");
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   const cublasStatus_t ret = real_cublasSscal(handle, n, alpha, x, incx);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -402,28 +405,27 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
+  const int devId = cprof::driver().device_from_cublas_handle(handle);
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   Values::id_type xId, yId;
   printf("Looking for x=%lu\n", (uintptr_t)x);
-  std::tie(xId, std::ignore) =
-      values.find_live((uintptr_t)x, AddressSpace::Cuda());
+  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, AS);
   assert(xId && "Couldn't find cublasSdot x argument value on device");
-  std::tie(yId, std::ignore) =
-      values.find_live((uintptr_t)y, AddressSpace::Cuda());
+  std::tie(yId, std::ignore) = values.find_live((uintptr_t)y, AS);
   assert(yId && "Couldn't find cublasSdot y argument value on device");
 
   // see if we can find an allocation for the result
   printf("Looking for allocation result=%lu\n", (uintptr_t)result);
-  auto rAlloc =
-      allocations.find((uintptr_t)result, sizeof(float), AddressSpace::Cuda());
+  auto rAlloc = allocations.find((uintptr_t)result, sizeof(float), AS);
 
   if (!rAlloc) {
     printf("WARN: creating implicit allocation for cublasSdot result\n");
-    Memory AM = Memory(Memory::Unknown);
-    rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float),
-                                        AddressSpace::Cuda(), AM,
-                                        AllocationRecord::PageType::Unknown);
+    const auto AM = cprof::model::Memory::Unknown;
+    rAlloc =
+        allocations.new_allocation((uintptr_t)result, sizeof(float), AS, AM);
     assert(rAlloc);
   }
   printf("result allocId=%lu\n", rAlloc.get());
@@ -436,16 +438,16 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   rVal->add_depends_on(yId);
 
   auto api = std::make_shared<ApiRecord>(
-      "cublasSdot", DriverState::device_from_cublas_handle(handle));
+      "cublasSdot", cprof::driver().device_from_cublas_handle(handle));
   api->add_output(rId);
   api->add_input(xId);
   api->add_input(yId);
   APIs::record(api);
 
-  DriverState::this_thread().pause_cupti_callbacks();
+  cprof::driver().this_thread().pause_cupti_callbacks();
   printf("WARN: disabling CUPTI callbacks during cublasSdot call\n");
   const cublasStatus_t ret =
       real_cublasSdot(handle, n, x, incx, y, incy, result);
-  DriverState::this_thread().resume_cupti_callbacks();
+  cprof::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
