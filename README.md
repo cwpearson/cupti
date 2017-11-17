@@ -8,7 +8,7 @@
 
 Install some dependencies
 
-    sudo apt install libnuma-dev libboost-all-dev libcurl4-openssl-dev cmake
+    sudo apt install libnuma-dev libboost-all-dev libcurl4-openssl-dev cmake cppcheck
 
 Install CUDA and CUDNN.
 
@@ -39,7 +39,7 @@ Install opentracing-cpp and and zipkin-opentracing-cpp.
                   -DOPENTRACING_INCLUDE_DIR=$HOME/software/opentracing-cpp/include \
                   -DOPENTRACING_LIB=$HOME/software/opentracing-cpp/lib/libopentracing.so \
       && make  \
-      && sudo make install \
+      && sudo make install
 ```
 
 
