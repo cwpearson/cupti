@@ -91,12 +91,15 @@ disclean: clean
 	rm -rf $(BUILDDIR)
 	rm -rf $(DEPSDIR)
 
+.PHONY: cppcheck
+cppcheck:
+	cppcheck --enable=all src $(INC)
+
 $(LIBDIR)/libcprof.so: $(CPP_OBJECTS)
 	mkdir -p $(LIBDIR)
 	$(CXX) $(CXXFLAGS) -shared -Wl,--no-undefined $^ -o $@ $(LIB)
 
-$(BUILDDIR)/%.o : $(SRCDIR)/%.cpp
-	cppcheck $< 
+$(BUILDDIR)/%.o : $(SRCDIR)/%.cpp cppcheck
 	mkdir -p `dirname $@`
 	$(CXX) -MMD -MP $(CXXFLAGS) $(INC) $< -c -o $@
 
