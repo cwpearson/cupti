@@ -25,6 +25,10 @@ Profiler::Profiler() {
       EnvironmentVariable<std::string>("CPROF_OUT", "output.cprof").get();
   printf("INFO: jsonOutputPath: %s\n", jsonOutputPath_.c_str());
 
+  zipkinEndpoint_ =
+      EnvironmentVariable<std::string>("CPROF_ZIPKIN_ENDPOINT").get();
+  printf("INFO: zipkinEndpoint: %s\n", zipkinEndpoint_.c_str());
+
   printf("INFO: scanning devices\n");
   hardware_.get_device_properties();
   printf("INFO: done\n");

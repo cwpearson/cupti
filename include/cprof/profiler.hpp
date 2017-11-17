@@ -30,6 +30,7 @@ private:
   bool useCuptiCallback_;
   bool useCuptiActivity_;
   std::string jsonOutputPath_;
+  std::string zipkinEndpoint_;
 };
 
 inline model::Hardware &hardware() { return Profiler::instance().hardware_; }

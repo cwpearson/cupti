@@ -29,7 +29,8 @@ std::string Value::json() const {
   pt.put("val.id", Id());
   pt.put("val.pos", pos_);
   pt.put("val.size", size_);
-  pt.put("val.allocation_", allocation_);
+  pt.put("val.allocation_", std::to_string(uintptr_t(allocation_.get())));
+  // pt.put("val.allocation_", "ah");
   pt.put("val.initialized", is_initialized_);
   std::stringstream buf;
   write_json(buf, pt, false);
