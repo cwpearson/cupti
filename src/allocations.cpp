@@ -33,6 +33,9 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
   } else if (matches.empty()) {
     return nullptr;
   } else {
+    for (const auto & a : matches) {
+      printf("INFO: matching %lu, %lu\n", a->pos(), a->size());
+    }
     assert(0 && "Multiple matches in different address spaces!");
   }
 }

@@ -177,7 +177,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     // Destination allocation may not have been created by a CUDA api
     dstAlloc = allocations.find(dst, count);
     if (!dstAlloc) {
-      dstAlloc = allocations.new_allocation(src, count, AddressSpace::Unknown(),
+      dstAlloc = allocations.new_allocation(dst, count, AddressSpace::Unknown(),
                                             cprof::model::Memory::Unknown);
       printf("WARN: Couldn't find dst alloc. Created implict host "
              "allocation=%lu.\n",
