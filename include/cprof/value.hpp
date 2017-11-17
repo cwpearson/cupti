@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "allocation_record.hpp"
-#include "extent.hpp"
+#include "util/extent.hpp"
 
 class Value : public Extent {
 public:

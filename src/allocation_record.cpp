@@ -5,11 +5,14 @@
 
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
+using cprof::model::Location;
 using cprof::model::Memory;
 
 AllocationRecord::AllocationRecord(uintptr_t pos, size_t size,
-                                   const AddressSpace &as, const Memory &mem)
-    : Extent(pos, size), address_space_(as), memory_(mem), freed_(false) {
+                                   const AddressSpace &as, const Memory &mem,
+                                   const Location &location)
+    : Extent(pos, size), address_space_(as), memory_(mem), freed_(false),
+      location_(location) {
   assert(address_space_.is_valid());
 }
 

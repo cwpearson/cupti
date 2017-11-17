@@ -7,6 +7,7 @@
 using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
+using cprof::model::Location;
 using cprof::model::Memory;
 
 Allocations &Allocations::instance() {
@@ -69,8 +70,9 @@ Allocations::value_type Allocations::find_exact(uintptr_t pos,
 
 Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
                                                     const AddressSpace &as,
-                                                    const Memory &am) {
-  auto val = value_type(new AllocationRecord(pos, size, as, am));
+                                                    const Memory &am,
+                                                    const Location &al) {
+  auto val = value_type(new AllocationRecord(pos, size, as, am, al));
   assert(val.get());
 
   if (val->size() == 0) {

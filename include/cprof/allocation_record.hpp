@@ -8,9 +8,10 @@
 #include <memory>
 
 #include "address_space.hpp"
+#include "cprof/model/location.hpp"
 #include "cprof/model/memory.hpp"
 #include "cprof/model/thread.hpp"
-#include "extent.hpp"
+#include "util/extent.hpp"
 
 class AllocationRecord : public Extent {
 public:
@@ -21,12 +22,14 @@ private:
   AddressSpace address_space_;
   cprof::model::Memory memory_;
   cprof::model::tid_t thread_id_;
+  cprof::model::Location location_;
   bool freed_;
 
 public:
   friend std::ostream &operator<<(std::ostream &os, const AllocationRecord &v);
   AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
-                   const cprof::model::Memory &mem);
+                   const cprof::model::Memory &mem,
+                   const cprof::model::Location &location);
 
   std::string json() const;
 

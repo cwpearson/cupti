@@ -11,7 +11,8 @@
 
 #include "address_space.hpp"
 #include "allocation_record.hpp"
-#include "extent.hpp"
+#include "cprof/model/location.hpp"
+#include "util/extent.hpp"
 
 class Allocations {
 public:
@@ -50,7 +51,8 @@ public:
   value_type find_exact(uintptr_t pos, const AddressSpace &as);
 
   value_type new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
-                            const cprof::model::Memory &am);
+                            const cprof::model::Memory &am,
+                            const cprof::model::Location &al);
 
   size_t free(uintptr_t pos, const AddressSpace &as);
 

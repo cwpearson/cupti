@@ -29,6 +29,9 @@
 #include "cprof/value.hpp"
 #include "cprof/values.hpp"
 
+using cprof::model::Location;
+using cprof::model::Memory;
+
 // FIXME: this should be per-thread
 typedef struct {
   dim3 gridDim;
@@ -166,7 +169,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     srcAlloc = allocations.find(src, count);
     if (!srcAlloc) {
       srcAlloc = allocations.new_allocation(src, count, AddressSpace::Unknown(),
-                                            cprof::model::Memory::Unknown);
+                                            Memory::Unknown, Location::Host());
       printf("WARN: Couldn't find src alloc. Created implict host "
              "allocation=%lu.\n",
              src);
@@ -178,7 +181,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     dstAlloc = allocations.find(dst, count);
     if (!dstAlloc) {
       dstAlloc = allocations.new_allocation(dst, count, AddressSpace::Unknown(),
-                                            cprof::model::Memory::Unknown);
+                                            Memory::Unknown, Location::Host());
       printf("WARN: Couldn't find dst alloc. Created implict host "
              "allocation=%lu.\n",
              dst);
@@ -367,8 +370,8 @@ static void handleCudaMallocManaged(Allocations &allocations, Values &values,
       M = cprof::model::Memory::Unified3;
     }
 
-    auto a =
-        allocations.new_allocation(devPtr, size, AddressSpace::CudaUVA(), M);
+    auto a = allocations.new_allocation(devPtr, size, AddressSpace::CudaUVA(),
+                                        M, Location::Unknown());
 
     // Create the new value
     values.new_value(devPtr, size, a, false /*initialized*/);
@@ -387,7 +390,7 @@ void record_mallochost(Allocations &allocations, Values &values,
 
   Allocation alloc = allocations.find(ptr, size, AS);
   if (!alloc) {
-    alloc = allocations.new_allocation(ptr, size, AS, AM);
+    alloc = allocations.new_allocation(ptr, size, AS, AM, Location::Host());
   }
 
   values.new_value(ptr, size, alloc, false /*initialized*/);
@@ -500,7 +503,8 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     auto AS = cprof::hardware().address_space(devId);
     auto AM = cprof::model::Memory::Pageable;
 
-    Allocation a = allocations.new_allocation(devPtr, size, AS, AM);
+    Allocation a = allocations.new_allocation(devPtr, size, AS, AM,
+                                              Location::CudaDevice(devId));
     printf("[cudaMalloc] new alloc=%lu pos=%lu\n", (uintptr_t)a.get(),
            a->pos());
 

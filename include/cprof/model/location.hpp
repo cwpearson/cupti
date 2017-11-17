@@ -12,10 +12,6 @@ private:
     CudaDevice,
   };
 
-  using Type::CudaDevice;
-  using Type::Host;
-  using Type::Unknown;
-
   Type type_;
   int id_;
 
@@ -23,9 +19,9 @@ private:
   Location(const Type &type) : Location(type, -1) {}
 
 public:
-  static Location Unknown() { return Location(Unknown); }
-  static Location Host() { return Location(Host); }
-  static Location CudaDevice(int id) { return Location(CudaDevice, id); }
+  static Location Unknown() { return Location(Type::Unknown); }
+  static Location Host() { return Location(Type::Host); }
+  static Location CudaDevice(int id) { return Location(Type::CudaDevice, id); }
 };
 
 } // namespace model

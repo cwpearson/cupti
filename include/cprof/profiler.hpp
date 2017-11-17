@@ -4,6 +4,7 @@
 #include "cprof/cupti_subscriber.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/hardware.hpp"
+#include "util/environment_variable.hpp"
 
 namespace cprof {
 class Profiler {

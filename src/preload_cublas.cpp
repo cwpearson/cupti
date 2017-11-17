@@ -12,6 +12,9 @@
 #include "cprof/preload.hpp"
 #include "cprof/values.hpp"
 
+using cprof::model::Location;
+using cprof::model::Memory;
+
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
 extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
   V2_LD_PRELOAD_BOILERPLATE(cublasCreate);
@@ -335,10 +338,10 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
 
   if (!rAlloc) {
     // FIXME - can we do a better job with some parameters here
-    auto AM = cprof::model::Memory::Unknown;
-    rAlloc =
-        allocations.new_allocation((uintptr_t)result, sizeof(float), AS, AM);
-    printf("WARN: new allocId=%lu for result=%lu\n", rAlloc.get(),
+    rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float), AS,
+                                        cprof::model::Memory::Unknown,
+                                        Location::Unknown());
+    printf("WARN: new allocId=%lu for result=%lu\n", uintptr_t(rAlloc.get()),
            (uintptr_t)result);
   }
   assert(rAlloc && "If there is no allocation, we need to make one");
@@ -435,12 +438,11 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
 
   if (!rAlloc) {
     printf("WARN: creating implicit allocation for cublasSdot result\n");
-    const auto AM = cprof::model::Memory::Unknown;
-    rAlloc =
-        allocations.new_allocation((uintptr_t)result, sizeof(float), AS, AM);
+    rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float), AS,
+                                        Memory::Unknown, Location::Unknown());
     assert(rAlloc);
   }
-  printf("result allocId=%lu\n", rAlloc.get());
+  printf("result allocId=%lu\n", uintptr_t(rAlloc.get()));
   // Make a new value
   Values::id_type rId;
   Values::value_type rVal;

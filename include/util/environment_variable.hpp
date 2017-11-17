@@ -3,7 +3,27 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <string>
+
+class EnvironmentVariableException : public std::exception {
+public:
+  EnvironmentVariableException(const std::string &varName)
+      : varName_(varName) {}
+  virtual const char *what() const throw() {
+    // we leak message memory here
+    // if caught, catcher can free
+    // otherwise, program terminates anyway
+    auto msgStr = varName_ + std::string(" was unset with no default");
+    char *leak = new char[msgStr.size() + 1];
+    msgStr.copy(leak, msgStr.size());
+    leak[msgStr.size()] = 0;
+    return leak;
+  }
+
+private:
+  std::string varName_;
+};
 
 template <typename T> class EnvironmentVariable {
 public:
@@ -18,7 +38,7 @@ public:
       if (hasDefaultVal_) {
         return defaultVal_;
       } else {
-        throw "variable unset and no default!";
+        throw EnvironmentVariableException(varName_);
       }
     } else {
       return convert(raw);
@@ -42,7 +62,8 @@ private:
   bool hasDefaultVal_;
 };
 
-template <> bool EnvironmentVariable<bool>::convert(const std::string &raw) {
+template <>
+inline bool EnvironmentVariable<bool>::convert(const std::string &raw) {
   if (raw == "0" || raw == "false" || raw == "FALSE" || raw == "False") {
     return true;
   } else {
@@ -50,16 +71,19 @@ template <> bool EnvironmentVariable<bool>::convert(const std::string &raw) {
   }
 }
 
-template <> int EnvironmentVariable<int>::convert(const std::string &raw) {
+template <>
+inline int EnvironmentVariable<int>::convert(const std::string &raw) {
   return std::atoi(raw.c_str());
 }
 
-template <> float EnvironmentVariable<float>::convert(const std::string &raw) {
+template <>
+inline float EnvironmentVariable<float>::convert(const std::string &raw) {
   return std::atof(raw.c_str());
 }
 
 template <>
-std::string EnvironmentVariable<std::string>::convert(const std::string &raw) {
+inline std::string
+EnvironmentVariable<std::string>::convert(const std::string &raw) {
   return raw;
 }
 
