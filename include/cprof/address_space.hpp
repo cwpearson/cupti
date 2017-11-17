@@ -13,8 +13,6 @@ public:
     CudaUVA,    ///< CUDA >4.0 unified virtual addressing
     Invalid
   };
-  AddressSpace() : type_(Type::Invalid) {}
-  AddressSpace(const AddressSpace &other) : type_(other.type_) {}
 
 private:
   AddressSpace(Type type, int device) : type_(type), device_(device) {}
