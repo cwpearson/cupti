@@ -65,9 +65,12 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
        ++argIdx) { // for each kernel argument
                    // printf("arg %lu, val %lu\n", argIdx, valIdx);
 
+    const int devId = cprof::driver().this_thread().current_device();
+    auto AS = cprof::hardware().address_space(devId);
+
     // FIXME: assuming with p2p access, it could be on any device?
     const auto &kv =
-        values.find_live_device(ConfiguredCall().args[argIdx], 1 /*size*/);
+        values.find_live(ConfiguredCall().args[argIdx], 1 /*size*/, AS);
 
     const auto &key = kv.first;
     if (key != uintptr_t(nullptr)) {

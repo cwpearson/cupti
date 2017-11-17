@@ -55,13 +55,16 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   // record data, we know things about how this API works
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().device_from_cublas_handle(handle);
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   Values::id_type aId, bId, cId;
   Values::value_type aVal, bVal, cVal;
-  std::tie(aId, aVal) = values.find_live_device((uintptr_t)A, 1);
-  std::tie(bId, bVal) = values.find_live_device((uintptr_t)B, 1);
-  std::tie(cId, cVal) = values.find_live_device((uintptr_t)C, 1);
+  std::tie(aId, aVal) = values.find_live((uintptr_t)A, AS);
+  std::tie(bId, bVal) = values.find_live((uintptr_t)B, AS);
+  std::tie(cId, cVal) = values.find_live((uintptr_t)C, AS);
 
   assert(aId && bId && cId && "Couldn't find Dgemm argument value on device");
 
@@ -159,12 +162,15 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   // record data, we know things about how this API works
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().device_from_cublas_handle(handle);
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find the argument values
   Values::id_type aId, bId, cId;
   Values::value_type aVal, bVal, cVal;
-  std::tie(aId, aVal) = values.find_live_device((uintptr_t)A, 1);
-  std::tie(bId, bVal) = values.find_live_device((uintptr_t)B, 1);
-  std::tie(cId, cVal) = values.find_live_device((uintptr_t)C, 1);
+  std::tie(aId, aVal) = values.find_live((uintptr_t)A, AS);
+  std::tie(bId, bVal) = values.find_live((uintptr_t)B, AS);
+  std::tie(cId, cVal) = values.find_live((uintptr_t)C, AS);
 
   assert(aId && bId && cId && "Couldn't find Dgemm argument value on device");
 
@@ -207,13 +213,16 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   // record data, we know things about how this API works
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().device_from_cublas_handle(handle);
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   Values::id_type aKey, xKey, yKey;
   Values::value_type aVal, xVal, yVal;
-  std::tie(aKey, aVal) = values.find_live_device((uintptr_t)A, 1);
-  std::tie(xKey, xVal) = values.find_live_device((uintptr_t)x, 1);
-  std::tie(yKey, yVal) = values.find_live_device((uintptr_t)y, 1);
+  std::tie(aKey, aVal) = values.find_live((uintptr_t)A, AS);
+  std::tie(xKey, xVal) = values.find_live((uintptr_t)x, AS);
+  std::tie(yKey, yVal) = values.find_live((uintptr_t)y, AS);
 
   assert(aKey && xKey && yKey &&
          "Couldn't find Dgemv argument value on device");
@@ -261,13 +270,16 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   // record data, we know things about how this API works
   auto &values = Values::instance();
 
+  const int devId = cprof::driver().device_from_cublas_handle(handle);
+  AddressSpace AS = cprof::hardware().address_space(devId);
+
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   Values::id_type aKey, xKey, yKey;
   Values::value_type aVal, xVal, yVal;
-  std::tie(aKey, aVal) = values.find_live_device((uintptr_t)A, 1);
-  std::tie(xKey, xVal) = values.find_live_device((uintptr_t)x, 1);
-  std::tie(yKey, yVal) = values.find_live_device((uintptr_t)y, 1);
+  std::tie(aKey, aVal) = values.find_live((uintptr_t)A, AS);
+  std::tie(xKey, xVal) = values.find_live((uintptr_t)x, AS);
+  std::tie(yKey, yVal) = values.find_live((uintptr_t)y, AS);
 
   assert(aKey && xKey && yKey &&
          "Couldn't find cublasSgemv argument value on device");

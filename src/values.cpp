@@ -32,32 +32,6 @@ Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
                         std::shared_ptr<Value>(nullptr));
 }
 
-std::pair<Values::id_type, Values::value_type>
-Values::find_live(uintptr_t pos, const AddressSpace &as) {
-  return find_live(pos, 1, as);
-}
-
-std::pair<Values::id_type, Values::value_type>
-Values::find_live_device(const uintptr_t pos, const size_t size) {
-  std::lock_guard<std::mutex> guard(access_mutex_);
-  if (values_.empty())
-    return std::make_pair(reinterpret_cast<Values::id_type>(nullptr),
-                          std::shared_ptr<Value>(nullptr));
-
-  Extent e(pos, size);
-  for (size_t i = value_order_.size() - 1; true; i--) {
-    const auto valKey = value_order_[i];
-    const auto &val = values_[valKey];
-    assert(0 && "Fix this is_cuda_device");
-    if (val->overlaps(e) && val->address_space().is_cuda_device())
-      return std::make_pair(valKey, val);
-
-    if (i == 0)
-      break;
-  }
-  return std::make_pair(reinterpret_cast<Values::id_type>(nullptr),
-                        std::shared_ptr<Value>(nullptr));
-}
 
 std::pair<bool, Values::id_type>
 Values::get_last_overlapping_value(uintptr_t pos, size_t size,
