@@ -14,14 +14,14 @@ private:
   CUpti_CallbackFunc callback_;
 
 public:
-  static zipkin::ZipkinOtTracerOptions options;
-  static zipkin::ZipkinOtTracerOptions memcpy_tracer_options;
-  static zipkin::ZipkinOtTracerOptions launch_tracer_options;
+  zipkin::ZipkinOtTracerOptions options;
+  zipkin::ZipkinOtTracerOptions memcpy_tracer_options;
+  zipkin::ZipkinOtTracerOptions launch_tracer_options;
 
-  static std::shared_ptr<opentracing::Tracer> tracer;
-  static std::shared_ptr<opentracing::Tracer> memcpy_tracer;
-  static std::shared_ptr<opentracing::Tracer> launch_tracer;
-  static span_t parent_span;
+  std::shared_ptr<opentracing::Tracer> tracer;
+  std::shared_ptr<opentracing::Tracer> memcpy_tracer;
+  std::shared_ptr<opentracing::Tracer> launch_tracer;
+  span_t parent_span;
 
   CuptiSubscriber(CUpti_CallbackFunc callback);
   void init();

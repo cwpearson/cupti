@@ -10,10 +10,12 @@
 #include "cprof/callbacks.hpp"
 #include "cprof/cupti_subscriber.hpp"
 #include "cprof/kernel_time.hpp"
+#include "cprof/profiler.hpp"
 
 using namespace std::chrono;
 using namespace zipkin;
 using namespace opentracing;
+using cprof::Profiler;
 
 std::map<uint32_t, time_points_t> KernelCallTime::tid_to_time;
 std::map<uint32_t, const char *> KernelCallTime::correlation_to_function;
@@ -222,9 +224,9 @@ void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   auto end_time_point =
       std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
 
-  current_span = CuptiSubscriber::memcpy_tracer->StartSpan(
+  current_span = Profiler::instance().manager_->memcpy_tracer->StartSpan(
       std::to_string(correlationId),
-      {ChildOf(&CuptiSubscriber::parent_span->context()),
+      {ChildOf(&Profiler::instance().manager_->parent_span->context()),
        StartTimestamp(start_time_point)});
 
   current_span->SetTag("Transfer size", memcpyRecord->bytes);
@@ -293,9 +295,9 @@ void KernelCallTime::kernel_activity_times(
   //     }
   // } else
   if (!found) {
-    current_span = CuptiSubscriber::launch_tracer->StartSpan(
+    current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
         std::to_string(correlationId),
-        {FollowsFrom(&CuptiSubscriber::parent_span->context()),
+        {FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
          StartTimestamp(start_time_point)});
   }
 
@@ -323,6 +325,6 @@ void KernelCallTime::save_configured_call(uint32_t cid,
 }
 
 void KernelCallTime::flush_tracers() {
-  CuptiSubscriber::memcpy_tracer->Close();
-  CuptiSubscriber::launch_tracer->Close();
+  Profiler::instance().manager_->memcpy_tracer->Close();
+  Profiler::instance().manager_->launch_tracer->Close();
 }

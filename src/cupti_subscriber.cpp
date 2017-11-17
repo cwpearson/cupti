@@ -4,16 +4,10 @@
 #include "cprof/callbacks.hpp"
 #include "cprof/cupti_subscriber.hpp"
 #include "cprof/kernel_time.hpp"
+#include "cprof/profiler.hpp"
 #include "cprof/util_cupti.hpp"
 
-zipkin::ZipkinOtTracerOptions CuptiSubscriber::options;
-zipkin::ZipkinOtTracerOptions CuptiSubscriber::memcpy_tracer_options;
-zipkin::ZipkinOtTracerOptions CuptiSubscriber::launch_tracer_options;
-std::shared_ptr<opentracing::Tracer> CuptiSubscriber::tracer;
-std::shared_ptr<opentracing::Tracer> CuptiSubscriber::memcpy_tracer;
-std::shared_ptr<opentracing::Tracer> CuptiSubscriber::launch_tracer;
-
-span_t CuptiSubscriber::parent_span;
+using cprof::Profiler;
 
 #define ALIGN_SIZE (8)
 #define ALIGN_BUFFER(buffer, align)                                            \
@@ -52,8 +46,14 @@ void CuptiSubscriber::init() {
   options.service_name = "Parent";
   memcpy_tracer_options.service_name = "Memory Copy";
   launch_tracer_options.service_name = "Kernel Launch";
-  tracer = makeZipkinOtTracer(options);
+  options.collector_host = Profiler::instance().zipkin_host();
+  memcpy_tracer_options.collector_host = Profiler::instance().zipkin_host();
+  launch_tracer_options.collector_host = Profiler::instance().zipkin_host();
+  options.collector_port = Profiler::instance().zipkin_port();
+  memcpy_tracer_options.collector_port = Profiler::instance().zipkin_port();
+  launch_tracer_options.collector_port = Profiler::instance().zipkin_port();
   memcpy_tracer = makeZipkinOtTracer(memcpy_tracer_options);
+  tracer = makeZipkinOtTracer(options);
   launch_tracer = makeZipkinOtTracer(launch_tracer_options);
   parent_span = tracer->StartSpan("Parent");
 

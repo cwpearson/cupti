@@ -77,6 +77,11 @@ inline int EnvironmentVariable<int>::convert(const std::string &raw) {
 }
 
 template <>
+inline uint32_t EnvironmentVariable<uint32_t>::convert(const std::string &raw) {
+  return std::strtoul(raw.c_str(), nullptr /*ignore unparsed characters*/, 10);
+}
+
+template <>
 inline float EnvironmentVariable<float>::convert(const std::string &raw) {
   return std::atof(raw.c_str());
 }
