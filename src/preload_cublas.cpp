@@ -1,16 +1,17 @@
+
 #include <cassert>
 #include <cstdio>
 #include <dlfcn.h>
 
 #include <cublas_v2.h>
 
-#include "allocations.hpp"
-#include "apis.hpp"
-#include "callbacks.hpp"
-#include "driver_state.hpp"
-#include "preload.hpp"
-#include "thread.hpp"
-#include "values.hpp"
+#include "cprof/allocations.hpp"
+#include "cprof/apis.hpp"
+#include "cprof/callbacks.hpp"
+#include "cprof/driver_state.hpp"
+#include "cprof/preload.hpp"
+#include "cprof/thread.hpp"
+#include "cprof/values.hpp"
 
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
 extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
@@ -314,26 +315,25 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   assert(xId && "Couldn't find Sasum x argument value on device");
 
   // see if we can find an allocation for the result
-  Allocations::id_type rAllocId;
-  std::tie(rAllocId, std::ignore) = allocations.find_live(
-      (uintptr_t)result, sizeof(float), AddressSpace::Cuda());
+  auto rAlloc =
+      allocations.find((uintptr_t)result, sizeof(float), AddressSpace::Cuda());
 
-  if (!rAllocId) {
+  if (!rAlloc) {
     // FIXME - can we do a better job with some parameters here
     Memory AM(Memory::Unknown);
-    std::tie(rAllocId, std::ignore) = allocations.new_allocation(
-        (uintptr_t)result, sizeof(float), AddressSpace::Cuda(), AM,
-        AllocationRecord::PageType::Unknown);
-    printf("WARN: new allocId=%lu for result=%lu\n", rAllocId,
+    rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float),
+                                        AddressSpace::Cuda(), AM,
+                                        AllocationRecord::PageType::Unknown);
+    printf("WARN: new allocId=%lu for result=%lu\n", rAlloc.get(),
            (uintptr_t)result);
   }
-  assert(rAllocId && "If there is no allocation, we need to make one");
+  assert(rAlloc && "If there is no allocation, we need to make one");
 
   // Make a new value
   Values::id_type rId;
   Values::value_type rVal;
   std::tie(rId, rVal) =
-      values.new_value((uintptr_t)result, sizeof(float), rAllocId);
+      values.new_value((uintptr_t)result, sizeof(float), rAlloc);
   rVal->add_depends_on(xId);
 
   auto api = std::make_shared<ApiRecord>(
@@ -415,26 +415,23 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
 
   // see if we can find an allocation for the result
   printf("Looking for allocation result=%lu\n", (uintptr_t)result);
-  Allocations::id_type rAllocId;
-  std::tie(rAllocId, std::ignore) = allocations.find_live(
-      (uintptr_t)result, sizeof(float), AddressSpace::Cuda());
+  auto rAlloc =
+      allocations.find((uintptr_t)result, sizeof(float), AddressSpace::Cuda());
 
-  if (rAllocId == Allocations::noid) {
+  if (!rAlloc) {
     printf("WARN: creating implicit allocation for cublasSdot result\n");
     Memory AM = Memory(Memory::Unknown);
-    auto pair = allocations.insert(std::shared_ptr<AllocationRecord>(
-        new AllocationRecord((uintptr_t)result, sizeof(float),
-                             AddressSpace::Cuda(), AM,
-                             AllocationRecord::PageType::Unknown)));
-    assert(pair.second);
-    rAllocId = pair.first->first;
+    rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float),
+                                        AddressSpace::Cuda(), AM,
+                                        AllocationRecord::PageType::Unknown);
+    assert(rAlloc);
   }
-  printf("result allocId=%lu\n", rAllocId);
+  printf("result allocId=%lu\n", rAlloc.get());
   // Make a new value
   Values::id_type rId;
   Values::value_type rVal;
   std::tie(rId, rVal) =
-      values.new_value((uintptr_t)result, sizeof(float), rAllocId);
+      values.new_value((uintptr_t)result, sizeof(float), rAlloc);
   rVal->add_depends_on(xId);
   rVal->add_depends_on(yId);
 

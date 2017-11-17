@@ -10,7 +10,6 @@
 #include "cprof/thread.hpp"
 #include "cprof/values.hpp"
 
-
 typedef cudaError_t (*cudaFreeHostFunc)(void *ptr);
 extern "C" cudaError_t cudaFreeHost(void *ptr) {
   SAME_LD_PRELOAD_BOILERPLATE(cudaFreeHost);
