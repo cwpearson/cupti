@@ -99,7 +99,7 @@ $(LIBDIR)/libcprof.so: $(CPP_OBJECTS)
 	mkdir -p $(LIBDIR)
 	$(CXX) $(CXXFLAGS) -shared -Wl,--no-undefined $^ -o $@ $(LIB)
 
-$(BUILDDIR)/%.o : $(SRCDIR)/%.cpp cppcheck
+$(BUILDDIR)/%.o : $(SRCDIR)/%.cpp
 	mkdir -p `dirname $@`
 	$(CXX) -MMD -MP $(CXXFLAGS) $(INC) $< -c -o $@
 

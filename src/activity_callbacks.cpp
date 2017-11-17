@@ -4,7 +4,10 @@
 
 #include "cprof/activity_callbacks.hpp"
 
+#include "cprof/kernel_time.hpp"
+
 void handleCuptiKindKernel(CUpti_Activity *record){
+    printf("INFO: handleCuptiKindKernel\n");
     auto kernelTimer = KernelCallTime::instance();      
     auto kernel = (CUpti_ActivityKernel3 *)record;
     kernelTimer.kernel_activity_times(kernel->correlationId, kernel->start, kernel->end, kernel);

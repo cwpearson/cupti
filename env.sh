@@ -18,4 +18,6 @@ export CPROF_OUT="output.cprof"
 
 ## Run the provided program. For example
 #   ./env.sh examples/samples/vectorAdd/vec
-LD_PRELOAD="$LD_PRELOAD:$CPROF_ROOT/lib/libcprof.so" gdb $@
+LD_PRELOAD="$LD_PRELOAD:$CPROF_ROOT/lib/libcprof.so" $@
+
+set environment LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:/home/pearson/software/opentracing-cpp/lib:/home/pearson/software/zipkin-cpp-opentracing/lib

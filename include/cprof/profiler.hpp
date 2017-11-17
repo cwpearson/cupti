@@ -4,6 +4,8 @@
 #include "cprof/allocations.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/hardware.hpp"
+#include "cprof/cupti_subscriber.hpp"
+
 
 namespace cprof {
 class Profiler {
@@ -23,6 +25,7 @@ private:
   Profiler();
   model::Hardware hardware_;
   model::Driver driver_;
+  CuptiSubscriber *manager_;
 };
 
 inline model::Hardware &hardware() { return Profiler::instance().hardware_; }
@@ -34,7 +37,6 @@ class ProfilerInitializer {
 public:
   ProfilerInitializer() { Profiler::init(); }
 };
-static ProfilerInitializer pi;
 
 } // namespace cprof
 
