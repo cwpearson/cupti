@@ -47,8 +47,6 @@ ConfiguredCall_t &ConfiguredCall() {
   return cc;
 }
 
-static int counter = 0;
-
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
@@ -141,9 +139,6 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     APIs::record(api);
     ConfiguredCall().valid = false;
     ConfiguredCall().args.clear();
-
-    kernelTimer.write_to_file();
-
   } else {
     assert(0 && "How did we get here?");
   }
@@ -645,12 +640,6 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   if (!cprof::driver().this_thread().is_cupti_callbacks_enabled()) {
     return;
   }
-
-  if (counter == BUFFER_SIZE) {
-    cuptiActivityFlushAll(0);
-    counter = 0;
-  }
-  counter++;
 
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {

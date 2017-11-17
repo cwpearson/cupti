@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "cprof/callbacks.hpp"
+#include "cprof/cupti_subscriber.hpp"
 #include "cprof/kernel_time.hpp"
 
 using namespace std::chrono;
@@ -25,30 +26,18 @@ std::map<uintptr_t, TextMapCarrier> KernelCallTime::ptr_to_span;
 std::unordered_map<std::string, std::string> KernelCallTime::text_map;
 std::map<uint32_t, std::vector<uintptr_t>> KernelCallTime::cid_to_call;
 
-static ZipkinOtTracerOptions options;
-static ZipkinOtTracerOptions memcpy_tracer_options;
-static ZipkinOtTracerOptions launch_tracer_options;
-static std::shared_ptr<opentracing::Tracer> tracer;
-static std::shared_ptr<opentracing::Tracer> memcpy_tracer;
-static std::shared_ptr<opentracing::Tracer> launch_tracer;
-static span_t parent_span;
-
 static std::unordered_map<std::string, std::string> text_map;
 static TextMapCarrier carrier(text_map);
 
 KernelCallTime &KernelCallTime::instance() {
 
-  options.service_name = "Parent";
-  memcpy_tracer_options.service_name = "Memory Copy";
-  launch_tracer_options.service_name = "Kernel Launch";
-  if (!tracer) {
-    tracer = makeZipkinOtTracer(options);
-    memcpy_tracer = makeZipkinOtTracer(memcpy_tracer_options);
-    launch_tracer = makeZipkinOtTracer(launch_tracer_options);
+  // memcpy_tracer_options.service_name = "Memory Copy";
+  // launch_tracer_options.service_name = "Kernel Launch";
+  // if (!memcpy_tracer) {
 
-    parent_span = tracer->StartSpan("Parent");
-    assert(parent_span);
-  }
+  // parent_span = tracer->StartSpan("Parent");
+  // std::cout << "How many" << std::endl;
+  // }
   static KernelCallTime a;
   return a;
 }
@@ -192,30 +181,30 @@ void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
   //   cuda " << time_point.end_time - time_point.start_time << std::endl;
 }
 
-const char *KernelCallTime::memcpy_type_to_string(uint8_t kind) {
+char *KernelCallTime::memcpy_type_to_string(uint8_t kind) {
   switch (kind) {
   case cudaMemcpyHostToHost: {
-    static const char *HtH = "cudaMemcpyHostToHost";
+    static char *HtH = "cudaMemcpyHostToHost";
     return HtH;
   }
   case cudaMemcpyHostToDevice: {
-    static const char *HtD = "cudaMemcpyHostToDevice";
+    static char *HtD = "cudaMemcpyHostToDevice";
     return HtD;
   }
   case cudaMemcpyDeviceToHost: {
-    static const char *DtH = "cudaMemcpyDeviceToHost";
+    static char *DtH = "cudaMemcpyDeviceToHost";
     return DtH;
   }
   case cudaMemcpyDeviceToDevice: {
-    static const char *DtD = "cudaMemcpyDeviceToDevice";
+    static char *DtD = "cudaMemcpyDeviceToDevice";
     return DtD;
   }
   case cudaMemcpyDefault: {
-    static const char *defaultDir = "cudaMemcpyDefault";
+    static char *defaultDir = "cudaMemcpyDefault";
     return defaultDir;
   }
   default: {
-    static const char *unknown = "Unknown";
+    static char *unknown = "Unknown";
     return "Unknown";
   }
   }
@@ -228,52 +217,35 @@ void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   std::chrono::nanoseconds start_dur(memcpyRecord->start);
   std::chrono::nanoseconds end_dur(memcpyRecord->end);
 
-  std::cout << "Start pre truncate " << memcpyRecord->start << std::endl;
-  std::cout << "End pre truncate   " << memcpyRecord->end << std::endl;
+  auto start_time_point =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(start_dur);
+  auto end_time_point =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
 
-  std::cout << "Start: " << start_dur.count() << std::endl;
-  std::cout << "End:   " << end_dur.count() << std::endl;
-
-  // std::chrono::time_point<std::chrono::system_clock,
-  // std::chrono::nanoseconds>
-  // start_dur{std::chrono::nanoseconds(memcpyRecord->start)};
-  // std::chrono::time_point<std::chrono::steady_clock,
-  // std::chrono::nanoseconds>
-  // end_dur{std::chrono::nanoseconds(memcpyRecord->end)};
-
-  // auto start_time_point =
-  // std::chrono::duration_cast<std::chrono::nanoseconds>(start_dur); auto
-  // end_time_point =
-  // std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
-
-  // std::chrono::time_point<std::chrono::system_clock>
-  // start_time_point(start_dur);
-  // std::chrono::time_point<std::chrono::steady_clock> end_time_point(end_dur);
-
-  assert(parent_span);
-  current_span = memcpy_tracer->StartSpan(
+  current_span = CuptiSubscriber::memcpy_tracer->StartSpan(
       std::to_string(correlationId),
-      {ChildOf(&parent_span->context()), StartTimestamp(start_dur)});
+      {ChildOf(&CuptiSubscriber::parent_span->context()),
+       StartTimestamp(start_time_point)});
 
   current_span->SetTag("Transfer size", memcpyRecord->bytes);
   current_span->SetTag("Transfer type",
                        memcpy_type_to_string(memcpyRecord->copyKind));
 
-  auto err = tracer->Inject(current_span->context(), carrier);
-  current_span->Finish({FinishTimestamp(end_dur)});
+  auto timeElapsed = memcpyRecord->end - memcpyRecord->start;
+  current_span->SetTag("CUPTI Duration", std::to_string(timeElapsed));
+  // auto err = tracer->Inject(current_span->context(), carrier);
+  current_span->Finish({FinishTimestamp(end_time_point)});
 
-  assert(err);
+  // assert(err);
 
   auto iter = this->correlation_to_dest.find(correlationId);
   this->ptr_to_span.insert(
       std::pair<uintptr_t, TextMapCarrier>(iter->second, carrier));
-  memcpy_tracer->Close();
 }
 
 void KernelCallTime::kernel_activity_times(
     uint32_t cid, uint64_t startTime, uint64_t endTime,
     CUpti_ActivityKernel3 *launchRecord) {
-
   auto found = false;
   span_t current_span;
   auto correlationId = cid;
@@ -282,9 +254,10 @@ void KernelCallTime::kernel_activity_times(
   std::chrono::nanoseconds end_dur(endTime);
 
   auto start_time_point =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(start_dur);
+      std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
   auto end_time_point =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
+      std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
+
   auto configCallIter = this->cid_to_call.find(correlationId);
   // if (cid_to_call.end() != configCallIter){
   //   std::cout << "Here!" << std::endl;
@@ -320,12 +293,16 @@ void KernelCallTime::kernel_activity_times(
   //     }
   // } else
   if (!found) {
-    current_span = launch_tracer->StartSpan(
-        std::to_string(correlationId), {FollowsFrom(&parent_span->context()),
-                                        StartTimestamp(start_time_point)});
+    current_span = CuptiSubscriber::launch_tracer->StartSpan(
+        std::to_string(correlationId),
+        {FollowsFrom(&CuptiSubscriber::parent_span->context()),
+         StartTimestamp(start_time_point)});
   }
 
   current_span->SetTag("Function Name", "cudaLaunch");
+
+  auto timeElapsed = endTime - startTime;
+  current_span->SetTag("CUPTI Duration", std::to_string(timeElapsed));
 
   current_span->SetTag("Current device",
                        std::to_string(launchRecord->deviceId));
@@ -337,7 +314,6 @@ void KernelCallTime::kernel_activity_times(
   //   }
 
   current_span->Finish({FinishTimestamp(end_time_point)});
-  launch_tracer->Close();
 }
 
 void KernelCallTime::save_configured_call(uint32_t cid,
@@ -346,14 +322,7 @@ void KernelCallTime::save_configured_call(uint32_t cid,
       std::pair<uint32_t, std::vector<uintptr_t>>(cid, configCall));
 }
 
-void KernelCallTime::close_parent() { 
-  assert(parent_span);
-  parent_span->Finish(); 
-  printf("INFO: closed parent_span\n");
-  }
-
-void KernelCallTime::write_to_file() {
-  tracer->Close();
-  memcpy_tracer->Close();
-  launch_tracer->Close();
+void KernelCallTime::flush_tracers() {
+  CuptiSubscriber::memcpy_tracer->Close();
+  CuptiSubscriber::launch_tracer->Close();
 }

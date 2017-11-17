@@ -36,9 +36,9 @@ public:
                              CUpti_ActivityKernel3 *launchRecord);
   void memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord);
   void save_configured_call(uint32_t cid, std::vector<uintptr_t> configCall);
-
   void close_parent();
-  void write_to_file();
+  void flush_tracers();
+
   static KernelCallTime &instance();
 
   static std::map<uint32_t, time_points_t> tid_to_time;
@@ -53,7 +53,7 @@ public:
   static std::map<uint32_t, std::vector<uintptr_t>> cid_to_call;
 
 private:
-  const char *memcpy_type_to_string(uint8_t kind);
+  char *memcpy_type_to_string(uint8_t kind);
 };
 
 class tidStats {

@@ -20,8 +20,8 @@ public:
   int canMapHostMemory_;        ///< cudaDeviceProp.canMapHostMemory
   int pageableMemoryAccess_;    ///< cudaDeviceProp.pageableMemoryAccess
   int concurrentManagedAccess_; ///< cudaDeviceProp.concurrentManagedAccess
-  int minor_;                   ///< cudaDeviceProp.minor
   int major_;                   ///< cudaDeviceProp.major
+  int minor_;                   ///< cudaDeviceProp.minor
 };
 
 } // namespace cuda

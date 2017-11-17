@@ -3,6 +3,7 @@
 #include <thread>
 
 #include "cprof/activity_callbacks.hpp"
+#include "cprof/kernel_time.hpp"
 
 #include "cprof/kernel_time.hpp"
 
@@ -44,5 +45,7 @@ bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer, size_t size, 
             exit(-1);
     }
   }
-  free(buffer);  
+  auto kernelTimer = KernelCallTime::instance();
+  kernelTimer.flush_tracers();
+//   free(buffer);  
 }
