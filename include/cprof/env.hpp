@@ -1,11 +1,5 @@
-/*
-
-  
-
-*/
-
-#ifndef ENV_HPP
-#define ENV_HPP
+#ifndef CPROF_ENV_HPP
+#define CPROF_ENV_HPP
 
 #include <cstdlib>
 #include <cstring>
@@ -16,17 +10,18 @@
     const char *fromEnv = std::getenv(env_var);                                \
     if (fromEnv && (0 < std::strlen(fromEnv))) {                               \
       return std::string(fromEnv);                                             \
-    } else {                                                                   \
+    } else { /* not found or empty */                                          \
       return default;                                                          \
     }                                                                          \
   }
 
+namespace cprof {
 namespace env {
-READ_ENV_STR("CPROF_OUT", output_path, "output.cprof")
 READ_ENV_STR("CPROF_ZIPKIN_ENDPOINT", zipkin_endpoint, "")
 READ_ENV_STR("CPROF_MONGODB_ENDPOINT", mongodb_endpoint, "")
 READ_ENV_STR("CPROF_USE_ZIPKIN", use_zipkin, "1")
 READ_ENV_STR("CPROF_USE_JSON", use_json, "1")
-}
+} // namespace env
+} // namespace cprof
 
 #endif

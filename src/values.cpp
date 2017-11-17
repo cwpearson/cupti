@@ -2,7 +2,7 @@
 #include <fstream>
 #include <map>
 
-#include "cprof/env.hpp"
+#include "cprof/profiler.hpp"
 #include "cprof/values.hpp"
 
 const Values::id_type Values::noid = Value::noid;
@@ -32,7 +32,6 @@ Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
                         std::shared_ptr<Value>(nullptr));
 }
 
-
 std::pair<bool, Values::id_type>
 Values::get_last_overlapping_value(uintptr_t pos, size_t size,
                                    const AddressSpace &as) {
@@ -56,7 +55,8 @@ Values::insert(const value_type &v) {
   std::lock_guard<std::mutex> guard(access_mutex_);
   value_order_.push_back(valIdx);
 
-  std::ofstream buf(env::output_path(), std::ofstream::app);
+  std::ofstream buf(cprof::Profiler::instance().output_path(),
+                    std::ofstream::app);
   buf << *v;
   buf.flush();
 

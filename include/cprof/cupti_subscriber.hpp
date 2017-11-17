@@ -1,6 +1,8 @@
 #ifndef CPROF_CUPTI_SUBSCRIBER_HPP
 #define CPROF_CUPTI_SUBSCRIBER_HPP
 
+#include <cupti.h>
+
 class CuptiSubscriber {
 private:
   CUpti_SubscriberHandle subscriber_;

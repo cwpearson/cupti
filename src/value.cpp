@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "cprof/allocations.hpp"
-#include "cprof/env.hpp"
+#include "cprof/profiler.hpp"
 #include "cprof/value.hpp"
 
 using boost::property_tree::ptree;
@@ -18,7 +18,8 @@ void Value::add_depends_on(id_type id) {
   ptree pt;
   pt.put("dep.dst_id", Id());
   pt.put("dep.src_id", id);
-  std::ofstream buf(env::output_path(), std::ofstream::app);
+  std::ofstream buf(cprof::Profiler::instance().output_path(),
+                    std::ofstream::app);
   write_json(buf, pt, false);
   buf.flush();
 }
@@ -39,7 +40,8 @@ void Value::record_meta_append(const std::string &s) {
   ptree pt;
   pt.put("meta.append", s);
   pt.put("meta.val_id", Id());
-  std::ofstream buf(env::output_path(), std::ofstream::app);
+  std::ofstream buf(cprof::Profiler::instance().output_path(),
+                    std::ofstream::app);
   write_json(buf, pt, false);
   buf.flush();
 }
@@ -48,7 +50,8 @@ void Value::record_meta_set(const std::string &s) {
   ptree pt;
   pt.put("meta.set", s);
   pt.put("meta.val_id", Id());
-  std::ofstream buf(env::output_path(), std::ofstream::app);
+  std::ofstream buf(cprof::Profiler::instance().output_path(),
+                    std::ofstream::app);
   write_json(buf, pt, false);
   buf.flush();
 }
@@ -62,7 +65,8 @@ AddressSpace Value::address_space() const {
 
 void Value::set_size(size_t size) {
   size_ = size;
-  std::ofstream buf(env::output_path(), std::ofstream::app);
+  std::ofstream buf(cprof::Profiler::instance().output_path(),
+                    std::ofstream::app);
   buf << *this;
   buf.flush();
 }

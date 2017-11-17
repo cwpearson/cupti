@@ -260,7 +260,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     printf("The end timestamp is %lu\n", endTimeStamp);
     // std::cout << "The end time is " << cbInfo->end_time;
     kernelTimer.kernel_end_time(cbInfo);
-    printf("callback: cudaMemcpy end func exec\n");
+    printf("INFO: callback: cudaMemcpy end func exec\n");
     uint64_t end;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
     auto api = cprof::driver().this_thread().current_api();

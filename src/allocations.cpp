@@ -2,7 +2,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "cprof/allocations.hpp"
-#include "cprof/env.hpp"
+#include "cprof/profiler.hpp"
 
 using boost::property_tree::ptree;
 using boost::property_tree::read_json;
@@ -33,7 +33,7 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
   } else if (matches.empty()) {
     return nullptr;
   } else {
-    for (const auto & a : matches) {
+    for (const auto &a : matches) {
       printf("INFO: matching %lu, %lu\n", a->pos(), a->size());
     }
     assert(0 && "Multiple matches in different address spaces!");
@@ -77,7 +77,8 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
     printf("WARN: creating size 0 allocation");
   }
 
-  std::ofstream buf(env::output_path(), std::ofstream::app);
+  std::ofstream buf(cprof::Profiler::instance().output_path(),
+                    std::ofstream::app);
   buf << *val;
   buf.flush();
 

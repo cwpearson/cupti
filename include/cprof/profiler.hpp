@@ -1,11 +1,9 @@
 #ifndef CPROF_PROFILER_HPP
 #define CPROF_PROFILER_HPP
 
-#include "cprof/allocations.hpp"
+#include "cprof/cupti_subscriber.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/hardware.hpp"
-#include "cprof/cupti_subscriber.hpp"
-
 
 namespace cprof {
 class Profiler {
@@ -18,6 +16,8 @@ public:
   static void init();
   static Profiler &instance();
 
+  const std::string &output_path() { return jsonOutputPath_; }
+
   friend model::Hardware &hardware();
   friend model::Driver &driver();
 
@@ -26,6 +26,10 @@ private:
   model::Hardware hardware_;
   model::Driver driver_;
   CuptiSubscriber *manager_;
+
+  bool useCuptiCallback_;
+  bool useCuptiActivity_;
+  std::string jsonOutputPath_;
 };
 
 inline model::Hardware &hardware() { return Profiler::instance().hardware_; }
