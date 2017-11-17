@@ -5,19 +5,20 @@
 
 #include "cprof/preload.hpp"
 
+/* 
 typedef cudaError_t (*cudaFreeHostFunc)(void *ptr);
 extern "C" cudaError_t cudaFreeHost(void *ptr) {
   SAME_LD_PRELOAD_BOILERPLATE(cudaFreeHost);
   return real_cudaFreeHost(ptr);
 }
 
-/*
+
 typedef cudaError_t (*cudaGetDeviceCountFunc)(int *);
 extern "C" cudaError_t cudaGetDeviceCount(int *count) {
   SAME_LD_PRELOAD_BOILERPLATE(cudaGetDeviceCount);
   return real_cudaGetDeviceCount(count);
 }
-*/
+
 typedef cudaError_t (*cudaMallocFunc)(void **, size_t);
 extern "C" cudaError_t cudaMalloc(void **devPtr, size_t size) {
   SAME_LD_PRELOAD_BOILERPLATE(cudaMalloc);
@@ -42,3 +43,5 @@ extern "C" cudaError_t cudaSetDevice(int device) {
   SAME_LD_PRELOAD_BOILERPLATE(cudaSetDevice);
   return real_cudaSetDevice(device);
 }
+
+*/
