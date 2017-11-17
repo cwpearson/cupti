@@ -8,7 +8,7 @@
 
 Install some dependencies
 
-    sudo apt install libnuma-dev libboost-all-dev, libcurl4-openssl-dev
+    sudo apt install libnuma-dev libboost-all-dev libcurl4-openssl-dev cmake cppcheck
 
 Install CUDA and CUDNN.
 
@@ -17,26 +17,29 @@ Install opentracing-cpp and and zipkin-opentracing-cpp.
 1. opentracing-cpp
 
 ```bash
-    git clone https://github.com/opentracing/opentracing-cpp.git
-    cd opentracing-cpp
-    mkdir .build
-    cd .build
-    cmake ..
-    make
-    sudo make install
+    git clone https://github.com/opentracing/opentracing-cpp.git \
+      && cd opentracing-cpp \
+      && mkdir build \
+      && cd build \
+      && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$HOME/software/opentracing-cpp \
+      && make \
+      && make install
 ```
 
 
 2. zipkin-opentracing-cpp
 
 ```bash
-    git clone https://github.com/rnburn/zipkin-cpp-opentracing.git
-    cd zipkin-cpp-opentracing
-    mkdir .build
-    cd .build
-    cmake ..
-    make
-    sudo make install
+    git clone https://github.com/rnburn/zipkin-cpp-opentracing.git \
+      && cd zipkin-cpp-opentracing \
+      && mkdir build \
+      && cd build \
+      && cmake .. -DCMAKE_INSTALL_TYPE=Debug \
+                  -DCMAKE_INSTALL_PREFIX=$HOME/software/zipkin-cpp-opentracing \
+                  -DOPENTRACING_INCLUDE_DIR=$HOME/software/opentracing-cpp/include \
+                  -DOPENTRACING_LIB=$HOME/software/opentracing-cpp/lib/libopentracing.so \
+      && make  \
+      && sudo make install
 ```
 
 
