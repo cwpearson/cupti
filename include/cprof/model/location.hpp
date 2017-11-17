@@ -22,6 +22,19 @@ public:
   static Location Unknown() { return Location(Type::Unknown); }
   static Location Host() { return Location(Type::Host); }
   static Location CudaDevice(int id) { return Location(Type::CudaDevice, id); }
+
+  std::string str() const {
+    switch (type_) {
+    case Type::Unknown:
+      return "unknown";
+    case Type::Host:
+      return "host";
+    case Type::CudaDevice:
+      return "CudaDevice" + std::to_string(id_);
+    default:
+      assert(0 && "how did we get here");
+    }
+  }
 };
 
 } // namespace model

@@ -11,8 +11,8 @@ using cprof::model::Memory;
 AllocationRecord::AllocationRecord(uintptr_t pos, size_t size,
                                    const AddressSpace &as, const Memory &mem,
                                    const Location &location)
-    : Extent(pos, size), address_space_(as), memory_(mem), freed_(false),
-      location_(location) {
+    : Extent(pos, size), address_space_(as), memory_(mem), location_(location),
+      freed_(false) {
   assert(address_space_.is_valid());
 }
 
@@ -23,6 +23,7 @@ std::string AllocationRecord::json() const {
   pt.put("allocation.size", std::to_string(size_));
   pt.put("allocation.addrsp", address_space_.json());
   pt.put("allocation.mem", cprof::model::to_string(memory_));
+  pt.put("allocation.loc", location_.str());
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();
