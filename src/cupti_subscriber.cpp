@@ -51,11 +51,13 @@ static void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
   CuptiSubscriber::~CuptiSubscriber() {
     printf("INFO: CuptiSubscriber dtor\n");
     cuptiActivityFlushAll(0);
+    printf("INFO: done cuptiActivityFlushAll\n");
     auto kernelTimer = KernelCallTime::instance();
     kernelTimer.write_to_file();
     kernelTimer.close_parent();
     printf("Deactivating callbacks!\n");
     CUPTI_CHECK(cuptiUnsubscribe(subscriber_));
     printf("INFO: done deactivating callbacks!\n");
+    printf("INFO: done CuptiSubscriber dtor\n");
   }
 

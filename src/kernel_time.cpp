@@ -47,6 +47,7 @@ KernelCallTime &KernelCallTime::instance() {
     launch_tracer = makeZipkinOtTracer(launch_tracer_options);
 
     parent_span = tracer->StartSpan("Parent");
+    assert(parent_span);
   }
   static KernelCallTime a;
   return a;
@@ -228,10 +229,10 @@ void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   std::chrono::nanoseconds end_dur(memcpyRecord->end);
 
   std::cout << "Start pre truncate " << memcpyRecord->start << std::endl;
-  std::cout << "End pre truncate " << memcpyRecord->end << std::endl;
+  std::cout << "End pre truncate   " << memcpyRecord->end << std::endl;
 
   std::cout << "Start: " << start_dur.count() << std::endl;
-  std::cout << "End: " << end_dur.count() << std::endl;
+  std::cout << "End:   " << end_dur.count() << std::endl;
 
   // std::chrono::time_point<std::chrono::system_clock,
   // std::chrono::nanoseconds>
@@ -249,6 +250,7 @@ void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   // start_time_point(start_dur);
   // std::chrono::time_point<std::chrono::steady_clock> end_time_point(end_dur);
 
+  assert(parent_span);
   current_span = memcpy_tracer->StartSpan(
       std::to_string(correlationId),
       {ChildOf(&parent_span->context()), StartTimestamp(start_dur)});
@@ -344,7 +346,11 @@ void KernelCallTime::save_configured_call(uint32_t cid,
       std::pair<uint32_t, std::vector<uintptr_t>>(cid, configCall));
 }
 
-void KernelCallTime::close_parent() { parent_span->Finish(); }
+void KernelCallTime::close_parent() { 
+  assert(parent_span);
+  parent_span->Finish(); 
+  printf("INFO: closed parent_span\n");
+  }
 
 void KernelCallTime::write_to_file() {
   tracer->Close();
