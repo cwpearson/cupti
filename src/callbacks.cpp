@@ -41,13 +41,13 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   // print_backtrace();
 
   // Get the current stream
-  // const cudaStream_t stream = ConfiguredCall().stream;
+  // const cudaStream_t stream = cprof::driver().this_thread().configured_call().stream;
   const char *symbolName = cbInfo->symbolName;
   printf("launching %s\n", symbolName);
 
   // Find all values that are used by arguments
   std::vector<Values::id_type> kernelArgIds;
-  for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size();
+  for (size_t argIdx = 0; argIdx < cprof::driver().this_thread().configured_call().args_.size();
        ++argIdx) { // for each kernel argument
                    // printf("arg %lu, val %lu\n", argIdx, valIdx);
 
@@ -56,13 +56,13 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
 
     // FIXME: assuming with p2p access, it could be on any device?
     const auto &kv =
-        values.find_live(ConfiguredCall().args[argIdx], 1 /*size*/, AS);
+        values.find_live(cprof::driver().this_thread().configured_call().args_[argIdx], 1 /*size*/, AS);
 
     const auto &key = kv.first;
     if (key != uintptr_t(nullptr)) {
       kernelArgIds.push_back(kv.first);
       printf("found val %lu for kernel arg=%lu\n", key,
-             ConfiguredCall().args[argIdx]);
+             cprof::driver().this_thread().configured_call().args_[argIdx]);
     }
   }
 
@@ -122,16 +122,16 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       // }
     }
     APIs::record(api);
-    ConfiguredCall().valid = false;
-    ConfiguredCall().args.clear();
+    cprof::driver().this_thread().configured_call().valid_ = false;
+    cprof::driver().this_thread().configured_call().args_.clear();
   } else {
     assert(0 && "How did we get here?");
   }
 
   printf("callback: cudaLaunch: done\n");
-  if (ConfiguredCall().valid)
+  if (cprof::driver().this_thread().configured_call().valid_)
     kernelTimer.save_configured_call(cbInfo->correlationId,
-                                     ConfiguredCall().args);
+                                     cprof::driver().this_thread().configured_call().args_);
 }
 
 void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
@@ -547,14 +547,14 @@ static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaConfigureCall entry\n");
 
-    assert(!ConfiguredCall().valid && "call is already configured?\n");
+    assert(!cprof::driver().this_thread().configured_call().valid_ && "call is already configured?\n");
 
     auto params = ((cudaConfigureCall_v3020_params *)(cbInfo->functionParams));
-    ConfiguredCall().gridDim = params->gridDim;
-    ConfiguredCall().blockDim = params->blockDim;
-    ConfiguredCall().sharedMem = params->sharedMem;
-    ConfiguredCall().stream = params->stream;
-    ConfiguredCall().valid = true;
+    cprof::driver().this_thread().configured_call().gridDim_ = params->gridDim;
+    cprof::driver().this_thread().configured_call().blockDim_ = params->blockDim;
+    cprof::driver().this_thread().configured_call().sharedMem_ = params->sharedMem;
+    cprof::driver().this_thread().configured_call().stream_ = params->stream;
+    cprof::driver().this_thread().configured_call().valid_ = true;
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
@@ -572,8 +572,8 @@ static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
     // const size_t size     = params->size;
     // const size_t offset   = params->offset;
 
-    assert(ConfiguredCall().valid);
-    ConfiguredCall().args.push_back(arg);
+    assert(cprof::driver().this_thread().configured_call().valid_);
+    cprof::driver().this_thread().configured_call().args_.push_back(arg);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
