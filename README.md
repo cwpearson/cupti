@@ -92,3 +92,7 @@ Build the library with debug symbols.
 Modify `env.sh` so that the final line calls `gdb` before the arguments, like so:
 
     LD_PRELOAD="$LD_PRELOAD:$CPROF_ROOT/lib/libcprof.so" gdb $@
+
+## pycprof for looking at results
+
+[pycprof github](https://github.com/cwpearson/pycprof)
