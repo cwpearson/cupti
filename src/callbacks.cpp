@@ -32,21 +32,6 @@
 using cprof::model::Location;
 using cprof::model::Memory;
 
-// FIXME: this should be per-thread
-typedef struct {
-  dim3 gridDim;
-  dim3 blockDim;
-  size_t sharedMem;
-  cudaStream_t stream;
-  std::vector<uintptr_t> args;
-  bool valid = false;
-} ConfiguredCall_t;
-
-ConfiguredCall_t &ConfiguredCall() {
-  static ConfiguredCall_t cc;
-  return cc;
-}
-
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
