@@ -11,6 +11,7 @@
 #include <cupti.h>
 
 #include "cprof/api_record.hpp"
+#include "cprof/model/cuda/configured_call.hpp"
 #include "cprof/model/thread.hpp"
 
 namespace cprof {
@@ -21,6 +22,7 @@ private:
   int currentDevice_;
   bool cuptiCallbacksEnabled_;
 
+  ConfiguredCall configuredCall_;
   std::vector<ApiRecordRef> apiStack_;
 
 public:
@@ -42,6 +44,8 @@ public:
   void resume_cupti_callbacks();
 
   bool is_cupti_callbacks_enabled() const { return cuptiCallbacksEnabled_; }
+
+  ConfiguredCall &configured_call() { return configuredCall_; }
 };
 
 // FIXME: not thread-safe
