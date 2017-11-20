@@ -23,7 +23,7 @@ std::string AllocationRecord::json() const {
   pt.put("allocation.size", std::to_string(size_));
   pt.put("allocation.addrsp", address_space_.json());
   pt.put("allocation.mem", cprof::model::to_string(memory_));
-  pt.put("allocation.loc", location_.str());
+  pt.put("allocation.loc", location_.json());
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();

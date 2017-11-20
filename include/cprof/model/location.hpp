@@ -1,6 +1,8 @@
 #ifndef CPROF_MODEL_LOCATION_HPP
 #define CPROF_MODEL_LOCATION_HPP
 
+#include <string>
+
 namespace cprof {
 namespace model {
 
@@ -23,18 +25,20 @@ public:
   static Location Host() { return Location(Type::Host); }
   static Location CudaDevice(int id) { return Location(Type::CudaDevice, id); }
 
-  std::string str() const {
-    switch (type_) {
+  static std::string to_string(const Type &type) {
+    switch (type) {
     case Type::Unknown:
       return "unknown";
     case Type::Host:
       return "host";
     case Type::CudaDevice:
-      return "CudaDevice" + std::to_string(id_);
+      return "cuda";
     default:
       assert(0 && "how did we get here");
     }
   }
+
+  std::string json() const;
 };
 
 } // namespace model
