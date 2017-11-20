@@ -17,10 +17,10 @@ Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {
 }
 
 Profiler::~Profiler() {
-  std::cout << "INFO: Profiler dtor" << std::endl;
+  printf("INFO: Profiler dtor\n");
   delete manager_;
   isInitialized_ = false;
-  printf("INFO: Profiler dtor done");
+  printf("INFO: Profiler dtor done\n");
 }
 
 /*! \brief Profiler() initialize a profiler object
