@@ -18,7 +18,7 @@ typedef cudnnStatus_t (*cudnnCreateFunc)(cudnnHandle_t *handle);
 extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
   SAME_LD_PRELOAD_BOILERPLATE(cudnnCreate);
 
-  printf("WARN: disabling CUPTI callbacks during cudnnCreate call\n");
+  printf("WARN: tid %u disabling CUPTI callbacks during cudnnCreate call\n", cprof::model::get_thread_id());
   cprof::driver().this_thread().pause_cupti_callbacks();
 
   const cudnnStatus_t ret = real_cudnnCreate(handle);
@@ -129,7 +129,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   api->add_input(cId);
   APIs::record(api);
 
-  printf("WARN: disabling CUPTI callbacks during cudnnAddTensor call\n");
+  printf("WARN: thread %u disabling CUPTI callbacks during cudnnAddTensor call\n", cprof::model::get_thread_id());
   cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret =
       real_cudnnAddTensor(handle, alpha, aDesc, A, beta, cDesc, C);
@@ -437,7 +437,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   APIs::record(api);
 
   printf(
-      "WARN: disabling CUPTI callbacks during cudnnConvolutionForward call\n");
+      "WARN: thread %u disabling CUPTI callbacks during cudnnConvolutionForward call\n", cprof::model::get_thread_id());
   cprof::driver().this_thread().pause_cupti_callbacks();
   const cudnnStatus_t ret = real_cudnnConvolutionForward(
       handle, alpha, xDesc, x, wDesc, w, convDesc, algo, workSpace,
