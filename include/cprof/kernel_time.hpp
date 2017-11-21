@@ -51,6 +51,7 @@ public:
   static std::map<uintptr_t, TextMapCarrier> ptr_to_span;
   static std::unordered_map<std::string, std::string> text_map;
   static std::map<uint32_t, std::vector<uintptr_t>> cid_to_call;
+  static std::map<uint32_t, uint32_t> cid_to_tid;
 
 private:
   char *memcpy_type_to_string(uint8_t kind);
