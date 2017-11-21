@@ -1,0 +1,10 @@
+.vscode
+build
+docs
+examples
+jupyter
+scripts
+.clang-format
+Makefile.config.example
+README.md
+doxygen.config
