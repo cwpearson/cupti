@@ -35,7 +35,8 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
     return nullptr;
   } else {
     for (const auto &a : matches) {
-      printf("INFO: matching %lu, %lu\n", a->pos(), a->size());
+      cprof::err() << "INFO: matching " << a->pos() << ", " << a->size()
+                   << std::endl;
     }
     assert(0 && "Multiple matches in different address spaces!");
   }
@@ -76,7 +77,7 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
   assert(val.get());
 
   if (val->size() == 0) {
-    printf("WARN: creating size 0 allocation");
+    cprof::err() << "WARN: creating size 0 allocation" << std::endl;
   }
 
   cprof::out() << *val;
@@ -90,7 +91,8 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
 size_t Allocations::free(uintptr_t pos, const AddressSpace &as) {
   auto i = find_exact(pos, as);
   if (i->freed()) {
-    printf("WARN: allocation %lu double-free?\n", i->pos());
+    cprof::err() << "WARN: allocation " << i->pos() << " double-free?"
+                 << std::endl;
   }
   if (i) {
     i->mark_free();

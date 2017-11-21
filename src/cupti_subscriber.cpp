@@ -26,7 +26,7 @@ static void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
   *maxNumRecords = BUFFER_SIZE;
 
   if (*buffer == NULL) {
-    printf("Error: out of memory\n");
+    cprof::err() << "ERROR: out of memory" << std::endl;
     exit(-1);
   }
 }
@@ -36,7 +36,7 @@ CuptiSubscriber::CuptiSubscriber(CUpti_CallbackFunc callback)
 
 void CuptiSubscriber::init() {
   assert(callback_);
-  printf("INFO: CuptiSubscriber init\n");
+  cprof::err() << "INFO: CuptiSubscriber init" << std::endl;
 
   size_t attrValueBufferSize = BUFFER_SIZE * 1024,
          attrValueSize = sizeof(size_t), attrValuePoolSize = BUFFER_SIZE;
@@ -65,22 +65,24 @@ void CuptiSubscriber::init() {
   cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY);
   cuptiActivityRegisterCallbacks(bufferRequested, bufferCompleted);
 
-  printf("INFO: activating callbacks\n");
-  CUPTI_CHECK(cuptiSubscribe(&subscriber_, callback_, nullptr));
-  CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API));
-  CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API));
-  printf("INFO: done activating callbacks\n");
+  cprof::err() << "INFO: activating callbacks" << std::endl;
+  CUPTI_CHECK(cuptiSubscribe(&subscriber_, callback_, nullptr), cprof::err());
+  CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API),
+              cprof::err());
+  CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API),
+              cprof::err());
+  cprof::err() << "INFO: done activating callbacks" << std::endl;
 }
 
 CuptiSubscriber::~CuptiSubscriber() {
-  printf("INFO: CuptiSubscriber dtor\n");
+  cprof::err() << "INFO: CuptiSubscriber dtor" << std::endl;
   cuptiActivityFlushAll(0);
-  printf("INFO: done cuptiActivityFlushAll\n");
+  cprof::err() << "INFO: done cuptiActivityFlushAll" << std::endl;
   parent_span->Finish();
   auto kernelTimer = KernelCallTime::instance();
   kernelTimer.flush_tracers();
-  printf("Deactivating callbacks!\n");
-  CUPTI_CHECK(cuptiUnsubscribe(subscriber_));
-  printf("INFO: done deactivating callbacks!\n");
-  printf("INFO: done CuptiSubscriber dtor\n");
+  cprof::err() << "Deactivating callbacks!" << std::endl;
+  CUPTI_CHECK(cuptiUnsubscribe(subscriber_), cprof::err());
+  cprof::err() << "INFO: done deactivating callbacks!" << std::endl;
+  cprof::err() << "INFO: done CuptiSubscriber dtor" << std::endl;
 }

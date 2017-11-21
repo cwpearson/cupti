@@ -1,7 +1,6 @@
 #include <array>
 #include <cassert>
 #include <chrono>
-#include <cstdio>
 #include <cstdlib>
 #include <map>
 #include <memory>
@@ -18,7 +17,6 @@
 #include "cprof/allocation_record.hpp"
 #include "cprof/allocations.hpp"
 #include "cprof/apis.hpp"
-#include "cprof/backtrace.hpp"
 #include "cprof/hash.hpp"
 #include "cprof/kernel_time.hpp"
 #include "cprof/memorycopykind.hpp"
@@ -28,6 +26,7 @@
 #include "cprof/util_cupti.hpp"
 #include "cprof/value.hpp"
 #include "cprof/values.hpp"
+#include "util/backtrace.hpp"
 
 using cprof::model::Location;
 using cprof::model::Memory;
@@ -35,19 +34,22 @@ using cprof::model::Memory;
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
-  printf("callback: cudaLaunch preamble (tid: %u)\n", cprof::model::get_thread_id());
+  printf("callback: cudaLaunch preamble (tid: %u)\n",
+         cprof::model::get_thread_id());
   auto kernelTimer = KernelCallTime::instance();
 
   // print_backtrace();
 
   // Get the current stream
-  // const cudaStream_t stream = cprof::driver().this_thread().configured_call().stream;
+  // const cudaStream_t stream =
+  // cprof::driver().this_thread().configured_call().stream;
   const char *symbolName = cbInfo->symbolName;
   printf("launching %s\n", symbolName);
 
   // Find all values that are used by arguments
   std::vector<Values::id_type> kernelArgIds;
-  for (size_t argIdx = 0; argIdx < cprof::driver().this_thread().configured_call().args_.size();
+  for (size_t argIdx = 0;
+       argIdx < cprof::driver().this_thread().configured_call().args_.size();
        ++argIdx) { // for each kernel argument
                    // printf("arg %lu, val %lu\n", argIdx, valIdx);
 
@@ -55,8 +57,9 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     auto AS = cprof::hardware().address_space(devId);
 
     // FIXME: assuming with p2p access, it could be on any device?
-    const auto &kv =
-        values.find_live(cprof::driver().this_thread().configured_call().args_[argIdx], 1 /*size*/, AS);
+    const auto &kv = values.find_live(
+        cprof::driver().this_thread().configured_call().args_[argIdx],
+        1 /*size*/, AS);
 
     const auto &key = kv.first;
     if (key != uintptr_t(nullptr)) {
@@ -130,8 +133,9 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
 
   printf("callback: cudaLaunch: done\n");
   if (cprof::driver().this_thread().configured_call().valid_)
-    kernelTimer.save_configured_call(cbInfo->correlationId,
-                                     cprof::driver().this_thread().configured_call().args_);
+    kernelTimer.save_configured_call(
+        cbInfo->correlationId,
+        cprof::driver().this_thread().configured_call().args_);
 }
 
 void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
@@ -229,7 +233,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     printf("callback: cudaMemcpy entry\n");
 
     uint64_t start;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start));
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
@@ -245,7 +249,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     kernelTimer.kernel_end_time(cbInfo);
     printf("INFO: callback: cudaMemcpy end func exec\n");
     uint64_t end;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
@@ -272,7 +276,7 @@ static void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
     printf("callback: cudaMemcpyAsync entry\n");
 
     uint64_t start;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start));
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
@@ -280,7 +284,7 @@ static void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     uint64_t end;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
@@ -306,14 +310,14 @@ static void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpyPeerAsync entry\n");
     uint64_t start;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start));
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
     api->record_start_time(start);
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     uint64_t end;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
@@ -545,14 +549,18 @@ static void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaConfigureCall entry (tid: %u)\n", cprof::model::get_thread_id());
+    printf("callback: cudaConfigureCall entry (tid: %u)\n",
+           cprof::model::get_thread_id());
 
-    assert(!cprof::driver().this_thread().configured_call().valid_ && "call is already configured?\n");
+    assert(!cprof::driver().this_thread().configured_call().valid_ &&
+           "call is already configured?\n");
 
     auto params = ((cudaConfigureCall_v3020_params *)(cbInfo->functionParams));
     cprof::driver().this_thread().configured_call().gridDim_ = params->gridDim;
-    cprof::driver().this_thread().configured_call().blockDim_ = params->blockDim;
-    cprof::driver().this_thread().configured_call().sharedMem_ = params->sharedMem;
+    cprof::driver().this_thread().configured_call().blockDim_ =
+        params->blockDim;
+    cprof::driver().this_thread().configured_call().sharedMem_ =
+        params->sharedMem;
     cprof::driver().this_thread().configured_call().stream_ = params->stream;
     cprof::driver().this_thread().configured_call().valid_ = true;
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
@@ -563,7 +571,8 @@ static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaSetupArgument entry (tid: %u)\n", cprof::model::get_thread_id());
+    printf("callback: cudaSetupArgument entry (tid: %u)\n",
+           cprof::model::get_thread_id());
     const auto params =
         ((cudaSetupArgument_v3020_params *)(cbInfo->functionParams));
     const uintptr_t arg =

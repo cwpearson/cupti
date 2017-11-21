@@ -6,7 +6,7 @@
 
 #define SAME_LD_PRELOAD_BOILERPLATE(name)                                      \
   static name##Func real_##name = nullptr;                                     \
-  printf("LD_PRELOAD intercept: " #name "\n");                                 \
+  cprof::err() << "LD_PRELOAD intercept: " #name << std::endl;                 \
   if (real_##name == nullptr) {                                                \
     real_##name = (name##Func)dlsym(RTLD_NEXT, #name);                         \
   }                                                                            \
@@ -14,7 +14,7 @@
 
 #define V2_LD_PRELOAD_BOILERPLATE(name)                                        \
   static name##Func real_##name = nullptr;                                     \
-  printf("LD_PRELOAD intercept: " #name "\n");                                 \
+  cprof::err() << "LD_PRELOAD intercept: " #name << std::endl;                 \
   if (real_##name == nullptr) {                                                \
     real_##name = (name##Func)dlsym(RTLD_NEXT, #name "_v2");                   \
   }                                                                            \

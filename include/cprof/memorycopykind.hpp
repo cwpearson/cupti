@@ -2,8 +2,9 @@
 #define MEMORYCOPYKIND_HPP
 
 #include <cassert>
-#include <cstdio>
 #include <cuda_runtime.h>
+
+#include "cprof/profiler.hpp"
 
 class MemoryCopyKind {
 private:
@@ -31,20 +32,27 @@ public:
     } else if (cudaMemcpyDefault == kind) {
       type_ = Type::CudaDefault;
     } else {
-      printf("Unhandled cudaMemcpyKind %d\n", kind);
+      cprof::err() << "Unhandled cudaMemcpyKind " << kind << std::endl;
       assert(0 && "Unsupported cudaMemcpy kind");
     }
   }
 
   std::string str() const {
-    switch(type_) {
-      case Type::CudaHostToDevice: return "cudaMemcpyHostToDevice";
-      case Type::CudaDeviceToHost: return "cudaMemcpyDeviceToHost";
-      case Type::CudaHostToHost: return "cudaMemcpyHostToHost";
-      case Type::CudaDeviceToDevice: return "cudaMemcpyDeviceToDevice";
-      case Type::CudaDefault: return "cudaMemcpyDefault";
-      case Type::CudaPeer: return "cudaMemcpyPeer";
-      default: assert(0 && "Unhandled MemoryCopyKind");
+    switch (type_) {
+    case Type::CudaHostToDevice:
+      return "cudaMemcpyHostToDevice";
+    case Type::CudaDeviceToHost:
+      return "cudaMemcpyDeviceToHost";
+    case Type::CudaHostToHost:
+      return "cudaMemcpyHostToHost";
+    case Type::CudaDeviceToDevice:
+      return "cudaMemcpyDeviceToDevice";
+    case Type::CudaDefault:
+      return "cudaMemcpyDefault";
+    case Type::CudaPeer:
+      return "cudaMemcpyPeer";
+    default:
+      assert(0 && "Unhandled MemoryCopyKind");
     }
   }
 

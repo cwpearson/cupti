@@ -1,7 +1,5 @@
-
 #include <cassert>
 #include <dlfcn.h>
-#include <list>
 
 #include <cudnn.h>
 

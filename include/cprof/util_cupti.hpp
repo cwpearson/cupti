@@ -1,18 +1,18 @@
 #ifndef UTIL_CUPTI_HPP
 #define UTIL_CUPTI_HPP
 
-#include <cstdio>
 #include <cstdlib>
 #include <cupti.h>
+#include <ostream>
 
-#define CUPTI_CHECK(ans)                                                       \
-  { cuptiAssert((ans), __FILE__, __LINE__); }
+#define CUPTI_CHECK(ans, err)                                                  \
+  { cuptiAssert((ans), __FILE__, __LINE__, (err)); }
 inline void cuptiAssert(CUptiResult code, const char *file, int line,
-                        bool abort = true) {
+                        std::ostream &err, bool abort = true) {
   if (code != CUPTI_SUCCESS) {
     const char *errstr;
     cuptiGetResultString(code, &errstr);
-    fprintf(stderr, "CUPTI_CHECK: %s %s %d\n", errstr, file, line);
+    err << "CUPTI_CHECK: " << errstr << " " << file << " " << line << std::endl;
     if (abort)
       exit(code);
   }
