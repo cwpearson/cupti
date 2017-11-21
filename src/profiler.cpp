@@ -1,6 +1,10 @@
 #include <cassert>
 #include <cstdio>
 
+#include <fstream>
+#include <iostream>
+#include <memory>
+
 #include "cprof/callbacks.hpp"
 #include "cprof/profiler.hpp"
 #include "util/environment_variable.hpp"
@@ -11,7 +15,8 @@ using namespace cprof;
  *
  * Should not handle any initialization. Defer that to the init() method.
  */
-Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {
+Profiler::Profiler()
+    : manager_(nullptr), err_(nullptr), out_(nullptr), isInitialized_(false) {
   printf("INFO: Profiler ctor\n");
   printf("INFO: done Profiler ctor\n");
 }
@@ -38,9 +43,14 @@ void Profiler::init() {
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_ACTIVITY", true).get();
   printf("INFO: useCuptiActivity: %d\n", useCuptiActivity_);
 
-  jsonOutputPath_ =
-      EnvironmentVariable<std::string>("CPROF_OUT", "output.cprof").get();
+  jsonOutputPath_ = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();
   printf("INFO: jsonOutputPath: %s\n", jsonOutputPath_.c_str());
+
+  if (jsonOutputPath_ != "-") {
+    out_ = std::unique_ptr<std::ofstream>(
+        new std::ofstream(jsonOutputPath_.c_str()));
+    assert(out_->good() && "Unable to open output file");
+  }
 
   zipkinHost_ =
       EnvironmentVariable<std::string>("CPROF_ZIPKIN_HOST", "localhost").get();
