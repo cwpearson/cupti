@@ -54,7 +54,7 @@ public:
   static std::map<uint32_t, uint32_t> cid_to_tid;
 
 private:
-  char *memcpy_type_to_string(uint8_t kind);
+  const char *memcpy_type_to_string(uint8_t kind);
 };
 
 class tidStats {

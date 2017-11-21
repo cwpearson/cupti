@@ -72,7 +72,8 @@ void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
       cbInfo->correlationId, cbInfo->functionName));
   this->correlation_to_symbol.insert(std::pair<uint32_t, const char *>(
       cbInfo->correlationId, cbInfo->symbolName));
-  this->cid_to_tid.insert(std::pair<uint32_t, uint32_t>(correlationId, cprof::model::get_thread_id()));
+  this->cid_to_tid.insert(std::pair<uint32_t, uint32_t>(
+      correlationId, cprof::model::get_thread_id()));
 }
 
 void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
@@ -177,42 +178,34 @@ void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
   //   cuda " << time_point.end_time - time_point.start_time << std::endl;
 }
 
-char *KernelCallTime::memcpy_type_to_string(uint8_t kind) {
+const char *KernelCallTime::memcpy_type_to_string(uint8_t kind) {
   switch (kind) {
   case cudaMemcpyHostToHost: {
-    static char *HtH = "cudaMemcpyHostToHost";
-    return HtH;
+    return "cudaMemcpyHostToHost";
   }
   case cudaMemcpyHostToDevice: {
-    static char *HtD = "cudaMemcpyHostToDevice";
-    return HtD;
+    return "cudaMemcpyHostToDevice";
   }
   case cudaMemcpyDeviceToHost: {
-    static char *DtH = "cudaMemcpyDeviceToHost";
-    return DtH;
+    return "cudaMemcpyDeviceToHost";
   }
   case cudaMemcpyDeviceToDevice: {
-    static char *DtD = "cudaMemcpyDeviceToDevice";
-    return DtD;
+    return "cudaMemcpyDeviceToDevice";
   }
   case cudaMemcpyDefault: {
-    static char *defaultDir = "cudaMemcpyDefault";
-    return defaultDir;
+    return "cudaMemcpyDefault";
   }
-  default: {
-    static char *unknown = "Unknown";
-    return "Unknown";
-  }
+  default: { return "Unknown"; }
   }
 }
 
 void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   span_t current_span;
   auto correlationId = memcpyRecord->correlationId;
-  auto tidIter =   this->cid_to_tid.find(correlationId);
+  auto tidIter = this->cid_to_tid.find(correlationId);
   int threadId = -1;
-  if (tidIter != this->cid_to_tid.end()){
-	threadId = tidIter->second;
+  if (tidIter != this->cid_to_tid.end()) {
+    threadId = tidIter->second;
   }
 
   std::chrono::nanoseconds start_dur(memcpyRecord->start);
@@ -252,14 +245,11 @@ void KernelCallTime::kernel_activity_times(
   span_t current_span;
   auto correlationId = cid;
 
-
-    auto tidIter =   this->cid_to_tid.find(correlationId);
+  auto tidIter = this->cid_to_tid.find(correlationId);
   int threadId = -1;
-  if (tidIter != this->cid_to_tid.end()){
-        threadId = tidIter->second;
+  if (tidIter != this->cid_to_tid.end()) {
+    threadId = tidIter->second;
   }
-
-
 
   std::chrono::nanoseconds start_dur(startTime);
   std::chrono::nanoseconds end_dur(endTime);
