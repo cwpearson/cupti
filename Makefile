@@ -117,6 +117,8 @@ docker_docs:
 	@docker run -it --rm -v `pwd`:/data cwpearson/doxygen  doxygen doxygen.config
 	@docker run -it --rm -v `readlink -f docs/latex`:/data cwpearson/doxygen make
 
+docker_build: Dockerfile
+	@docker build . -t cwpearson/cprof
 
 -include $(DEPS)
 
