@@ -7,10 +7,8 @@ APIs::value_type APIs::_record(const APIs::mapped_type &m) {
   auto id = m->Id();
   auto p = records_.insert(std::make_pair(id, m));
 
-  std::ofstream buf(cprof::Profiler::instance().output_path(),
-                    std::ofstream::app);
-  buf << *m;
-  buf.flush();
+  cprof::out() << *m;
+  cprof::out().flush();
 
   return *p.first;
 }

@@ -16,16 +16,17 @@ using namespace cprof;
  * Should not handle any initialization. Defer that to the init() method.
  */
 Profiler::Profiler()
-    : manager_(nullptr), err_(nullptr), out_(nullptr), isInitialized_(false) {
-  printf("INFO: Profiler ctor\n");
-  printf("INFO: done Profiler ctor\n");
-}
+    : manager_(nullptr), err_(nullptr), out_(nullptr), isInitialized_(false) {}
 
 Profiler::~Profiler() {
-  printf("INFO: Profiler dtor\n");
   delete manager_;
   isInitialized_ = false;
-  printf("INFO: Profiler dtor done\n");
+  if (out_) {
+    out_->flush();
+  }
+  if (err_) {
+    err_->flush();
+  }
 }
 
 /*! \brief Profiler() initialize a profiler object
@@ -34,7 +35,21 @@ Profiler::~Profiler() {
  * valid, since they've already been constructed.
  */
 void Profiler::init() {
-  printf("INFO: Profiler::init()\n");
+  auto outPath = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();
+  if (outPath != "-") {
+    out_ = std::unique_ptr<std::ofstream>(
+        new std::ofstream(outPath.c_str(), std::ios::app));
+    assert(out_->good() && "Unable to open out file");
+  }
+
+  auto errPath = EnvironmentVariable<std::string>("CPROF_ERR", "-").get();
+  if (errPath != "-") {
+    err_ = std::unique_ptr<std::ofstream>(
+        new std::ofstream(errPath.c_str(), std::ios::app));
+    assert(err_->good() && "Unable to open err file");
+  }
+
+  err() << "INFO: Profiler::init()";
   useCuptiCallback_ =
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_CALLBACK", true).get();
   printf("INFO: useCuptiCallback: %d\n", useCuptiCallback_);
@@ -42,15 +57,6 @@ void Profiler::init() {
   useCuptiActivity_ =
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_ACTIVITY", true).get();
   printf("INFO: useCuptiActivity: %d\n", useCuptiActivity_);
-
-  jsonOutputPath_ = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();
-  printf("INFO: jsonOutputPath: %s\n", jsonOutputPath_.c_str());
-
-  if (jsonOutputPath_ != "-") {
-    out_ = std::unique_ptr<std::ofstream>(
-        new std::ofstream(jsonOutputPath_.c_str()));
-    assert(out_->good() && "Unable to open output file");
-  }
 
   zipkinHost_ =
       EnvironmentVariable<std::string>("CPROF_ZIPKIN_HOST", "localhost").get();

@@ -18,10 +18,8 @@ void Value::add_depends_on(id_type id) {
   ptree pt;
   pt.put("dep.dst_id", Id());
   pt.put("dep.src_id", id);
-  std::ofstream buf(cprof::Profiler::instance().output_path(),
-                    std::ofstream::app);
-  write_json(buf, pt, false);
-  buf.flush();
+  write_json(cprof::out(), pt, false);
+  cprof::out().flush();
 }
 
 std::string Value::json() const {
@@ -41,20 +39,16 @@ void Value::record_meta_append(const std::string &s) {
   ptree pt;
   pt.put("meta.append", s);
   pt.put("meta.val_id", Id());
-  std::ofstream buf(cprof::Profiler::instance().output_path(),
-                    std::ofstream::app);
-  write_json(buf, pt, false);
-  buf.flush();
+  write_json(cprof::out(), pt, false);
+  cprof::out().flush();
 }
 
 void Value::record_meta_set(const std::string &s) {
   ptree pt;
   pt.put("meta.set", s);
   pt.put("meta.val_id", Id());
-  std::ofstream buf(cprof::Profiler::instance().output_path(),
-                    std::ofstream::app);
-  write_json(buf, pt, false);
-  buf.flush();
+  write_json(cprof::out(), pt, false);
+  cprof::out().flush();
 }
 
 AddressSpace Value::address_space() const {
@@ -66,10 +60,8 @@ AddressSpace Value::address_space() const {
 
 void Value::set_size(size_t size) {
   size_ = size;
-  std::ofstream buf(cprof::Profiler::instance().output_path(),
-                    std::ofstream::app);
-  buf << *this;
-  buf.flush();
+  cprof::out() << *this;
+  cprof::out().flush();
 }
 
 std::ostream &operator<<(std::ostream &os, const Value &v) {

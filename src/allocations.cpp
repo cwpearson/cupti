@@ -79,10 +79,8 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
     printf("WARN: creating size 0 allocation");
   }
 
-  std::ofstream buf(cprof::Profiler::instance().output_path(),
-                    std::ofstream::app);
-  buf << *val;
-  buf.flush();
+  cprof::out() << *val;
+  cprof::out().flush();
 
   std::lock_guard<std::mutex> guard(access_mutex_);
   allocations_.push_back(val);

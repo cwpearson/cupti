@@ -55,10 +55,8 @@ Values::insert(const value_type &v) {
   std::lock_guard<std::mutex> guard(access_mutex_);
   value_order_.push_back(valIdx);
 
-  std::ofstream buf(cprof::Profiler::instance().output_path(),
-                    std::ofstream::app);
-  buf << *v;
-  buf.flush();
+  cprof::out() << *v;
+  cprof::out().flush();
 
   return values_.insert(std::make_pair(valIdx, v));
 }

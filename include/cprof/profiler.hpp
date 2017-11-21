@@ -19,7 +19,6 @@ public:
   void init();
   static Profiler &instance();
 
-  const std::string &output_path() { return jsonOutputPath_; }
   const std::string &zipkin_host() { return zipkinHost_; }
   const uint32_t &zipkin_port() { return zipkinPort_; }
 
@@ -50,7 +49,6 @@ private:
 
   bool useCuptiCallback_;
   bool useCuptiActivity_;
-  std::string jsonOutputPath_;
   std::string zipkinHost_;
   uint32_t zipkinPort_;
 
