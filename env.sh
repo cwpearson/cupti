@@ -34,7 +34,6 @@ export CPROF_ZIPKIN_PORT=16686
 #   ./env.sh examples/samples/vectorAdd/vec
 
 if [ -z "${LD_PRELOAD+xxx}" ]; then 
-echo $@;
   LD_PRELOAD="$CPROF_ROOT/lib/libcprof.so" $@; # unset
 else
   LD_PRELOAD="$LD_PRELOAD:$CPROF_ROOT/lib/libcprof.so" $@; # unset
