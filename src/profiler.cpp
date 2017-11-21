@@ -49,25 +49,25 @@ void Profiler::init() {
     assert(err_->good() && "Unable to open err file");
   }
 
-  err() << "INFO: Profiler::init()";
+  err() << "INFO: Profiler::init()" << std::endl;
   useCuptiCallback_ =
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_CALLBACK", true).get();
-  printf("INFO: useCuptiCallback: %d\n", useCuptiCallback_);
+  err() << "INFO: useCuptiCallback: " << useCuptiCallback_ << std::endl;
 
   useCuptiActivity_ =
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_ACTIVITY", true).get();
-  printf("INFO: useCuptiActivity: %d\n", useCuptiActivity_);
+  err() << "INFO: useCuptiActivity: " << useCuptiActivity_ << std::endl;
 
   zipkinHost_ =
       EnvironmentVariable<std::string>("CPROF_ZIPKIN_HOST", "localhost").get();
-  printf("INFO: zipkinEndpoint: %s\n", zipkinHost_.c_str());
+  err() << "INFO: zipkinEndpoint: " << zipkinHost_ << std::endl;
 
   zipkinPort_ = EnvironmentVariable<uint32_t>("CPROF_ZIPKIN_PORT", 9411u).get();
-  printf("INFO: zipkinPort: %u\n", zipkinPort_);
+  err() << "INFO: zipkinPort: " << zipkinPort_ << std::endl;
 
-  printf("INFO: scanning devices\n");
+  err() << "INFO: scanning devices" << std::endl;
   hardware_.get_device_properties();
-  printf("INFO: done\n");
+  err() << "INFO: done" << std::endl;
 
   manager_ = new CuptiSubscriber((CUpti_CallbackFunc)callback);
   manager_->init();
