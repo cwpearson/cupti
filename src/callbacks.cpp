@@ -35,7 +35,7 @@ using cprof::model::Memory;
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
-  printf("callback: cudaLaunch preamble\n");
+  printf("callback: cudaLaunch preamble (tid: %u)\n", cprof::model::get_thread_id());
   auto kernelTimer = KernelCallTime::instance();
 
   // print_backtrace();
@@ -545,7 +545,7 @@ static void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaConfigureCall entry\n");
+    printf("callback: cudaConfigureCall entry (tid: %u)\n", cprof::model::get_thread_id());
 
     assert(!cprof::driver().this_thread().configured_call().valid_ && "call is already configured?\n");
 
@@ -563,7 +563,7 @@ static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    printf("callback: cudaSetupArgument entry\n");
+    printf("callback: cudaSetupArgument entry (tid: %u)\n", cprof::model::get_thread_id());
     const auto params =
         ((cudaSetupArgument_v3020_params *)(cbInfo->functionParams));
     const uintptr_t arg =

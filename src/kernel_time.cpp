@@ -27,19 +27,12 @@ std::map<uint32_t, uintptr_t> KernelCallTime::correlation_to_dest;
 std::map<uintptr_t, TextMapCarrier> KernelCallTime::ptr_to_span;
 std::unordered_map<std::string, std::string> KernelCallTime::text_map;
 std::map<uint32_t, std::vector<uintptr_t>> KernelCallTime::cid_to_call;
+std::map<uint32_t, uint32_t> KernelCallTime::cid_to_tid;
 
 static std::unordered_map<std::string, std::string> text_map;
 static TextMapCarrier carrier(text_map);
 
 KernelCallTime &KernelCallTime::instance() {
-
-  // memcpy_tracer_options.service_name = "Memory Copy";
-  // launch_tracer_options.service_name = "Kernel Launch";
-  // if (!memcpy_tracer) {
-
-  // parent_span = tracer->StartSpan("Parent");
-  // std::cout << "How many" << std::endl;
-  // }
   static KernelCallTime a;
   return a;
 }
@@ -79,6 +72,7 @@ void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
       cbInfo->correlationId, cbInfo->functionName));
   this->correlation_to_symbol.insert(std::pair<uint32_t, const char *>(
       cbInfo->correlationId, cbInfo->symbolName));
+  this->cid_to_tid.insert(std::pair<uint32_t, uint32_t>(correlationId, cprof::model::get_thread_id()));
 }
 
 void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
@@ -215,6 +209,11 @@ char *KernelCallTime::memcpy_type_to_string(uint8_t kind) {
 void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   span_t current_span;
   auto correlationId = memcpyRecord->correlationId;
+  auto tidIter =   this->cid_to_tid.find(correlationId);
+  int threadId = -1;
+  if (tidIter != this->cid_to_tid.end()){
+	threadId = tidIter->second;
+  }
 
   std::chrono::nanoseconds start_dur(memcpyRecord->start);
   std::chrono::nanoseconds end_dur(memcpyRecord->end);
@@ -232,6 +231,7 @@ void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   current_span->SetTag("Transfer size", memcpyRecord->bytes);
   current_span->SetTag("Transfer type",
                        memcpy_type_to_string(memcpyRecord->copyKind));
+  current_span->SetTag("Host Thread", std::to_string(threadId));
 
   auto timeElapsed = memcpyRecord->end - memcpyRecord->start;
   current_span->SetTag("CUPTI Duration", std::to_string(timeElapsed));
@@ -251,6 +251,15 @@ void KernelCallTime::kernel_activity_times(
   auto found = false;
   span_t current_span;
   auto correlationId = cid;
+
+
+    auto tidIter =   this->cid_to_tid.find(correlationId);
+  int threadId = -1;
+  if (tidIter != this->cid_to_tid.end()){
+        threadId = tidIter->second;
+  }
+
+
 
   std::chrono::nanoseconds start_dur(startTime);
   std::chrono::nanoseconds end_dur(endTime);
@@ -308,7 +317,7 @@ void KernelCallTime::kernel_activity_times(
 
   current_span->SetTag("Current device",
                        std::to_string(launchRecord->deviceId));
-
+  current_span->SetTag("Host Thread", std::to_string(threadId));
   //   auto cStrSymbol =
   //   this->correlation_to_symbol.find(correlationId)->second; if (cStrSymbol
   //   != NULL) {
