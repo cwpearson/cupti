@@ -14,10 +14,11 @@
 
 #define V2_LD_PRELOAD_BOILERPLATE(name)                                        \
   static name##Func real_##name = nullptr;                                     \
-  cprof::err() << "LD_PRELOAD intercept: " #name << std::endl;                 \
+  cprof::err() << "LD_PRELOAD intercept: " #name "_v2" << std::endl;                 \
   if (real_##name == nullptr) {                                                \
     real_##name = (name##Func)dlsym(RTLD_NEXT, #name "_v2");                   \
   }                                                                            \
-  assert(real_##name && "Will the real " #name " please stand up?");
+  assert(real_##name && "Will the real " #name "_v2" " please stand up?");
 
 #endif
+
