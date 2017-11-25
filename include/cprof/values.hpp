@@ -9,6 +9,42 @@
 
 #include <boost/icl/interval_map.hpp>
 
+using boost::icl::interval;
+using boost::icl::interval_map;
+
+class Values {
+private:
+  interval_map<uintptr_t, Value> values_;
+  std::mutex access_mutex_;
+public:
+  static Values &instance();
+  const Value &new_value(const uintptr_t pos, const size_t size,
+                          const Allocation &alloc, const bool initialized) {
+    assert(alloc.get() && "Allocation should be valid");
+
+    Value newValue;
+    auto i = interval<uintptr_t>::right_open(pos, pos + size);
+    values_ += std::make_pair(i, newValue);
+    auto found = values_.find(i);
+    if (found != values_.end()) {
+      return found->second;
+    }
+  }
+
+  Value find_live(uintptr_t pos, size_t size, const AddressSpace &as);
+  Value find_live(const uintptr_t pos, const AddressSpace &as) {
+    return find_live(pos, 1, as);
+  }
+
+  Value duplicate_value(const Value &v) {
+    // ensure the existing value exists
+    auto orig = find_live(v->pos(), v->size(), v->address_space());
+    assert(orig);
+    return new_value(v->pos(), v->size(), v->allocation(), v->initialized());
+  }
+};
+
+/*
 class Values {
 public:
   typedef Value::id_type id_type;
@@ -72,49 +108,8 @@ private:
   Values();
   std::string output_path_;
 };
+*/
 
-using boost::icl::interval;
-using boost::icl::interval_map;
 
-class VB {
-public:
-  VB &operator+=(const VB &rhs) {
-    *this = rhs;
-    return *this;
-  }
-};
-
-class Value2 {
-private:
-  std::shared_ptr<VB> p_;
-
-public:
-  Value2 &operator+=(const Value2 &rhs) {
-    (*p_) += (*rhs.p_);
-    return *this;
-  }
-
-  bool operator==(const Value2 &rhs) const { return p_ == rhs.p_; }
-};
-
-class Values2 {
-  interval_map<uintptr_t, Value2> values_;
-
-  const Value2 &new_value(const uintptr_t pos, const size_t size,
-                          const Allocation alloc, const bool initialized) {
-    assert(alloc.get() && "Allocation should be valid");
-
-    Value2 newValue;
-    auto i = interval<uintptr_t>::right_open(pos, pos + size);
-    values_ += std::make_pair(i, newValue);
-    auto found = values_.find(i);
-    if (found != values_.end()) {
-      return found->second;
-    }
-  }
-
-  // std::pair<id_type, value_type> find_live(uintptr_t pos, size_t size,
-  //                                          const AddressSpace &as);
-};
 
 #endif

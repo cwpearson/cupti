@@ -65,9 +65,6 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   // FIXME - also depends on alpha, beta
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationForward);
 
-  Values::id_type xId, yId;
-  Values::value_type xVal, yVal;
-
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
@@ -75,19 +72,19 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Get src value
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, 1, AS);
-  assert(xId && "x should be on device");
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  assert(xVal && "x should be on device");
 
   // Get dst allocation
   auto yAlloc = allocations.find((uintptr_t)y, AS);
   assert(yAlloc && "y alloc should be on device");
 
-  std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAlloc, true);
-  yVal->add_depends_on(xId);
+  auto yVal = values.new_value((uintptr_t)y, 0 /*FIXME*/, yAlloc, true);
+  yVal->add_depends_on(xVal);
 
   auto api = std::make_shared<ApiRecord>("cudnnActivationForward", devId);
-  api->add_output(yId);
-  api->add_input(xId);
+  api->add_output(yVal);
+  api->add_input(xVal);
   APIs::record(api);
 
   cprof::err()
@@ -116,8 +113,6 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
 
   // FIXME - alpha and beta
 
-  Values::id_type aId, cId;
-  Values::value_type aVal, cVal;
 
   auto &values = Values::instance();
 
@@ -125,21 +120,19 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Get src value
-  std::tie(aId, aVal) = values.find_live((uintptr_t)A, 1, AS);
-  assert(aId && "A should be on device");
-  std::tie(cId, cVal) = values.find_live((uintptr_t)C, 1, AS);
-  assert(cId && "C should be on device");
+  auto aVal = values.find_live((uintptr_t)A, 1, AS);
+  assert(aVal && "A should be on device");
+  auto cVal = values.find_live((uintptr_t)C, 1, AS);
+  assert(cVal && "C should be on device");
 
-  Values::id_type dstId;
-  Values::value_type dstVal;
-  std::tie(dstId, dstVal) = values.duplicate_value(cVal);
-  dstVal->add_depends_on(aId);
-  dstVal->add_depends_on(cId);
+  auto dstVal = values.duplicate_value(cVal);
+  dstVal->add_depends_on(aVal);
+  dstVal->add_depends_on(cVal);
 
   auto api = std::make_shared<ApiRecord>("cudnnAddTensor", devId);
-  api->add_output(dstId);
-  api->add_input(aId);
-  api->add_input(cId);
+  api->add_output(dstVal);
+  api->add_input(aVal);
+  api->add_input(cVal);
   APIs::record(api);
 
   cprof::err() << "WARN: thread " << cprof::model::get_thread_id()
@@ -168,9 +161,6 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
 
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationBackward);
 
-  Values::id_type yId, dyId, xId, dxId;
-  Values::value_type yVal, dyVal, xVal, dxVal;
-
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
@@ -178,31 +168,31 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Get src value
-  std::tie(yId, yVal) = values.find_live((uintptr_t)y, 1, AS);
-  assert(yId && "y should be on device");
-  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, 1, AS);
-  assert(dyId && "dy should be on device");
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, 1, AS);
-  assert(xId && "x should be on device");
+  auto yVal = values.find_live((uintptr_t)y, 1, AS);
+  auto  dyVal = values.find_live((uintptr_t)dy, 1, AS);
+  auto xVal = values.find_live((uintptr_t)x, 1, AS);
+  assert(yVal && "y should be on device");
+  assert(dyVal && "dy should be on device");
+  assert(xVal && "x should be on device");
 
   // Get dst allocation
   auto dxAlloc = allocations.find((uintptr_t)dx, AS);
   assert(dxAlloc && "dx alloc should be on device");
 
   // FIXME - this size is wrong
-  std::tie(dxId, dxVal) = values.new_value((uintptr_t)dx, 0, dxAlloc, true);
-  dxVal->add_depends_on(xId);
-  dxVal->add_depends_on(yId);
-  dxVal->add_depends_on(dyId);
+  auto dxVal = values.new_value((uintptr_t)dx, 0, dxAlloc, true);
+  dxVal->add_depends_on(xVal);
+  dxVal->add_depends_on(yVal);
+  dxVal->add_depends_on(dyVal);
 
   // FIXME: also depends on alpha, beta
   auto api = std::make_shared<ApiRecord>(
       "cudnnActivationBackward",
       cprof::driver().device_from_cudnn_handle(handle));
-  api->add_output(dxId);
-  api->add_input(xId);
-  api->add_input(yId);
-  api->add_input(dyId);
+  api->add_output(dxVal);
+  api->add_input(xVal);
+  api->add_input(yVal);
+  api->add_input(dyVal);
   APIs::record(api);
 
   cprof::err()
@@ -237,34 +227,30 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
-  Values::id_type wId, dyId, workSpaceId, dxId;
-  Values::value_type wVal, dyVal, workSpaceVal, dxVal;
-  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, AS);
-  std::tie(wId, wVal) = values.find_live((uintptr_t)w, AS);
-  std::tie(workSpaceId, workSpaceVal) =
+  auto dyVal = values.find_live((uintptr_t)dy, AS);
+  auto wVal = values.find_live((uintptr_t)w, AS);
+  auto workSpaceVal =
       values.find_live((uintptr_t)workSpace, AS);
-  std::tie(dxId, dxVal) = values.find_live((uintptr_t)dx, AS);
+  auto dxVal = values.find_live((uintptr_t)dx, AS);
 
-  assert(dyId &&
+  assert(dyVal &&
          "Couldn't find cudnnConvolutionBackwardData dy value on device");
 
   // Create output value
-  Values::id_type outId;
-  Values::value_type outVal;
-  std::tie(outId, outVal) = values.duplicate_value(dxVal);
-  outVal->add_depends_on(wId);
-  outVal->add_depends_on(dyId);
-  outVal->add_depends_on(workSpaceId);
-  outVal->add_depends_on(dxId);
+  auto outVal = values.duplicate_value(dxVal);
+  outVal->add_depends_on(wVal);
+  outVal->add_depends_on(dyVal);
+  outVal->add_depends_on(workSpaceVal);
+  outVal->add_depends_on(dxVal);
   // track api
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionBackwardData",
       cprof::driver().device_from_cudnn_handle(handle));
-  api->add_output(outId);
-  api->add_input(wId);
-  api->add_input(dyId);
-  api->add_input(workSpaceId);
-  api->add_input(dxId);
+  api->add_output(outVal);
+  api->add_input(wVal);
+  api->add_input(dyVal);
+  api->add_input(workSpaceVal);
+  api->add_input(dxVal);
   APIs::record(api);
 
   // Do the actual call
@@ -297,25 +283,23 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
-  Values::id_type dyId, dbId;
-  Values::value_type dyVal, dbVal;
-  std::tie(dyId, dyVal) = values.find_live((uintptr_t)dy, AS);
+  auto dyVal = values.find_live((uintptr_t)dy, AS);
 
-  assert(dyId &&
+  assert(dyVal &&
          "Couldn't find cudnnConvolutionBackwardBias dy value on device");
 
   // Create output value
   auto dbAlloc = allocations.find((uintptr_t)db, 1, AS);
   assert(dbAlloc && "y allocation should be on device");
-  std::tie(dbId, dbVal) = values.new_value((uintptr_t)db, 0, dbAlloc);
-  dbVal->add_depends_on(dyId);
+  auto dbVal = values.new_value((uintptr_t)db, 0 /*FIXME*/, dbAlloc, true /*initialized*/);
+  dbVal->add_depends_on(dyVal);
 
   // track api
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionBackwardBias",
       cprof::driver().device_from_cudnn_handle(handle));
-  api->add_output(dbId);
-  api->add_input(dyId);
+  api->add_output(dbVal);
+  api->add_input(dyVal);
   APIs::record(api);
 
   // Do the actual call
@@ -355,37 +339,33 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
-  Values::id_type xId, dyId, workSpaceId, dwId;
-  Values::value_type dwVal;
-  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, AS);
-  std::tie(dyId, std::ignore) = values.find_live((uintptr_t)dy, AS);
-  std::tie(workSpaceId, std::ignore) =
+  auto xVal  = values.find_live((uintptr_t)x, AS);
+  auto dyVal = values.find_live((uintptr_t)dy, AS);
+  auto workSpaceVal =
       values.find_live((uintptr_t)workSpace, AS);
-  std::tie(dwId, dwVal) = values.find_live((uintptr_t)dw, AS);
+  auto dwVal = values.find_live((uintptr_t)dw, AS);
   assert(
-      xId && dyId && workSpaceId && dwId &&
+      xVal && dyVal && workSpaceVal && dwVal &&
       "Couldn't find cudnnConvolutionBackwardFilter argument value on device");
 
   // See if there is an existing output value to take info from
-  Values::id_type outId;
-  Values::value_type outVal;
-  std::tie(outId, outVal) = values.duplicate_value(dwVal);
-  outVal->add_depends_on(xId);
-  outVal->add_depends_on(dyId);
-  outVal->add_depends_on(workSpaceId);
-  outVal->add_depends_on(dwId);
-  cprof::err() << "[cudnnConvolutionBackwardFilter] " << outId << " deps on "
-               << xId << " " << dyId << " " << workSpaceId << " " << dwId
+  auto outVal = values.duplicate_value(dwVal);
+  outVal->add_depends_on(xVal);
+  outVal->add_depends_on(dyVal);
+  outVal->add_depends_on(workSpaceVal);
+  outVal->add_depends_on(dwVal);
+  cprof::err() << "[cudnnConvolutionBackwardFilter] " << outVal << " deps on "
+               << xVal << " " << dyVal << " " << workSpaceVal << " " << dwVal
                << std::endl;
 
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionForward",
       cprof::driver().device_from_cudnn_handle(handle));
-  api->add_output(outId);
-  api->add_input(xId);
-  api->add_input(dyId);
-  api->add_input(workSpaceId);
-  api->add_input(dwId);
+  api->add_output(outVal);
+  api->add_input(xVal);
+  api->add_input(dyVal);
+  api->add_input(workSpaceVal);
+  api->add_input(dwVal);
   APIs::record(api);
 
   cprof::err() << "WARN: disabling CUPTI callbacks during "
@@ -427,35 +407,30 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   // Find input values
   cprof::err() << "Looking for x=" << (uintptr_t)x << ", w=" << (uintptr_t)w
                << ", workSpace=" << (uintptr_t)workSpace << std::endl;
-  Values::id_type xId, wId, workSpaceId, yId;
-  Values::value_type yVal;
-  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, AS);
-  std::tie(wId, std::ignore) = values.find_live((uintptr_t)w, AS);
-  std::tie(workSpaceId, std::ignore) =
-      values.find_live((uintptr_t)workSpace, AS);
-  std::tie(yId, yVal) = values.find_live((uintptr_t)y, AS);
-  assert(xId && wId && workSpaceId && yId &&
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto wVal = values.find_live((uintptr_t)w, AS);
+  auto workSpaceVal = values.find_live((uintptr_t)workSpace, AS);
+  auto yVal = values.find_live((uintptr_t)y, AS);
+  assert(xVal && wVal && workSpaceVal && yVal &&
          "Couldn't find cudnnConvolutionForward argument value on device");
 
   // See if there is an existing output value to take info from
-  Values::id_type outId;
-  Values::value_type outVal;
-  std::tie(outId, outVal) = values.duplicate_value(yVal);
-  outVal->add_depends_on(xId);
-  outVal->add_depends_on(wId);
-  outVal->add_depends_on(workSpaceId);
-  outVal->add_depends_on(yId);
-  cprof::err() << "[cudnnConvolutionForward] " << outId << " deps on " << yId
-               << " " << xId << " " << wId << " " << workSpaceId << std::endl;
+  auto outVal = values.duplicate_value(yVal);
+  outVal->add_depends_on(xVal);
+  outVal->add_depends_on(wVal);
+  outVal->add_depends_on(workSpaceVal);
+  outVal->add_depends_on(yVal);
+  cprof::err() << "[cudnnConvolutionForward] " << outVal << " deps on " << yVal
+               << " " << xVal << " " << wVal << " " << workSpaceVal << std::endl;
 
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionForward",
       cprof::driver().device_from_cudnn_handle(handle));
-  api->add_output(outId);
-  api->add_input(xId);
-  api->add_input(wId);
-  api->add_input(workSpaceId);
-  api->add_input(yId);
+  api->add_output(outVal);
+  api->add_input(xVal);
+  api->add_input(wVal);
+  api->add_input(workSpaceVal);
+  api->add_input(yVal);
   APIs::record(api);
 
   cprof::err()
@@ -489,22 +464,19 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
-  Values::id_type xId, yId;
-  Values::value_type xVal, yVal;
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AS);
-
-  assert(xId && "Couldn't find cudnnSoftmaxForward x value on device");
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  assert(xVal && "Couldn't find cudnnSoftmaxForward x value on device");
 
   // Create output value
   auto yAlloc = allocations.find((uintptr_t)y, 1, AS);
   assert(yAlloc && "y allocation should be on device");
-  std::tie(yId, yVal) = values.new_value((uintptr_t)y, 0, yAlloc);
-  yVal->add_depends_on(xId);
+  auto yVal = values.new_value((uintptr_t)y, 0, yAlloc, true /*initialized*/);
+  yVal->add_depends_on(xVal);
 
   // track api
   auto api = std::make_shared<ApiRecord>("cudnnSoftmaxForward", devId);
-  api->add_output(yId);
-  api->add_input(xId);
+  api->add_output(yVal);
+  api->add_input(xVal);
   APIs::record(api);
 
   // Do the actual call

@@ -45,7 +45,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   cprof::err() << "launching " << symbolName << std::endl;
 
   // Find all values that are used by arguments
-  std::vector<Values::id_type> kernelArgIds;
+  std::vector<Value> kernelArgIds; // FIXME: this name is bad
   for (size_t argIdx = 0;
        argIdx < cprof::driver().this_thread().configured_call().args_.size();
        ++argIdx) { // for each kernel argument
@@ -55,15 +55,14 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     auto AS = cprof::hardware().address_space(devId);
 
     // FIXME: assuming with p2p access, it could be on any device?
-    const auto &kv = values.find_live(
+    const auto &val = values.find_live(
         cprof::driver().this_thread().configured_call().args_[argIdx],
         1 /*size*/, AS);
 
-    const auto &key = kv.first;
-    if (key != uintptr_t(nullptr)) {
-      kernelArgIds.push_back(kv.first);
+    if (val) {
+      kernelArgIds.push_back(val);
       cprof::err()
-          << "found val " << key << " for kernel arg="
+          << "found val " << val << " for kernel arg="
           << cprof::driver().this_thread().configured_call().args_[argIdx]
           << std::endl;
     }
@@ -104,9 +103,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // The kernel could have modified any argument values.
     // Hash each value and compare to the one recorded at kernel launch
     // If there is a difference, create a new value
-    for (const auto &argValId : kernelArgIds) {
-      const auto &argValue = values[argValId];
-      api->add_input(argValId);
+    for (const auto &argValue : kernelArgIds) {
+      api->add_input(argValue);
       // const auto digest = hash_device(argValue->pos(), argValue->size());
 
       // if (arg_hashes.count(argKey)) {
@@ -115,15 +113,13 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       // }
       // no recorded hash, or hash does not match => new value
       // if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
-      Values::id_type newId;
-      Values::value_type newVal;
-      std::tie(newId, newVal) = values.duplicate_value(argValue);
-      for (const auto &depId : kernelArgIds) {
-        cprof::err() << "INFO: launch: " << newId << " deps on " << depId
+      auto newVal = values.duplicate_value(argValue);
+      for (const auto &depVal : kernelArgIds) {
+        cprof::err() << "INFO: launch: " << newVal << " deps on " << depVal
                      << std::endl;
-        newVal->add_depends_on(depId);
+        newVal->add_depends_on(depVal);
       }
-      api->add_output(newId);
+      api->add_output(newVal);
       // }
     }
     APIs::record(api);
@@ -192,34 +188,26 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   assert(dstAlloc && "Couldn't find or create dst allocation");
   // There may not be a source value, because it may have been initialized
   // on the host
-  Values::id_type srcValId;
-  bool found;
-  std::tie(found, srcValId) =
-      values.get_last_overlapping_value(src, count, srcAlloc->address_space());
-  if (found) {
-    cprof::err() << "memcpy: found src value srcId=" << srcValId << std::endl;
-    if (!values[srcValId]->is_known_size()) {
-      cprof::err() << "WARN: source is unknown size. Setting by memcpy count"
+  auto srcVal =
+      values.find_live(src, count, srcAlloc->address_space());
+  if (srcVal) {
+    cprof::err() << "memcpy: found src value srcId=" << srcVal << std::endl;
+    cprof::err() << "WARN: Setting srcVal size by memcpy count"
                    << std::endl;
-      values[srcValId]->set_size(count);
-    }
+    srcVal->set_size(count);
   } else {
     cprof::err() << "WARN: creating implicit src value during memcpy"
                  << std::endl;
-    auto srcVal = std::shared_ptr<Value>(new Value(src, count, srcAlloc));
-    values.insert(srcVal);
-    srcValId = srcVal->Id();
+    auto srcVal = values.new_value(src, count, srcAlloc, true /*initialized*/);
   }
 
   // always create a new dst value
-  Values::id_type dstValId;
-  Values::value_type dstVal;
-  std::tie(dstValId, dstVal) = values.new_value(dst, count, dstAlloc);
-  dstVal->add_depends_on(srcValId);
-  dstVal->record_meta_append(cbInfo->functionName);
+  auto dstVal = values.new_value(dst, count, dstAlloc, srcVal->initialized());
+  dstVal->add_depends_on(srcVal);
+  // dstVal->record_meta_append(cbInfo->functionName); // FIXME
 
-  api->add_input(srcValId);
-  api->add_output(dstValId);
+  api->add_input(srcVal);
+  api->add_output(dstVal);
   APIs::record(api);
 }
 
@@ -508,8 +496,7 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     cprof::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.get()
                  << " pos=" << a->pos() << std::endl;
 
-    values.insert(std::shared_ptr<Value>(
-        new Value(devPtr, size, a, false /*initialized*/)));
+    values.new_value(devPtr, size, a, false /*initialized*/);
     // auto digest = hash_device(devPtr, size);
     // cprof::err() <<"uninitialized digest: %llu\n", digest);
   } else {

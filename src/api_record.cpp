@@ -13,20 +13,20 @@ using boost::property_tree::write_json;
 const ApiRecord::id_type ApiRecord::noid =
     reinterpret_cast<ApiRecord::id_type>(nullptr);
 
-void ApiRecord::add_input(const Value::id_type &id) {
-  assert(Values::noid != id);
-  inputs_.push_back(id);
+void ApiRecord::add_input(const Value &v) {
+  assert(v);
+  inputs_.push_back(v);
 }
 
-void ApiRecord::add_output(const Value::id_type &id) {
-  assert(Values::noid != id);
-  outputs_.push_back(id);
+void ApiRecord::add_output(const Value &v) {
+  assert(v);
+  outputs_.push_back(v);
 }
 
 void ApiRecord::record_start_time(const uint64_t start) { start_ = start; }
 void ApiRecord::record_end_time(const uint64_t end) { end_ = end; }
 
-static ptree to_json(const std::vector<Values::id_type> &v) {
+static ptree to_json(const std::vector<Value> &v) {
   ptree array;
   for (const auto &e : v) {
     ptree elem;

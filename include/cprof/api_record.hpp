@@ -12,8 +12,8 @@ public:
   static const id_type noid;
 
 private:
-  std::vector<Values::id_type> inputs_;
-  std::vector<Values::id_type> outputs_;
+  std::vector<Value> inputs_;
+  std::vector<Value> outputs_;
   std::string apiName_;
   std::string kernelName_;
   int device_;
@@ -40,8 +40,8 @@ public:
       : apiName_(cbInfo->functionName), device_(device), start_(0), end_(0),
         domain_(domain), cbid_(cbid), cbInfo_(cbInfo) {}
 
-  void add_input(const Value::id_type &id);
-  void add_output(const Value::id_type &id);
+  void add_input(const Value &v);
+  void add_output(const Value &v);
 
   void record_start_time(const uint64_t start);
   void record_end_time(const uint64_t end);
