@@ -100,14 +100,17 @@ public:
 class Values2 {
   interval_map<uintptr_t, Value2> values_;
 
-  Value2 &new_value(const uintptr_t pos, const size_t size,
-                    const Allocation alloc, const bool initialized) {
+  const Value2 &new_value(const uintptr_t pos, const size_t size,
+                          const Allocation alloc, const bool initialized) {
     assert(alloc.get() && "Allocation should be valid");
 
     Value2 newValue;
-    values_ += std::make_pair(interval<uintptr_t>::right_open(pos, pos + size),
-                              newValue);
-    return newValue;
+    auto i = interval<uintptr_t>::right_open(pos, pos + size);
+    values_ += std::make_pair(i, newValue);
+    auto found = values_.find(i);
+    if (found != values_.end()) {
+      return found->second;
+    }
   }
 
   // std::pair<id_type, value_type> find_live(uintptr_t pos, size_t size,
