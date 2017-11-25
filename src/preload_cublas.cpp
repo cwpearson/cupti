@@ -8,15 +8,26 @@
 #include "cprof/callbacks.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
-#include "cprof/preload.hpp"
+#include "cprof/profiler.hpp"
 #include "cprof/values.hpp"
 
 using cprof::model::Location;
 using cprof::model::Memory;
 
+#define CUBLAS_DLSYM_BOILERPLATE(name)                                         \
+  static name##Func real_##name = nullptr;                                     \
+  cprof::err() << "LD_PRELOAD intercept: " #name << std::endl;                 \
+  if (real_##name == nullptr) {                                                \
+    {                                                                          \
+      void *h = dlopen("libcublas.so", RTLD_LAZY);                             \
+      real_##name = (name##Func)dlsym(h, #name "_v2");                         \
+    }                                                                          \
+  }                                                                            \
+  assert(real_##name && "Will the real " #name " please stand up?");
+
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
 extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasCreate);
+  CUBLAS_DLSYM_BOILERPLATE(cublasCreate);
 
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasCreate call"
                << std::endl;
@@ -33,7 +44,7 @@ extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
 
 typedef cublasStatus_t (*cublasDestroyFunc)(cublasHandle_t handle);
 extern "C" cublasStatus_t cublasDestroy(cublasHandle_t handle) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasDestroy);
+  CUBLAS_DLSYM_BOILERPLATE(cublasDestroy);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: tid=" << cprof::model::get_thread_id()
@@ -53,7 +64,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
             cublasOperation_t transb, int m, int n, int k, const double *alpha,
             const double *A, int lda, const double *B, int ldb,
             const double *beta, double *C, int ldc) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasDgemm);
+  CUBLAS_DLSYM_BOILERPLATE(cublasDgemm);
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
@@ -107,7 +118,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
             const float *alpha, /* host or device pointer */
             const float *x, int incx, float *y, int incy) {
 
-  V2_LD_PRELOAD_BOILERPLATE(cublasSaxpy);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSaxpy);
 
   auto &values = Values::instance();
 
@@ -161,7 +172,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
             const float *A, int lda, const float *B, int ldb,
             const float *beta, /* host or device pointer */
             float *C, int ldc) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasSgemm);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSgemm);
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
@@ -214,7 +225,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
                                       const double *alpha, const double *A,
                                       int lda, const double *x, int incx,
                                       const double *beta, double *y, int incy) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasDgemv);
+  CUBLAS_DLSYM_BOILERPLATE(cublasDgemv);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
@@ -273,7 +284,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
                                       const float *alpha, const float *A,
                                       int lda, const float *x, int incx,
                                       const float *beta, float *y, int incy) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasSgemv);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSgemv);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
@@ -325,7 +336,7 @@ typedef cublasStatus_t (*cublasSasumFunc)(cublasHandle_t, int, const float *,
                                           int, float *);
 extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
                                       const float *x, int incx, float *result) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasSasum);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSasum);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
@@ -382,7 +393,7 @@ extern "C" cublasStatus_t
 cublasSscal(cublasHandle_t handle, int n,
             const float *alpha, /* host or device pointer */
             float *x, int incx) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasSscal);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSscal);
 
   auto &values = Values::instance();
 
@@ -423,7 +434,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
                                      const float *x, int incx, const float *y,
                                      int incy, float *result) {
 
-  V2_LD_PRELOAD_BOILERPLATE(cublasSdot);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSdot);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();

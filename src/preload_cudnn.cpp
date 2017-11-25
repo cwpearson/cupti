@@ -8,12 +8,23 @@
 #include "cprof/callbacks.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
-#include "cprof/preload.hpp"
+#include "cprof/profiler.hpp"
 #include "cprof/values.hpp"
+
+#define CUDNN_DLSYM_BOILERPLATE(name)                                          \
+  static name##Func real_##name = nullptr;                                     \
+  cprof::err() << "LD_PRELOAD intercept: " #name << std::endl;                 \
+  if (real_##name == nullptr) {                                                \
+    {                                                                          \
+      void *h = dlopen("libcudnn.so", RTLD_LAZY);                              \
+      real_##name = (name##Func)dlsym(h, #name);                               \
+    }                                                                          \
+  }                                                                            \
+  assert(real_##name && "Will the real " #name " please stand up?");
 
 typedef cudnnStatus_t (*cudnnCreateFunc)(cudnnHandle_t *handle);
 extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnCreate);
+  CUDNN_DLSYM_BOILERPLATE(cudnnCreate);
 
   cprof::err() << "WARN: tid " << cprof::model::get_thread_id()
                << " disabling CUPTI callbacks during cudnnCreate call"
@@ -30,7 +41,7 @@ extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
 
 typedef cudnnStatus_t (*cudnnDestroyFunc)(cudnnHandle_t handle);
 extern "C" cudnnStatus_t cudnnDestroy(cudnnHandle_t handle) {
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnDestroy);
+  CUDNN_DLSYM_BOILERPLATE(cudnnDestroy);
 
   cprof::err() << "WARN: disabling CUPTI callbacks during cudnnDestroy call"
                << std::endl;
@@ -52,7 +63,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
     const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
 
   // FIXME - also depends on alpha, beta
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnActivationForward);
+  CUDNN_DLSYM_BOILERPLATE(cudnnActivationForward);
 
   Values::id_type xId, yId;
   Values::value_type xVal, yVal;
@@ -101,7 +112,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
                                         const void *A, const void *beta,
                                         const cudnnTensorDescriptor_t cDesc,
                                         void *C) {
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnAddTensor);
+  CUDNN_DLSYM_BOILERPLATE(cudnnAddTensor);
 
   // FIXME - alpha and beta
 
@@ -155,7 +166,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
     const cudnnTensorDescriptor_t xDesc, const void *x, const void *beta,
     const cudnnTensorDescriptor_t dxDesc, void *dx) {
 
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnActivationBackward);
+  CUDNN_DLSYM_BOILERPLATE(cudnnActivationBackward);
 
   Values::id_type yId, dyId, xId, dxId;
   Values::value_type yVal, dyVal, xVal, dxVal;
@@ -219,7 +230,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
     cudnnConvolutionBwdDataAlgo_t algo, void *workSpace,
     size_t workSpaceSizeInBytes, const void *beta,
     const cudnnTensorDescriptor_t dxDesc, void *dx) {
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardData);
+  CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardData);
   auto &values = Values::instance();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
@@ -278,7 +289,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
                              const cudnnTensorDescriptor_t dyDesc,
                              const void *dy, const void *beta,
                              const cudnnTensorDescriptor_t dbDesc, void *db) {
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardBias);
+  CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardBias);
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();
 
@@ -337,7 +348,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
     size_t workSpaceSizeInBytes, const void *beta,
     const cudnnFilterDescriptor_t dwDesc, void *dw) {
 
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnConvolutionBackwardFilter);
+  CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardFilter);
   auto &values = Values::instance();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
@@ -406,7 +417,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
                         size_t workSpaceSizeInBytes, const void *beta,
                         const cudnnTensorDescriptor_t yDesc, void *y) {
 
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnConvolutionForward);
+  CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionForward);
 
   auto &values = Values::instance();
 
@@ -469,7 +480,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
     const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,
     const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
 
-  SAME_LD_PRELOAD_BOILERPLATE(cudnnSoftmaxForward);
+  CUDNN_DLSYM_BOILERPLATE(cudnnSoftmaxForward);
 
   auto &values = Values::instance();
   auto &allocations = Allocations::instance();

@@ -1,8 +1,6 @@
-#include <cassert>
-#include <cuda_runtime.h>
-#include <dlfcn.h>
-
-#include "cprof/preload.hpp"
+// #include <cassert>
+// #include <cuda_runtime.h>
+// #include <dlfcn.h>
 
 /*
 typedef cudaError_t (*cudaFreeHostFunc)(void *ptr);
