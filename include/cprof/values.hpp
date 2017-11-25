@@ -7,8 +7,7 @@
 #include "allocations.hpp"
 #include "value.hpp"
 
-// FIXME: implement overlap with interval tree
-// could use boost icl with map of positions to std::set<value_type>
+#include <boost/icl/interval_map.hpp>
 
 class Values {
 public:
@@ -72,6 +71,47 @@ public:
 private:
   Values();
   std::string output_path_;
+};
+
+using boost::icl::interval;
+using boost::icl::interval_map;
+
+class VB {
+public:
+  VB &operator+=(const VB &rhs) {
+    *this = rhs;
+    return *this;
+  }
+};
+
+class Value2 {
+private:
+  std::shared_ptr<VB> p_;
+
+public:
+  Value2 &operator+=(const Value2 &rhs) {
+    (*p_) += (*rhs.p_);
+    return *this;
+  }
+
+  bool operator==(const Value2 &rhs) const { return p_ == rhs.p_; }
+};
+
+class Values2 {
+  interval_map<uintptr_t, Value2> values_;
+
+  Value2 &new_value(const uintptr_t pos, const size_t size,
+                    const Allocation alloc, const bool initialized) {
+    assert(alloc.get() && "Allocation should be valid");
+
+    Value2 newValue;
+    values_ += std::make_pair(interval<uintptr_t>::right_open(pos, pos + size),
+                              newValue);
+    return newValue;
+  }
+
+  // std::pair<id_type, value_type> find_live(uintptr_t pos, size_t size,
+  //                                          const AddressSpace &as);
 };
 
 #endif
