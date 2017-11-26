@@ -71,9 +71,7 @@ public:
   }
   void track_cudnn_handle(const cudnnHandle_t h, const int device) {
     std::lock_guard<std::mutex> guard(access_mutex_);
-    // logging::err() << "DEBU: tracking cudnn handle " << h << std::endl;
     cudnnHandleToDevice_[h] = device;
-    // logging::err() << cudnnHandleToDevice_.size() << std::endl;
   }
   int device_from_cublas_handle(const cublasHandle_t h) {
     logging::err() << "DEBU: looking for cublas handle " << h << std::endl;
