@@ -117,7 +117,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       for (const auto &depVal : kernelArgIds) {
         cprof::err() << "INFO: launch: " << newVal << " deps on " << depVal
                      << std::endl;
-        newVal->add_depends_on(depVal);
+        newVal.add_depends_on(depVal);
       }
       api->add_output(newVal);
       // }
@@ -188,22 +188,22 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   assert(dstAlloc && "Couldn't find or create dst allocation");
   // There may not be a source value, because it may have been initialized
   // on the host
-  auto srcVal =
-      values.find_live(src, count, srcAlloc->address_space());
+  auto srcVal = values.find_live(src, count, srcAlloc->address_space());
   if (srcVal) {
     cprof::err() << "memcpy: found src value srcId=" << srcVal << std::endl;
-    cprof::err() << "WARN: Setting srcVal size by memcpy count"
-                   << std::endl;
+    cprof::err() << "WARN: Setting srcVal size by memcpy count" << std::endl;
     srcVal->set_size(count);
   } else {
     cprof::err() << "WARN: creating implicit src value during memcpy"
                  << std::endl;
-    auto srcVal = values.new_value(src, count, srcAlloc, true /*initialized*/);
+    srcVal = values.new_value(src, count, srcAlloc, true /*initialized*/);
   }
 
   // always create a new dst value
+  assert(srcVal);
   auto dstVal = values.new_value(dst, count, dstAlloc, srcVal->initialized());
-  dstVal->add_depends_on(srcVal);
+  assert(dstVal);
+  dstVal.add_depends_on(srcVal);
   // dstVal->record_meta_append(cbInfo->functionName); // FIXME
 
   api->add_input(srcVal);

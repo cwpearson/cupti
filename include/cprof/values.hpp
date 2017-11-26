@@ -16,20 +16,11 @@ class Values {
 private:
   interval_map<uintptr_t, Value> values_;
   std::mutex access_mutex_;
+
 public:
   static Values &instance();
-  const Value &new_value(const uintptr_t pos, const size_t size,
-                          const Allocation &alloc, const bool initialized) {
-    assert(alloc.get() && "Allocation should be valid");
-
-    Value newValue;
-    auto i = interval<uintptr_t>::right_open(pos, pos + size);
-    values_ += std::make_pair(i, newValue);
-    auto found = values_.find(i);
-    if (found != values_.end()) {
-      return found->second;
-    }
-  }
+  Value new_value(const uintptr_t pos, const size_t size,
+                  const Allocation &alloc, const bool initialized);
 
   Value find_live(uintptr_t pos, size_t size, const AddressSpace &as);
   Value find_live(const uintptr_t pos, const AddressSpace &as) {
@@ -109,7 +100,5 @@ private:
   std::string output_path_;
 };
 */
-
-
 
 #endif

@@ -79,12 +79,13 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   auto bVal = values.find_live((uintptr_t)B, AS);
   auto cVal = values.find_live((uintptr_t)C, AS);
 
-  assert(aVal && bVal && cVal && "Couldn't find Dgemm argument value on device");
+  assert(aVal && bVal && cVal &&
+         "Couldn't find Dgemm argument value on device");
 
   auto newVal = values.duplicate_value(cVal);
-  newVal->add_depends_on(aVal);
-  newVal->add_depends_on(bVal);
-  newVal->add_depends_on(cVal);
+  newVal.add_depends_on(aVal);
+  newVal.add_depends_on(bVal);
+  newVal.add_depends_on(cVal);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasDgemm call"
@@ -129,8 +130,8 @@ cublasSaxpy(cublasHandle_t handle, int n,
 
   // Create output value
   auto outVal = values.duplicate_value(yVal);
-  outVal->add_depends_on(xVal);
-  outVal->add_depends_on(yVal);
+  outVal.add_depends_on(xVal);
+  outVal.add_depends_on(yVal);
 
   // track api
   auto api = std::make_shared<ApiRecord>(
@@ -177,12 +178,13 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   auto aVal = values.find_live((uintptr_t)A, AS);
   auto bVal = values.find_live((uintptr_t)B, AS);
   auto cVal = values.find_live((uintptr_t)C, AS);
-  assert(aVal && bVal && cVal && "Couldn't find Dgemm argument value on device");
+  assert(aVal && bVal && cVal &&
+         "Couldn't find Dgemm argument value on device");
 
   auto newVal = values.duplicate_value(cVal);
-  newVal->add_depends_on(aVal);
-  newVal->add_depends_on(bVal);
-  newVal->add_depends_on(cVal);
+  newVal.add_depends_on(aVal);
+  newVal.add_depends_on(bVal);
+  newVal.add_depends_on(cVal);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasSgemm "
@@ -234,8 +236,8 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
                << std::endl;
 
   auto newVal = values.duplicate_value(yVal);
-  newVal->add_depends_on(xVal);
-  newVal->add_depends_on(yVal);
+  newVal.add_depends_on(xVal);
+  newVal.add_depends_on(yVal);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasDgemv "
@@ -289,8 +291,8 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
                << std::endl;
 
   auto newVal = values.duplicate_value(yVal);
-  newVal->add_depends_on(xVal);
-  newVal->add_depends_on(yVal);
+  newVal.add_depends_on(xVal);
+  newVal.add_depends_on(yVal);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasSgemv "
@@ -343,9 +345,9 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   assert(rAlloc && "If there is no allocation, we need to make one");
 
   // Make a new value
-  auto rVal =
-      values.new_value((uintptr_t)result, sizeof(float), rAlloc, true /*initialized*/);
-  rVal->add_depends_on(xVal);
+  auto rVal = values.new_value((uintptr_t)result, sizeof(float), rAlloc,
+                               true /*initialized*/);
+  rVal.add_depends_on(xVal);
 
   auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
   api->add_output(rVal);
@@ -382,7 +384,7 @@ cublasSscal(cublasHandle_t handle, int n,
 
   // Create output value
   auto outVal = values.duplicate_value(xVal);
-  outVal->add_depends_on(xVal);
+  outVal.add_depends_on(xVal);
 
   // track api
   auto api = std::make_shared<ApiRecord>("cublasSscal", devId);
@@ -439,10 +441,10 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   }
   cprof::err() << "result allocId=" << uintptr_t(rAlloc.get()) << std::endl;
   // Make a new value
-  auto rVal =
-      values.new_value((uintptr_t)result, sizeof(float), rAlloc, true /*initialized*/);
-  rVal->add_depends_on(xVal);
-  rVal->add_depends_on(yVal);
+  auto rVal = values.new_value((uintptr_t)result, sizeof(float), rAlloc,
+                               true /*initialized*/);
+  rVal.add_depends_on(xVal);
+  rVal.add_depends_on(yVal);
 
   auto api = std::make_shared<ApiRecord>(
       "cublasSdot", cprof::driver().device_from_cublas_handle(handle));

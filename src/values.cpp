@@ -6,18 +6,18 @@
 #include "cprof/values.hpp"
 
 // FIXME: address space
-Value
-Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
+Value Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
   std::lock_guard<std::mutex> guard(access_mutex_);
+  cprof::err() << "INFO: Looking for value @ [" << pos << ", +" << size << ")"
+               << std::endl;
 
-    auto i = interval<uintptr_t>::right_open(pos, pos + size);
-    auto found = values_.find(i);
-    if (found != values_.end()) {
-      return found->second;
-    }
+  auto i = interval<uintptr_t>::right_open(pos, pos + size);
+  auto found = values_.find(i);
+  if (found != values_.end()) {
+    return found->second;
+  }
 
-    return Value(nullptr);
-
+  return Value(nullptr);
 }
 
 // Values::id_type Values::find_live(const uintptr_t pos, const AddressSpace
@@ -38,11 +38,24 @@ Values::insert(const value_type &v) {
 
   return values_.insert(std::make_pair(valIdx, v));
 }
-*/ 
+*/
+
+Value Values::new_value(const uintptr_t pos, const size_t size,
+                        const Allocation &alloc, const bool initialized) {
+  assert(alloc.get() && "Allocation should be valid");
+
+  Value V(new ValueRecord(pos, size, alloc, initialized));
+  auto i = interval<uintptr_t>::right_open(pos, pos + size);
+  values_ += std::make_pair(i, V);
+
+  assert(V);
+  return V;
+}
 
 Values &Values::instance() {
   static Values v;
   return v;
 }
 
-// Values::Values() : values_(map_type()), value_order_(std::vector<id_type>()) {}
+// Values::Values() : values_(map_type()), value_order_(std::vector<id_type>())
+// {}

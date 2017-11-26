@@ -11,9 +11,9 @@ using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
 
-void ValueRecord::add_depends_on(const Value &v) {
+void ValueRecord::add_depends_on(const ValueRecord &vr) {
   ptree pt;
-  pt.put("dep.dst_id", v.get());
+  pt.put("dep.dst_id", &vr);
   pt.put("dep.src_id", this);
   write_json(cprof::out(), pt, false);
   cprof::out().flush();
@@ -48,9 +48,9 @@ void VB::record_meta_set(const std::string &s) {
   write_json(cprof::out(), pt, false);
   cprof::out().flush();
 }
-*/ 
+*/
 
-  AddressSpace ValueRecord::address_space() const {
+AddressSpace ValueRecord::address_space() const {
   // FIXME - not thread-safe
   assert(allocation_);
   return allocation_->address_space();
@@ -62,8 +62,12 @@ void ValueRecord::set_size(const size_t size) {
   cprof::out().flush();
 }
 
-
 std::ostream &operator<<(std::ostream &os, const ValueRecord &v) {
   os << v.json();
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const Value &v) {
+  os << uintptr_t(v.get());
   return os;
 }
