@@ -6,6 +6,7 @@
 #include <inttypes.h>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 
 #include "cprof/callbacks.hpp"
 #include "cprof/cupti_subscriber.hpp"
@@ -32,6 +33,8 @@ std::map<uint32_t, uint32_t> KernelCallTime::cid_to_tid;
 static std::unordered_map<std::string, std::string> text_map;
 static TextMapCarrier carrier(text_map);
 
+std::mutex kctMutex_;
+
 KernelCallTime &KernelCallTime::instance() {
   static KernelCallTime a;
   return a;
@@ -40,6 +43,7 @@ KernelCallTime &KernelCallTime::instance() {
 KernelCallTime::KernelCallTime() {}
 
 void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
+  std::lock_guard<std::mutex> guard(kctMutex_);
   uint64_t startTimeStamp;
   cuptiDeviceGetTimestamp(cbInfo->context, &startTimeStamp);
   const char *cudaMem = "cudaMemcpy";
