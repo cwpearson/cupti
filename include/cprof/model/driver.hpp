@@ -1,7 +1,8 @@
-#ifndef DRIVER_STATE_HPP
-#define DRIVER_STATE_HPP
+#ifndef CPROF_MODEL_DRIVER_STATE_HPP
+#define CPROF_MODEL_DRIVER_STATE_HPP
 
 #include <map>
+#include <mutex>
 #include <vector>
 
 #include <cublas_v2.h>
@@ -13,6 +14,7 @@
 #include "cprof/api_record.hpp"
 #include "cprof/model/cuda/configured_call.hpp"
 #include "cprof/model/thread.hpp"
+#include "util/logging.hpp"
 
 namespace cprof {
 namespace model {
@@ -60,19 +62,32 @@ private:
   ThreadMap threadStates_;
   std::map<const cublasHandle_t, int> cublasHandleToDevice_;
   std::map<const cudnnHandle_t, int> cudnnHandleToDevice_;
+  std::mutex access_mutex_;
 
 public:
   void track_cublas_handle(const cublasHandle_t h, const int device) {
+    std::lock_guard<std::mutex> guard(access_mutex_);
     cublasHandleToDevice_[h] = device;
   }
   void track_cudnn_handle(const cudnnHandle_t h, const int device) {
+    std::lock_guard<std::mutex> guard(access_mutex_);
+    // logging::err() << "DEBU: tracking cudnn handle " << h << std::endl;
     cudnnHandleToDevice_[h] = device;
+    // logging::err() << cudnnHandleToDevice_.size() << std::endl;
   }
   int device_from_cublas_handle(const cublasHandle_t h) {
+    logging::err() << "DEBU: looking for cublas handle " << h << std::endl;
     return cublasHandleToDevice_.at(h);
   }
 
   int device_from_cudnn_handle(const cudnnHandle_t h) {
+    logging::err() << "DEBU: looking for cudnn handle " << h << " "
+                   << cudnnHandleToDevice_.size() << std::endl;
+
+    for (const auto kv : cudnnHandleToDevice_) {
+      logging::err() << kv.first << "," << kv.second << std::endl;
+    }
+
     return cudnnHandleToDevice_.at(h);
   }
   mapped_type &this_thread() { return threadStates_[get_thread_id()]; }
