@@ -13,18 +13,13 @@ using namespace cprof;
  *
  * Should not handle any initialization. Defer that to the init() method.
  */
-Profiler::Profiler()
-    : manager_(nullptr), err_(nullptr), out_(nullptr), isInitialized_(false) {}
+Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {}
 
 Profiler::~Profiler() {
   delete manager_;
   isInitialized_ = false;
-  if (out_) {
-    out_->flush();
-  }
-  if (err_) {
-    err_->flush();
-  }
+  out().flush();
+  err().flush();
 }
 
 /*! \brief Profiler() initialize a profiler object
@@ -33,18 +28,15 @@ Profiler::~Profiler() {
  * valid, since they've already been constructed.
  */
 void Profiler::init() {
+
+  // Configure logging
   auto outPath = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();
   if (outPath != "-") {
-    out_ = std::unique_ptr<std::ofstream>(
-        new std::ofstream(outPath.c_str(), std::ios::app));
-    assert(out_->good() && "Unable to open out file");
+    logging::set_out_path(outPath.c_str());
   }
-
   auto errPath = EnvironmentVariable<std::string>("CPROF_ERR", "-").get();
   if (errPath != "-") {
-    err_ = std::unique_ptr<std::ofstream>(
-        new std::ofstream(errPath.c_str(), std::ios::app));
-    assert(err_->good() && "Unable to open err file");
+    logging::set_err_path(errPath.c_str());
   }
 
   err() << "INFO: Profiler::init()" << std::endl;

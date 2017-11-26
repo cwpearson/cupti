@@ -595,7 +595,7 @@ static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
 static void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    cprof::err() << "callback: cudaStreamCreate entry" << std::endl;
+    cprof::err() << "INFO: callback: cudaStreamCreate entry" << std::endl;
     // const auto params =
     //     ((cudaStreamCreate_v3020_params *)(cbInfo->functionParams));
     // const cudaStream_t stream = *(params->pStream);
@@ -607,7 +607,8 @@ static void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaStreamDestroy(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    cprof::err() << "callback: cudaStreamCreate entry" << std::endl;
+    cprof::err() << "INFO: callback: cudaStreamCreate entry" << std::endl;
+    cprof::err() << "WARN: ignoring cudaStreamDestroy" << std::endl;
     // const auto params =
     //     ((cudaStreamDestroy_v3020_params *)(cbInfo->functionParams));
     // const cudaStream_t stream = params->stream;
@@ -619,7 +620,8 @@ static void handleCudaStreamDestroy(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    cprof::err() << "callback: cudaStreamSynchronize entry" << std::endl;
+    cprof::err() << "INFO: callback: cudaStreamSynchronize entry" << std::endl;
+    cprof::err() << "WARN: ignoring cudaStreamSynchronize" << std::endl;
     // const auto params =
     //     ((cudaStreamSynchronize_v3020_params *)(cbInfo->functionParams));
     // const cudaStream_t stream = params->stream;
