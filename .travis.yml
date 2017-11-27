@@ -22,6 +22,7 @@ env:
   - ZIPKIN_SRC=$HOME/zipkin-cpp-opentracing
   - ZIPKIN_ROOT=$HOME/zipkin
   - ZIPKIN_INCLUDE=$ZIPKIN_ROOT/include
+  - NCCL_SRC=$HOME/nccl
   
 matrix:
   include:
@@ -29,6 +30,9 @@ matrix:
     - env: BUILD_TYPE=Debug
 
 install:
+- git clone https://github.com/NVIDIA/nccl.git $NCCL_SRC
+- make -C $NCCL_SRC
+- make install -C $NCCL_SRC 
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
 - cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
