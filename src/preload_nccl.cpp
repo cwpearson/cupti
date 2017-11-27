@@ -30,7 +30,7 @@ extern "C" ncclResult_t ncclCommInitAll(ncclComm_t *comms, int nGPUs,
   cprof::err() << "WARN: tid " << cprof::model::get_thread_id()
                << " disabling CUPTI callbacks during ncclBCommInitAll"
                << std::endl;
-
+  cprof::err() << "WARN: doing nothing during ncclCommInitAll" << std::endl;
   cprof::driver().this_thread().pause_cupti_callbacks();
   const ncclResult_t ret = real_ncclCommInitAll(comms, nGPUs, devList);
   cprof::driver().this_thread().resume_cupti_callbacks();
@@ -45,7 +45,7 @@ extern "C" ncclResult_t ncclCommInitRank(ncclComm_t *comm, int nGPUs,
   cprof::err() << "WARN: tid " << cprof::model::get_thread_id()
                << " disabling CUPTI callbacks during ncclCommInitRank"
                << std::endl;
-
+  cprof::err() << "WARN: doing nothing during ncclCommInitRank" << std::endl;
   cprof::driver().this_thread().pause_cupti_callbacks();
   const ncclResult_t ret = real_ncclCommInitRank(comm, nGPUs, cliqueId, rank);
   cprof::driver().this_thread().resume_cupti_callbacks();
