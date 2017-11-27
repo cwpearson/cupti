@@ -33,7 +33,7 @@ def api_handler(api):
                 allocRefs.setdefault(a, [])
                 allocRefs[a] += [api]
 
-    if name == "cudaMemcpy":
+    if "cudaMemcpy" in name:
         assert len(api.inputs) == 1
         assert len(api.outputs) == 1
 
