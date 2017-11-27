@@ -138,7 +138,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
 void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
                    Values &values, const ApiRecordRef &api, const uintptr_t dst,
                    const uintptr_t src, const MemoryCopyKind &kind,
-                   const size_t count, const int peerSrc, const int peerDst) {
+                   const size_t srcCount, const size_t dstCount,
+                   const int peerSrc, const int peerDst) {
 
   Allocation srcAlloc(nullptr), dstAlloc(nullptr);
 
@@ -149,41 +150,45 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     cprof::err() << src << "--[h2d]--> " << dst << std::endl;
 
     // Source allocation may not have been created by a CUDA api
-    srcAlloc = allocations.find(src, count);
+    srcAlloc = allocations.find(src, srcCount);
     if (!srcAlloc) {
       const auto AS = cprof::hardware().address_space(devId);
-      srcAlloc = allocations.new_allocation(src, count, AS, Memory::Unknown,
+      srcAlloc = allocations.new_allocation(src, srcCount, AS, Memory::Unknown,
                                             Location::Host());
-      cprof::err()
-          << "WARN: Couldn't find src alloc. Created implict host allocation= "
-          << src << std::endl;
+      cprof::err() << "WARN: Couldn't find src alloc. Created implict host "
+                      "allocation= [ "
+                   << src << " , + " << srcCount << " )" << std::endl;
     }
   } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
     cprof::err() << src << "--[d2h]--> " << dst << std::endl;
 
     // Destination allocation may not have been created by a CUDA api
-    dstAlloc = allocations.find(dst, count);
+    // FIXME: we may be copying only a slice of an existing allocation. if
+    // it overlaps, it should be joined
+    dstAlloc = allocations.find(dst, dstCount);
     if (!dstAlloc) {
       const auto AS = cprof::hardware().address_space(devId);
-      dstAlloc = allocations.new_allocation(dst, count, AS, Memory::Unknown,
+      dstAlloc = allocations.new_allocation(dst, dstCount, AS, Memory::Unknown,
                                             Location::Host());
-      cprof::err()
-          << "WARN: Couldn't find dst alloc. Created implict host allocation= "
-          << dst << std::endl;
+      cprof::err() << "WARN: Couldn't find dst alloc. Created implict host "
+                      "allocation= [ "
+                   << dst << " , + " << dstCount << " )" << std::endl;
     }
   } else if (MemoryCopyKind::CudaDefault() == kind) {
-    srcAlloc = srcAlloc = allocations.find(src, count, AddressSpace::CudaUVA());
-    srcAlloc = srcAlloc = allocations.find(dst, count, AddressSpace::CudaUVA());
+    srcAlloc = srcAlloc =
+        allocations.find(src, srcCount, AddressSpace::CudaUVA());
+    srcAlloc = srcAlloc =
+        allocations.find(dst, dstCount, AddressSpace::CudaUVA());
   }
 
   // Look for existing src / dst allocations.
   // Either we just made it, or it should already exist.
   if (!srcAlloc) {
-    srcAlloc = allocations.find(src, count);
+    srcAlloc = allocations.find(src, srcCount);
     assert(srcAlloc);
   }
   if (!dstAlloc) {
-    dstAlloc = allocations.find(dst, count);
+    dstAlloc = allocations.find(dst, dstCount);
     assert(dstAlloc);
   }
 
@@ -191,20 +196,21 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   assert(dstAlloc && "Couldn't find or create dst allocation");
   // There may not be a source value, because it may have been initialized
   // on the host
-  auto srcVal = values.find_live(src, count, srcAlloc->address_space());
+  auto srcVal = values.find_live(src, srcCount, srcAlloc->address_space());
   if (srcVal) {
     cprof::err() << "memcpy: found src value srcId=" << srcVal << std::endl;
     cprof::err() << "WARN: Setting srcVal size by memcpy count" << std::endl;
-    srcVal->set_size(count);
+    srcVal->set_size(srcCount);
   } else {
     cprof::err() << "WARN: creating implicit src value during memcpy"
                  << std::endl;
-    srcVal = values.new_value(src, count, srcAlloc, true /*initialized*/);
+    srcVal = values.new_value(src, srcCount, srcAlloc, true /*initialized*/);
   }
 
   // always create a new dst value
   assert(srcVal);
-  auto dstVal = values.new_value(dst, count, dstAlloc, srcVal->initialized());
+  auto dstVal =
+      values.new_value(dst, dstCount, dstAlloc, srcVal->initialized());
   assert(dstVal);
   dstVal.add_depends_on(srcVal);
   // dstVal->record_meta_append(cbInfo->functionName); // FIXME
@@ -212,7 +218,8 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   api->add_input(srcVal);
   api->add_output(dstVal);
   api->add_kv("kind", kind.str());
-  api->add_kv("count", count);
+  api->add_kv("srcCount", srcCount);
+  api->add_kv("dstCount", dstCount);
   APIs::record(api);
 }
 
@@ -251,7 +258,8 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     api->record_end_time(end);
 
     record_memcpy(cbInfo, allocations, values, api, dst, src,
-                  MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
+                  MemoryCopyKind(kind), count, count, 0 /*unused*/,
+                  0 /*unused */);
     cprof::err() << "INFO: callback: cudaMemcpy exit" << std::endl;
 
   } else {
@@ -287,7 +295,48 @@ static void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
     api->record_end_time(end);
 
     record_memcpy(cbInfo, allocations, values, api, dst, src,
-                  MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
+                  MemoryCopyKind(kind), count, count, 0 /*unused*/,
+                  0 /*unused */);
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+static void handleCudaMemcpy2DAsync(Allocations &allocations, Values &values,
+                                    const CUpti_CallbackData *cbInfo) {
+  // extract API call parameters
+  auto params = ((cudaMemcpy2DAsync_v3020_params *)(cbInfo->functionParams));
+  const uintptr_t dst = (uintptr_t)params->dst;
+  const size_t dpitch = params->dpitch;
+  const uintptr_t src = (uintptr_t)params->src;
+  const size_t spitch = params->spitch;
+  const size_t width = params->width;
+  const size_t height = params->height;
+  const cudaMemcpyKind kind = params->kind;
+  const cudaStream_t stream = params->stream;
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    cprof::err() << "callback: cudaMemcpy2DAsync entry" << std::endl;
+
+    uint64_t start;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), cprof::err());
+    auto api = cprof::driver().this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_start_time(start);
+
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    uint64_t end;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end), cprof::err());
+    auto api = cprof::driver().this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_end_time(end);
+
+    const size_t srcCount = height * spitch;
+    const size_t dstCount = height * dpitch;
+    record_memcpy(cbInfo, allocations, values, api, dst, src,
+                  MemoryCopyKind(kind), srcCount, dstCount, 0 /*unused*/,
+                  0 /*unused */);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -320,7 +369,8 @@ static void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
     api->record_end_time(end);
 
     record_memcpy(cbInfo, allocations, values, api, dst, src,
-                  MemoryCopyKind::CudaPeer(), count, srcDevice, dstDevice);
+                  MemoryCopyKind::CudaPeer(), count, count, srcDevice,
+                  dstDevice);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -445,7 +495,7 @@ static void handleCuMemHostAlloc(Allocations &allocations, Values &values,
   }
 }
 
-static void handleCuLaunchKernel(Allocations &allocations, Values &values,
+static void handleCuLaunchKernel(Values &values,
                                  const CUpti_CallbackData *cbInfo) {
 
   auto &ts = cprof::driver().this_thread();
@@ -722,6 +772,9 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     case CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020:
       handleCudaStreamSynchronize(cbInfo);
       break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy2DAsync_v3020:
+      handleCudaMemcpy2DAsync(cprof::allocations(), Values::instance(), cbInfo);
+      break;
     default:
       cprof::err() << "DEBU: skipping runtime call " << cbInfo->functionName
                    << std::endl;
@@ -734,7 +787,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCuMemHostAlloc(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel:
-      handleCuLaunchKernel(cprof::allocations(), Values::instance(), cbInfo);
+      handleCuLaunchKernel(Values::instance(), cbInfo);
       break;
     default:
       cprof::err() << "DEBU: skipping driver call " << cbInfo->functionName
