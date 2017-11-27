@@ -43,12 +43,11 @@ Values::insert(const value_type &v) {
 Value Values::new_value(const uintptr_t pos, const size_t size,
                         const Allocation &alloc, const bool initialized) {
   assert(alloc.get() && "Allocation should be valid");
-
   Value V(new ValueRecord(pos, size, alloc, initialized));
+  assert(V);
+  logging::atomic_out(V->json());
   auto i = interval<uintptr_t>::right_open(pos, pos + size);
   values_ += std::make_pair(i, V);
-
-  assert(V);
   return V;
 }
 

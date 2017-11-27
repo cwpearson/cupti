@@ -48,8 +48,3 @@ std::string ApiRecord::json() const {
   write_json(buf, pt, false);
   return buf.str();
 }
-
-std::ostream &operator<<(std::ostream &os, const ApiRecord &r) {
-  logging::atomic_out(r.json());
-  return os;
-}

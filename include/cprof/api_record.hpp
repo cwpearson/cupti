@@ -25,8 +25,6 @@ private:
   const CUpti_CallbackData *cbInfo_;
 
 public:
-  friend std::ostream &operator<<(std::ostream &os, const ApiRecord &r);
-
   ApiRecord(const std::string &name, const int device)
       : apiName_(name), device_(device), start_(0), end_(0),
         domain_(CUPTI_CB_DOMAIN_INVALID), cbid_(-1), cbInfo_(nullptr) {}
