@@ -1,6 +1,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <map>
+#include <mutex>
 #include <sstream>
 
 #include "cprof/allocations.hpp"
@@ -13,15 +14,17 @@ using boost::property_tree::write_json;
 
 void ValueRecord::add_depends_on(const ValueRecord &vr) {
   ptree pt;
-  pt.put("dep.dst_id", &vr);
-  pt.put("dep.src_id", this);
-  write_json(cprof::out(), pt, false);
-  cprof::out().flush();
+  pt.put("dep.dst_id", uintptr_t(&vr));
+  pt.put("dep.src_id", uintptr_t(this));
+  pt.put("dep.tid", cprof::model::get_thread_id());
+  std::stringstream buf;
+  write_json(buf, pt, false);
+  logging::atomic_out(buf.str());
 }
 
 std::string ValueRecord::json() const {
   ptree pt;
-  pt.put("val.id", this);
+  pt.put("val.id", uintptr_t(this));
   pt.put("val.pos", pos_);
   pt.put("val.size", size_);
   pt.put("val.allocation_", std::to_string(uintptr_t(allocation_.get())));

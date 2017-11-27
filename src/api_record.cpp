@@ -5,8 +5,6 @@
 
 #include "cprof/api_record.hpp"
 
-
-
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
 
@@ -52,6 +50,6 @@ std::string ApiRecord::json() const {
 }
 
 std::ostream &operator<<(std::ostream &os, const ApiRecord &r) {
-  os << r.json();
+  logging::atomic_out(r.json());
   return os;
 }

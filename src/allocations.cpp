@@ -18,7 +18,6 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
   for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
        i != e; ++i) {
     Allocation a = *i;
-    assert(a);
     if (a->contains(pos, size) && !a->freed()) {
       matches.push_back(*i);
     }
@@ -44,7 +43,6 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size,
   for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
        i != e; ++i) {
     Allocation a = *i;
-    assert(a);
     if (a->contains(pos, size, as) && !a->freed()) {
       return *i;
     }
@@ -72,7 +70,6 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
                                                     const Memory &am,
                                                     const Location &al) {
   auto val = value_type(new AllocationRecord(pos, size, as, am, al));
-  assert(val);
 
   if (val->size() == 0) {
     cprof::err() << "WARN: creating size 0 allocation" << std::endl;

@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "cprof/callbacks.hpp"
+#include "cprof/model/thread.hpp"
 #include "cprof/profiler.hpp"
 #include "util/environment_variable.hpp"
 
@@ -30,6 +31,12 @@ Profiler::~Profiler() {
  * valid, since they've already been constructed.
  */
 void Profiler::init() {
+  std::cerr << model::get_thread_id() << std::endl;
+
+  if (isInitialized_) {
+    logging::err() << "Profiler alread initialized" << std::endl;
+    return;
+  }
 
   // Configure logging
   auto outPath = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();

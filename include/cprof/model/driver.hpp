@@ -79,13 +79,7 @@ public:
   }
 
   int device_from_cudnn_handle(const cudnnHandle_t h) {
-    logging::err() << "DEBU: looking for cudnn handle " << h << " "
-                   << cudnnHandleToDevice_.size() << std::endl;
-
-    for (const auto kv : cudnnHandleToDevice_) {
-      logging::err() << kv.first << "," << kv.second << std::endl;
-    }
-
+    logging::err() << "DEBU: looking for cudnn handle " << h << std::endl;
     return cudnnHandleToDevice_.at(h);
   }
   mapped_type &this_thread() { return threadStates_[get_thread_id()]; }

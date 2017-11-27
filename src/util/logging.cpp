@@ -15,4 +15,5 @@ std::ostream &set_out_path(const std::string &path) {
 std::ostream &set_err_path(const std::string &path) {
   return globalLogger().set_err_path(path);
 }
+void atomic_out(const std::string &s) { globalLogger().atomic_out(s); }
 } // namespace logging

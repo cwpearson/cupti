@@ -31,3 +31,9 @@ std::ostream &Logger::set_out_path(const std::string &path) {
   assert(out_->good() && "Unable to open out file");
   return out();
 }
+
+void Logger::atomic_out(const std::string &s) {
+  std::lock_guard<std::mutex> guard(outMutex_);
+  out() << s;
+  out().flush();
+}
