@@ -135,6 +135,51 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
         cprof::driver().this_thread().configured_call().args_);
 }
 
+
+static void handleCudaLaunchKernel(Values &values, const CUpti_CallbackData *cbInfo) {
+  cprof::err() << "INFO: callback: cudaLaunchKernel preamble (tid="
+               << cprof::model::get_thread_id() << ")" << std::endl;
+  auto kernelTimer = KernelCallTime::instance();
+
+  auto params = ((cudaLaunchKernel_v7000_params *)(cbInfo->functionParams));
+  const void *func = params->func;
+  cprof::err() << "launching " << func << std::endl;
+  const dim3 gridDim = params->gridDim;
+  const dim3 blockDim = params->blockDim;
+  void * const*args = params->args;
+  const size_t sharedMem = params->sharedMem;
+  const cudaStream_t stream = params->stream;
+
+
+  // print_backtrace();
+
+  const char *symbolName = cbInfo->symbolName;
+  //const char *symbolName = (char*)func;
+
+  assert(0 && "Unimplemented");
+
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    cprof::err() << "callback: cudaLaunch entry" << std::endl;
+    kernelTimer.kernel_start_time(cbInfo);
+
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    kernelTimer.kernel_end_time(cbInfo);
+
+    auto api = std::make_shared<ApiRecord>(
+        cbInfo->functionName, cbInfo->symbolName,
+        cprof::driver().this_thread().current_device());
+
+    APIs::record(api);
+
+  } else {
+    assert(0 && "How did we get here?");
+  }
+
+  cprof::err() << "callback: cudaLaunchKernel: done" << std::endl;
+}
+
+
+
 void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
                    Values &values, const ApiRecordRef &api, const uintptr_t dst,
                    const uintptr_t src, const MemoryCopyKind &kind,
@@ -500,8 +545,9 @@ static void handleCuLaunchKernel(Values &values,
 
   auto &ts = cprof::driver().this_thread();
   if (ts.in_child_api() && ts.parent_api()->is_runtime() &&
-      ts.parent_api()->cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020) {
-    cprof::err() << "WARN: skipping cuLaunchKernel inside cudaLaunch"
+      ts.parent_api()->cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020
+    || ts.parent_api()->cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000) {
+    cprof::err() << "WARN: skipping cuLaunchKernel inside cudaLaunch or cudaLaunchKernel"
                  << std::endl;
     return;
   }
@@ -511,6 +557,48 @@ static void handleCuLaunchKernel(Values &values,
     cprof::err() << "INFO: enter cuLaunchKernel" << std::endl;
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     cprof::err() << "INFO: exit cuLaunchKernel" << std::endl;
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+
+static void handleCuModuleGetFunction(const CUpti_CallbackData *cbInfo) {
+
+  auto params = ((cuModuleGetFunction_params *)(cbInfo->functionParams));
+  const CUfunction hfunc = *(params->hfunc);
+  const CUmodule hmod = params->hmod;
+  const char* name = params->name; 
+
+  cprof::err() << "INFO: cuModuleGetFunction for " << name << " @ " << hfunc << std::endl;
+
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    cprof::err() << "INFO: enter cuModuleGetFunction" << std::endl;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    cprof::err() << "INFO: exit cuModuleGetFunction" << std::endl;
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+static void handleCuModuleGetGlobal_v2(const CUpti_CallbackData *cbInfo) {
+
+  auto params = ((cuModuleGetGlobal_v2_params *)(cbInfo->functionParams));
+
+  const CUdeviceptr dptr = *(params->dptr);
+  //assert(params->bytes);
+  //const size_t bytes = *(params->bytes);
+  const CUmodule hmod = params->hmod;
+  const char* name = params->name; 
+
+  //cprof::err() << "INFO: cuModuleGetGlobal_v2 for " << name << " @ " << dptr << std::endl;
+  cprof::err() << "WARN: ignoring cuModuleGetGlobal_v2" << std::endl;
+  return;
+
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    cprof::err() << "INFO: enter cuModuleGetGlobal_v2" << std::endl;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    cprof::err() << "INFO: exit cuModuleGetGlobal_v2" << std::endl;
   } else {
     assert(0 && "How did we get here?");
   }
@@ -775,6 +863,9 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy2DAsync_v3020:
       handleCudaMemcpy2DAsync(cprof::allocations(), Values::instance(), cbInfo);
       break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000:
+      handleCudaLaunchKernel(Values::instance(), cbInfo);
+      break;
     default:
       cprof::err() << "DEBU: skipping runtime call " << cbInfo->functionName
                    << std::endl;
@@ -788,6 +879,12 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       break;
     case CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel:
       handleCuLaunchKernel(Values::instance(), cbInfo);
+      break;
+    case CUPTI_DRIVER_TRACE_CBID_cuModuleGetFunction:
+      handleCuModuleGetFunction(cbInfo);
+      break;
+    case CUPTI_DRIVER_TRACE_CBID_cuModuleGetGlobal_v2:
+      handleCuModuleGetGlobal_v2(cbInfo);
       break;
     default:
       cprof::err() << "DEBU: skipping driver call " << cbInfo->functionName
