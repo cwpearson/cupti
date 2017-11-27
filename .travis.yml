@@ -30,9 +30,6 @@ matrix:
     - env: BUILD_TYPE=Debug
 
 install:
-- git clone https://github.com/NVIDIA/nccl.git $NCCL_SRC
-- make -C $NCCL_SRC
-- make install -C $NCCL_SRC 
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
 - cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
@@ -56,7 +53,9 @@ install:
 - tar -xvf $CUDNN_PATH
 - mv -v cuda/include/* $CUDA_ROOT/include/.
 - mv -v cuda/lib64/* $CUDA_ROOT/lib64/.
-- rm -v $CUDNN_PATH
+- git clone https://github.com/NVIDIA/nccl.git $NCCL_SRC
+- make -C $NCCL_SRC
+- make install -C $NCCL_SRC 
 script:
 - cd $TRAVIS_BUILD_DIR
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
