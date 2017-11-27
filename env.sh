@@ -24,9 +24,11 @@ fi
 
 # default output file
 export CPROF_OUT="output.cprof"
+#export CPROF_ERR="err.cprof"
+
 
 # endpoint for tracing
-export CPROF_USE_ZIPKIN=1
+export CPROF_ENABLE_ZIPKIN=0
 export CPROF_ZIPKIN_HOST=34.215.126.137
 export CPROF_ZIPKIN_PORT=16686
 
@@ -36,5 +38,5 @@ export CPROF_ZIPKIN_PORT=16686
 if [ -z "${LD_PRELOAD+xxx}" ]; then 
   LD_PRELOAD="$CPROF_ROOT/lib/libcprof.so" $@; # unset
 else
-  LD_PRELOAD="$LD_PRELOAD:$CPROF_ROOT/lib/libcprof.so" $@; # unset
+  echo "Error: LD_PRELOAD is set"
 fi

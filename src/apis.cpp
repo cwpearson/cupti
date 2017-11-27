@@ -7,8 +7,7 @@ APIs::value_type APIs::_record(const APIs::mapped_type &m) {
   auto id = m->Id();
   auto p = records_.insert(std::make_pair(id, m));
 
-  cprof::out() << *m;
-  cprof::out().flush();
+  logging::atomic_out(m->json());
 
   return *p.first;
 }

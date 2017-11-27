@@ -13,8 +13,10 @@
 #include "allocation_record.hpp"
 #include "cprof/model/location.hpp"
 #include "util/extent.hpp"
+#include "util/logging.hpp"
 
 class Allocations {
+
 public:
   typedef std::shared_ptr<AllocationRecord> value_type;
 
@@ -56,10 +58,10 @@ public:
 
   size_t free(uintptr_t pos, const AddressSpace &as);
 
-  static Allocations &instance();
+  // static Allocations &instance();
 
-private:
   Allocations() {}
+  ~Allocations() { logging::err() << "DEBU: Allocations dtor\n"; }
 };
 
 #endif

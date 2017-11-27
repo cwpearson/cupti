@@ -65,7 +65,7 @@ private:
 template <>
 inline bool EnvironmentVariable<bool>::convert(const std::string &raw) {
   if (raw == "0" || raw == "false" || raw == "FALSE" || raw == "False") {
-    return true;
+    return false;
   } else {
     return true;
   }

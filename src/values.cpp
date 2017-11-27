@@ -5,48 +5,26 @@
 #include "cprof/profiler.hpp"
 #include "cprof/values.hpp"
 
-const Values::id_type Values::noid = Value::noid;
-
-// FIXME: refactor this and other find_live and AddressSpace to take a
-// AddressSpace mask
-std::pair<Values::id_type, Values::value_type>
-Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
+// FIXME: address space
+Value Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
   std::lock_guard<std::mutex> guard(access_mutex_);
-  if (values_.empty())
-    return std::make_pair(reinterpret_cast<Values::id_type>(nullptr),
-                          std::shared_ptr<Value>(nullptr));
+  cprof::err() << "INFO: Looking for value @ [" << pos << ", +" << size << ")"
+               << std::endl;
 
-  Extent e(pos, size);
-  for (size_t i = value_order_.size() - 1; true; i--) {
-    const auto valKey = value_order_[i];
-    const auto &val = values_[valKey];
-    assert(val.get());
-    if (val->overlaps(e) && as.maybe_equal(val->address_space()))
-      return std::make_pair(valKey, val);
-
-    if (i == 0)
-      break;
+  auto i = interval<uintptr_t>::right_open(pos, pos + size);
+  auto found = values_.find(i);
+  if (found != values_.end()) {
+    return found->second;
   }
 
-  return std::make_pair(reinterpret_cast<Values::id_type>(nullptr),
-                        std::shared_ptr<Value>(nullptr));
-}
-
-std::pair<bool, Values::id_type>
-Values::get_last_overlapping_value(uintptr_t pos, size_t size,
-                                   const AddressSpace &as) {
-  auto kv = find_live(pos, size, as);
-  if (kv.first == uintptr_t(nullptr)) {
-    return std::make_pair(false, -1);
-  }
-
-  return std::make_pair(true, kv.first);
+  return Value(nullptr);
 }
 
 // Values::id_type Values::find_live(const uintptr_t pos, const AddressSpace
 // &as,
 //                                   const Memory &mem) const {}
 
+/*
 std::pair<Values::map_type::iterator, bool>
 Values::insert(const value_type &v) {
   assert(v.get() && "Inserting invalid value!");
@@ -60,10 +38,23 @@ Values::insert(const value_type &v) {
 
   return values_.insert(std::make_pair(valIdx, v));
 }
+*/
+
+Value Values::new_value(const uintptr_t pos, const size_t size,
+                        const Allocation &alloc, const bool initialized) {
+  assert(alloc.get() && "Allocation should be valid");
+  Value V(new ValueRecord(pos, size, alloc, initialized));
+  assert(V);
+  logging::atomic_out(V->json());
+  auto i = interval<uintptr_t>::right_open(pos, pos + size);
+  values_ += std::make_pair(i, V);
+  return V;
+}
 
 Values &Values::instance() {
   static Values v;
   return v;
 }
 
-Values::Values() : values_(map_type()), value_order_(std::vector<id_type>()) {}
+// Values::Values() : values_(map_type()), value_order_(std::vector<id_type>())
+// {}

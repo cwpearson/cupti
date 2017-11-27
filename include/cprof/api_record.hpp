@@ -12,21 +12,20 @@ public:
   static const id_type noid;
 
 private:
-  std::vector<Values::id_type> inputs_;
-  std::vector<Values::id_type> outputs_;
+  std::vector<Value> inputs_;
+  std::vector<Value> outputs_;
   std::string apiName_;
   std::string kernelName_;
   int device_;
   uint64_t start_;
   uint64_t end_;
+  std::map<std::string, std::string> kv_;
 
   CUpti_CallbackDomain domain_;
   CUpti_CallbackId cbid_;
   const CUpti_CallbackData *cbInfo_;
 
 public:
-  friend std::ostream &operator<<(std::ostream &os, const ApiRecord &r);
-
   ApiRecord(const std::string &name, const int device)
       : apiName_(name), device_(device), start_(0), end_(0),
         domain_(CUPTI_CB_DOMAIN_INVALID), cbid_(-1), cbInfo_(nullptr) {}
@@ -40,8 +39,10 @@ public:
       : apiName_(cbInfo->functionName), device_(device), start_(0), end_(0),
         domain_(domain), cbid_(cbid), cbInfo_(cbInfo) {}
 
-  void add_input(const Value::id_type &id);
-  void add_output(const Value::id_type &id);
+  void add_input(const Value &v);
+  void add_output(const Value &v);
+  void add_kv(const std::string &key, const std::string &value);
+  void add_kv(const std::string &key, const size_t &value);
 
   void record_start_time(const uint64_t start);
   void record_end_time(const uint64_t end);

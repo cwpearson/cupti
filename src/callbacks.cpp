@@ -32,8 +32,8 @@ using cprof::model::Memory;
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
-  cprof::err() << "callback: cudaLaunch preamble (tid="
-               << cprof::model::get_thread_id() << std::endl;
+  cprof::err() << "INFO: callback: cudaLaunch preamble (tid="
+               << cprof::model::get_thread_id() << ")" << std::endl;
   auto kernelTimer = KernelCallTime::instance();
 
   // print_backtrace();
@@ -45,7 +45,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
   cprof::err() << "launching " << symbolName << std::endl;
 
   // Find all values that are used by arguments
-  std::vector<Values::id_type> kernelArgIds;
+  std::vector<Value> kernelArgIds; // FIXME: this name is bad
   for (size_t argIdx = 0;
        argIdx < cprof::driver().this_thread().configured_call().args_.size();
        ++argIdx) { // for each kernel argument
@@ -55,15 +55,14 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     auto AS = cprof::hardware().address_space(devId);
 
     // FIXME: assuming with p2p access, it could be on any device?
-    const auto &kv = values.find_live(
+    const auto &val = values.find_live(
         cprof::driver().this_thread().configured_call().args_[argIdx],
         1 /*size*/, AS);
 
-    const auto &key = kv.first;
-    if (key != uintptr_t(nullptr)) {
-      kernelArgIds.push_back(kv.first);
+    if (val) {
+      kernelArgIds.push_back(val);
       cprof::err()
-          << "found val " << key << " for kernel arg="
+          << "found val " << val << " for kernel arg="
           << cprof::driver().this_thread().configured_call().args_[argIdx]
           << std::endl;
     }
@@ -104,9 +103,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // The kernel could have modified any argument values.
     // Hash each value and compare to the one recorded at kernel launch
     // If there is a difference, create a new value
-    for (const auto &argValId : kernelArgIds) {
-      const auto &argValue = values[argValId];
-      api->add_input(argValId);
+    for (const auto &argValue : kernelArgIds) {
+      api->add_input(argValue);
       // const auto digest = hash_device(argValue->pos(), argValue->size());
 
       // if (arg_hashes.count(argKey)) {
@@ -115,16 +113,13 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       // }
       // no recorded hash, or hash does not match => new value
       // if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
-      Values::id_type newId;
-      Values::value_type newVal;
-      std::tie(newId, newVal) = values.duplicate_value(argValue);
-      for (const auto &depId : kernelArgIds) {
-        cprof::err() << "INFO: launch: " << newId << " deps on " << depId
+      auto newVal = values.duplicate_value(argValue);
+      for (const auto &depVal : kernelArgIds) {
+        cprof::err() << "INFO: launch: " << newVal << " deps on " << depVal
                      << std::endl;
-        newVal->add_depends_on(depId);
+        newVal.add_depends_on(depVal);
       }
-      api->add_output(newId);
-      // }
+      api->add_output(newVal);
     }
     APIs::record(api);
     cprof::driver().this_thread().configured_call().valid_ = false;
@@ -143,48 +138,57 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
 void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
                    Values &values, const ApiRecordRef &api, const uintptr_t dst,
                    const uintptr_t src, const MemoryCopyKind &kind,
-                   const size_t count, const int peerSrc, const int peerDst) {
+                   const size_t srcCount, const size_t dstCount,
+                   const int peerSrc, const int peerDst) {
 
   Allocation srcAlloc(nullptr), dstAlloc(nullptr);
+
+  const int devId = cprof::driver().this_thread().current_device();
 
   // Set address space, and create missing allocations along the way
   if (MemoryCopyKind::CudaHostToDevice() == kind) {
     cprof::err() << src << "--[h2d]--> " << dst << std::endl;
 
     // Source allocation may not have been created by a CUDA api
-    srcAlloc = allocations.find(src, count);
+    srcAlloc = allocations.find(src, srcCount);
     if (!srcAlloc) {
-      srcAlloc = allocations.new_allocation(src, count, AddressSpace::Unknown(),
-                                            Memory::Unknown, Location::Host());
-      cprof::err()
-          << "WARN: Couldn't find src alloc. Created implict host allocation="
-          << src << std::endl;
+      const auto AS = cprof::hardware().address_space(devId);
+      srcAlloc = allocations.new_allocation(src, srcCount, AS, Memory::Unknown,
+                                            Location::Host());
+      cprof::err() << "WARN: Couldn't find src alloc. Created implict host "
+                      "allocation= [ "
+                   << src << " , + " << srcCount << " )" << std::endl;
     }
   } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
     cprof::err() << src << "--[d2h]--> " << dst << std::endl;
 
     // Destination allocation may not have been created by a CUDA api
-    dstAlloc = allocations.find(dst, count);
+    // FIXME: we may be copying only a slice of an existing allocation. if
+    // it overlaps, it should be joined
+    dstAlloc = allocations.find(dst, dstCount);
     if (!dstAlloc) {
-      dstAlloc = allocations.new_allocation(dst, count, AddressSpace::Unknown(),
-                                            Memory::Unknown, Location::Host());
-      cprof::err()
-          << "WARN: Couldn't find dst alloc. Created implict host allocation="
-          << dst << std::endl;
+      const auto AS = cprof::hardware().address_space(devId);
+      dstAlloc = allocations.new_allocation(dst, dstCount, AS, Memory::Unknown,
+                                            Location::Host());
+      cprof::err() << "WARN: Couldn't find dst alloc. Created implict host "
+                      "allocation= [ "
+                   << dst << " , + " << dstCount << " )" << std::endl;
     }
   } else if (MemoryCopyKind::CudaDefault() == kind) {
-    srcAlloc = srcAlloc = allocations.find(src, count, AddressSpace::CudaUVA());
-    srcAlloc = srcAlloc = allocations.find(dst, count, AddressSpace::CudaUVA());
+    srcAlloc = srcAlloc =
+        allocations.find(src, srcCount, AddressSpace::CudaUVA());
+    srcAlloc = srcAlloc =
+        allocations.find(dst, dstCount, AddressSpace::CudaUVA());
   }
 
   // Look for existing src / dst allocations.
   // Either we just made it, or it should already exist.
   if (!srcAlloc) {
-    srcAlloc = allocations.find(src, count);
+    srcAlloc = allocations.find(src, srcCount);
     assert(srcAlloc);
   }
   if (!dstAlloc) {
-    dstAlloc = allocations.find(dst, count);
+    dstAlloc = allocations.find(dst, dstCount);
     assert(dstAlloc);
   }
 
@@ -192,34 +196,30 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   assert(dstAlloc && "Couldn't find or create dst allocation");
   // There may not be a source value, because it may have been initialized
   // on the host
-  Values::id_type srcValId;
-  bool found;
-  std::tie(found, srcValId) =
-      values.get_last_overlapping_value(src, count, srcAlloc->address_space());
-  if (found) {
-    cprof::err() << "memcpy: found src value srcId=" << srcValId << std::endl;
-    if (!values[srcValId]->is_known_size()) {
-      cprof::err() << "WARN: source is unknown size. Setting by memcpy count"
-                   << std::endl;
-      values[srcValId]->set_size(count);
-    }
+  auto srcVal = values.find_live(src, srcCount, srcAlloc->address_space());
+  if (srcVal) {
+    cprof::err() << "memcpy: found src value srcId=" << srcVal << std::endl;
+    cprof::err() << "WARN: Setting srcVal size by memcpy count" << std::endl;
+    srcVal->set_size(srcCount);
   } else {
     cprof::err() << "WARN: creating implicit src value during memcpy"
                  << std::endl;
-    auto srcVal = std::shared_ptr<Value>(new Value(src, count, srcAlloc));
-    values.insert(srcVal);
-    srcValId = srcVal->Id();
+    srcVal = values.new_value(src, srcCount, srcAlloc, true /*initialized*/);
   }
 
   // always create a new dst value
-  Values::id_type dstValId;
-  Values::value_type dstVal;
-  std::tie(dstValId, dstVal) = values.new_value(dst, count, dstAlloc);
-  dstVal->add_depends_on(srcValId);
-  dstVal->record_meta_append(cbInfo->functionName);
+  assert(srcVal);
+  auto dstVal =
+      values.new_value(dst, dstCount, dstAlloc, srcVal->initialized());
+  assert(dstVal);
+  dstVal.add_depends_on(srcVal);
+  // dstVal->record_meta_append(cbInfo->functionName); // FIXME
 
-  api->add_input(srcValId);
-  api->add_output(dstValId);
+  api->add_input(srcVal);
+  api->add_output(dstVal);
+  api->add_kv("kind", kind.str());
+  api->add_kv("srcCount", srcCount);
+  api->add_kv("dstCount", dstCount);
   APIs::record(api);
 }
 
@@ -234,8 +234,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
   const cudaMemcpyKind kind = params->kind;
   const size_t count = params->count;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    cprof::err() << "callback: cudaMemcpy entry" << std::endl;
-
+    cprof::err() << "INFO: callback: cudaMemcpy enter" << std::endl;
     uint64_t start;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
@@ -248,10 +247,9 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     uint64_t endTimeStamp;
     cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
-    cprof::err() << "The end timestamp is " << endTimeStamp << std::endl;
+    // cprof::err() << "The end timestamp is " << endTimeStamp << std::endl;
     // std::cout << "The end time is " << cbInfo->end_time;
     kernelTimer.kernel_end_time(cbInfo);
-    cprof::err() << "INFO: callback: cudaMemcpy end func exec" << std::endl;
     uint64_t end;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
@@ -260,7 +258,9 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
     api->record_end_time(end);
 
     record_memcpy(cbInfo, allocations, values, api, dst, src,
-                  MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
+                  MemoryCopyKind(kind), count, count, 0 /*unused*/,
+                  0 /*unused */);
+    cprof::err() << "INFO: callback: cudaMemcpy exit" << std::endl;
 
   } else {
     assert(0 && "How did we get here?");
@@ -295,7 +295,48 @@ static void handleCudaMemcpyAsync(Allocations &allocations, Values &values,
     api->record_end_time(end);
 
     record_memcpy(cbInfo, allocations, values, api, dst, src,
-                  MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
+                  MemoryCopyKind(kind), count, count, 0 /*unused*/,
+                  0 /*unused */);
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+static void handleCudaMemcpy2DAsync(Allocations &allocations, Values &values,
+                                    const CUpti_CallbackData *cbInfo) {
+  // extract API call parameters
+  auto params = ((cudaMemcpy2DAsync_v3020_params *)(cbInfo->functionParams));
+  const uintptr_t dst = (uintptr_t)params->dst;
+  const size_t dpitch = params->dpitch;
+  const uintptr_t src = (uintptr_t)params->src;
+  const size_t spitch = params->spitch;
+  const size_t width = params->width;
+  const size_t height = params->height;
+  const cudaMemcpyKind kind = params->kind;
+  const cudaStream_t stream = params->stream;
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    cprof::err() << "callback: cudaMemcpy2DAsync entry" << std::endl;
+
+    uint64_t start;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), cprof::err());
+    auto api = cprof::driver().this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_start_time(start);
+
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    uint64_t end;
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end), cprof::err());
+    auto api = cprof::driver().this_thread().current_api();
+    assert(api->cb_info() == cbInfo);
+    assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
+    api->record_end_time(end);
+
+    const size_t srcCount = height * spitch;
+    const size_t dstCount = height * dpitch;
+    record_memcpy(cbInfo, allocations, values, api, dst, src,
+                  MemoryCopyKind(kind), srcCount, dstCount, 0 /*unused*/,
+                  0 /*unused */);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -328,7 +369,8 @@ static void handleCudaMemcpyPeerAsync(Allocations &allocations, Values &values,
     api->record_end_time(end);
 
     record_memcpy(cbInfo, allocations, values, api, dst, src,
-                  MemoryCopyKind::CudaPeer(), count, srcDevice, dstDevice);
+                  MemoryCopyKind::CudaPeer(), count, count, srcDevice,
+                  dstDevice);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -453,6 +495,27 @@ static void handleCuMemHostAlloc(Allocations &allocations, Values &values,
   }
 }
 
+static void handleCuLaunchKernel(Values &values,
+                                 const CUpti_CallbackData *cbInfo) {
+
+  auto &ts = cprof::driver().this_thread();
+  if (ts.in_child_api() && ts.parent_api()->is_runtime() &&
+      ts.parent_api()->cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020) {
+    cprof::err() << "WARN: skipping cuLaunchKernel inside cudaLaunch"
+                 << std::endl;
+    return;
+  }
+
+  assert(0 && "unhandled cuLaunchKernel outside of cudaLaunch!");
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    cprof::err() << "INFO: enter cuLaunchKernel" << std::endl;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    cprof::err() << "INFO: exit cuLaunchKernel" << std::endl;
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
 static void handleCudaFreeHost(Allocations &allocations, Values &values,
                                const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
@@ -508,8 +571,7 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
     cprof::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.get()
                  << " pos=" << a->pos() << std::endl;
 
-    values.insert(std::shared_ptr<Value>(
-        new Value(devPtr, size, a, false /*initialized*/)));
+    values.new_value(devPtr, size, a, false /*initialized*/);
     // auto digest = hash_device(devPtr, size);
     // cprof::err() <<"uninitialized digest: %llu\n", digest);
   } else {
@@ -608,7 +670,7 @@ static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
 static void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    cprof::err() << "callback: cudaStreamCreate entry" << std::endl;
+    cprof::err() << "INFO: callback: cudaStreamCreate entry" << std::endl;
     // const auto params =
     //     ((cudaStreamCreate_v3020_params *)(cbInfo->functionParams));
     // const cudaStream_t stream = *(params->pStream);
@@ -620,7 +682,8 @@ static void handleCudaStreamCreate(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaStreamDestroy(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    cprof::err() << "callback: cudaStreamCreate entry" << std::endl;
+    cprof::err() << "INFO: callback: cudaStreamCreate entry" << std::endl;
+    cprof::err() << "WARN: ignoring cudaStreamDestroy" << std::endl;
     // const auto params =
     //     ((cudaStreamDestroy_v3020_params *)(cbInfo->functionParams));
     // const cudaStream_t stream = params->stream;
@@ -632,7 +695,8 @@ static void handleCudaStreamDestroy(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    cprof::err() << "callback: cudaStreamSynchronize entry" << std::endl;
+    cprof::err() << "INFO: callback: cudaStreamSynchronize entry" << std::endl;
+    cprof::err() << "WARN: ignoring cudaStreamSynchronize" << std::endl;
     // const auto params =
     //     ((cudaStreamSynchronize_v3020_params *)(cbInfo->functionParams));
     // const cudaStream_t stream = params->stream;
@@ -654,8 +718,6 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-      // cprof::err() <<"tid=%d about to increase api stack\n",
-      // get_thread_id());
       cprof::driver().this_thread().api_enter(
           cprof::driver().this_thread().current_device(), domain, cbid, cbInfo);
     }
@@ -665,31 +727,29 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   case CUPTI_CB_DOMAIN_RUNTIME_API: {
     switch (cbid) {
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-      handleCudaMemcpy(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaMemcpy(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020:
-      handleCudaMemcpyAsync(Allocations::instance(), Values::instance(),
-                            cbInfo);
+      handleCudaMemcpyAsync(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyPeerAsync_v4000:
-      handleCudaMemcpyPeerAsync(Allocations::instance(), Values::instance(),
+      handleCudaMemcpyPeerAsync(cprof::allocations(), Values::instance(),
                                 cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
-      handleCudaMalloc(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaMalloc(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020:
-      handleCudaMallocHost(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaMallocHost(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMallocManaged_v6000:
-      handleCudaMallocManaged(Allocations::instance(), Values::instance(),
-                              cbInfo);
+      handleCudaMallocManaged(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaFree_v3020:
-      handleCudaFree(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaFree(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaFreeHost_v3020:
-      handleCudaFreeHost(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaFreeHost(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
       handleCudaConfigureCall(cbInfo);
@@ -712,18 +772,26 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     case CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020:
       handleCudaStreamSynchronize(cbInfo);
       break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy2DAsync_v3020:
+      handleCudaMemcpy2DAsync(cprof::allocations(), Values::instance(), cbInfo);
+      break;
     default:
-      // cprof::err() <<"skipping runtime call %s...\n", cbInfo->functionName);
+      cprof::err() << "DEBU: skipping runtime call " << cbInfo->functionName
+                   << std::endl;
       break;
     }
   } break;
   case CUPTI_CB_DOMAIN_DRIVER_API: {
     switch (cbid) {
     case CUPTI_DRIVER_TRACE_CBID_cuMemHostAlloc:
-      handleCuMemHostAlloc(Allocations::instance(), Values::instance(), cbInfo);
+      handleCuMemHostAlloc(cprof::allocations(), Values::instance(), cbInfo);
+      break;
+    case CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel:
+      handleCuLaunchKernel(Values::instance(), cbInfo);
       break;
     default:
-      // cprof::err() <<"skipping driver call %s...\n", cbInfo->functionName);
+      cprof::err() << "DEBU: skipping driver call " << cbInfo->functionName
+                   << std::endl;
       break;
     }
   }

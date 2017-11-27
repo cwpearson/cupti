@@ -12,6 +12,7 @@ class CuptiSubscriber {
 private:
   CUpti_SubscriberHandle subscriber_;
   CUpti_CallbackFunc callback_;
+  bool enableZipkin_; ///< send traces to zipkin
 
 public:
   zipkin::ZipkinOtTracerOptions options;
@@ -23,9 +24,11 @@ public:
   std::shared_ptr<opentracing::Tracer> launch_tracer;
   span_t parent_span;
 
-  CuptiSubscriber(CUpti_CallbackFunc callback);
+  CuptiSubscriber(CUpti_CallbackFunc callback, const bool enableZipkin);
   void init();
   ~CuptiSubscriber();
+
+  bool enable_zipkin() const { return enableZipkin_; }
 };
 
 #endif

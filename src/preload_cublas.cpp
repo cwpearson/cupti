@@ -8,15 +8,26 @@
 #include "cprof/callbacks.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
-#include "cprof/preload.hpp"
+#include "cprof/profiler.hpp"
 #include "cprof/values.hpp"
 
 using cprof::model::Location;
 using cprof::model::Memory;
 
+#define CUBLAS_DLSYM_BOILERPLATE(name)                                         \
+  static name##Func real_##name = nullptr;                                     \
+  cprof::err() << "LD_PRELOAD intercept: " #name << std::endl;                 \
+  if (real_##name == nullptr) {                                                \
+    {                                                                          \
+      void *h = dlopen("libcublas.so", RTLD_LAZY);                             \
+      real_##name = (name##Func)dlsym(h, #name "_v2");                         \
+    }                                                                          \
+  }                                                                            \
+  assert(real_##name && "Will the real " #name " please stand up?");
+
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
 extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasCreate);
+  CUBLAS_DLSYM_BOILERPLATE(cublasCreate);
 
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasCreate call"
                << std::endl;
@@ -33,7 +44,7 @@ extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
 
 typedef cublasStatus_t (*cublasDestroyFunc)(cublasHandle_t handle);
 extern "C" cublasStatus_t cublasDestroy(cublasHandle_t handle) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasDestroy);
+  CUBLAS_DLSYM_BOILERPLATE(cublasDestroy);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: tid=" << cprof::model::get_thread_id()
@@ -53,7 +64,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
             cublasOperation_t transb, int m, int n, int k, const double *alpha,
             const double *A, int lda, const double *B, int ldb,
             const double *beta, double *C, int ldc) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasDgemm);
+  CUBLAS_DLSYM_BOILERPLATE(cublasDgemm);
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
@@ -64,20 +75,17 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  Values::id_type aId, bId, cId;
-  Values::value_type aVal, bVal, cVal;
-  std::tie(aId, aVal) = values.find_live((uintptr_t)A, AS);
-  std::tie(bId, bVal) = values.find_live((uintptr_t)B, AS);
-  std::tie(cId, cVal) = values.find_live((uintptr_t)C, AS);
+  auto aVal = values.find_live((uintptr_t)A, AS);
+  auto bVal = values.find_live((uintptr_t)B, AS);
+  auto cVal = values.find_live((uintptr_t)C, AS);
 
-  assert(aId && bId && cId && "Couldn't find Dgemm argument value on device");
+  assert(aVal && bVal && cVal &&
+         "Couldn't find Dgemm argument value on device");
 
-  Values::id_type newId;
-  Values::value_type newVal;
-  std::tie(newId, newVal) = values.duplicate_value(cVal);
-  newVal->add_depends_on(aId);
-  newVal->add_depends_on(bId);
-  newVal->add_depends_on(cId);
+  auto newVal = values.duplicate_value(cVal);
+  newVal.add_depends_on(aVal);
+  newVal.add_depends_on(bVal);
+  newVal.add_depends_on(cVal);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasDgemm call"
@@ -85,10 +93,10 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   auto api = std::make_shared<ApiRecord>(
       "cublasDgemm", cprof::driver().device_from_cublas_handle(handle));
-  api->add_output(newId);
-  api->add_input(aId);
-  api->add_input(bId);
-  api->add_input(cId);
+  api->add_output(newVal);
+  api->add_input(aVal);
+  api->add_input(bVal);
+  api->add_input(cVal);
   APIs::record(api);
 
   const cublasStatus_t ret = real_cublasDgemm(
@@ -107,7 +115,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
             const float *alpha, /* host or device pointer */
             const float *x, int incx, float *y, int incy) {
 
-  V2_LD_PRELOAD_BOILERPLATE(cublasSaxpy);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSaxpy);
 
   auto &values = Values::instance();
 
@@ -115,26 +123,22 @@ cublasSaxpy(cublasHandle_t handle, int n,
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
-  Values::id_type xId, yId;
-  Values::value_type xVal, yVal;
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AS);
-  std::tie(yId, yVal) = values.find_live((uintptr_t)y, AS);
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto yVal = values.find_live((uintptr_t)y, AS);
 
-  assert(xId && "Couldn't find cublasSaxpy x value on device");
+  assert(xVal && "Couldn't find cublasSaxpy x value on device");
 
   // Create output value
-  Values::id_type outId;
-  Values::value_type outVal;
-  std::tie(outId, outVal) = values.duplicate_value(yVal);
-  outVal->add_depends_on(xId);
-  outVal->add_depends_on(yId);
+  auto outVal = values.duplicate_value(yVal);
+  outVal.add_depends_on(xVal);
+  outVal.add_depends_on(yVal);
 
   // track api
   auto api = std::make_shared<ApiRecord>(
       "cublasSaxpy", cprof::driver().device_from_cublas_handle(handle));
-  api->add_output(outId);
-  api->add_input(xId);
-  api->add_input(yId);
+  api->add_output(outVal);
+  api->add_input(xVal);
+  api->add_input(yVal);
   APIs::record(api);
 
   // Do the actual call
@@ -161,7 +165,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
             const float *A, int lda, const float *B, int ldb,
             const float *beta, /* host or device pointer */
             float *C, int ldc) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasSgemm);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSgemm);
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
@@ -171,20 +175,16 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find the argument values
-  Values::id_type aId, bId, cId;
-  Values::value_type aVal, bVal, cVal;
-  std::tie(aId, aVal) = values.find_live((uintptr_t)A, AS);
-  std::tie(bId, bVal) = values.find_live((uintptr_t)B, AS);
-  std::tie(cId, cVal) = values.find_live((uintptr_t)C, AS);
+  auto aVal = values.find_live((uintptr_t)A, AS);
+  auto bVal = values.find_live((uintptr_t)B, AS);
+  auto cVal = values.find_live((uintptr_t)C, AS);
+  assert(aVal && bVal && cVal &&
+         "Couldn't find Dgemm argument value on device");
 
-  assert(aId && bId && cId && "Couldn't find Dgemm argument value on device");
-
-  Values::id_type newId;
-  Values::value_type newVal;
-  std::tie(newId, newVal) = values.duplicate_value(cVal);
-  newVal->add_depends_on(aId);
-  newVal->add_depends_on(bId);
-  newVal->add_depends_on(cId);
+  auto newVal = values.duplicate_value(cVal);
+  newVal.add_depends_on(aVal);
+  newVal.add_depends_on(bVal);
+  newVal.add_depends_on(cVal);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasSgemm "
@@ -196,10 +196,10 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   auto api = std::make_shared<ApiRecord>(
       "cublasSgemm", cprof::driver().device_from_cublas_handle(handle));
-  api->add_output(newId);
-  api->add_input(aId);
-  api->add_input(bId);
-  api->add_input(cId);
+  api->add_output(newVal);
+  api->add_input(aVal);
+  api->add_input(bVal);
+  api->add_input(cVal);
   APIs::record(api);
 
   return ret;
@@ -214,7 +214,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
                                       const double *alpha, const double *A,
                                       int lda, const double *x, int incx,
                                       const double *beta, double *y, int incy) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasDgemv);
+  CUBLAS_DLSYM_BOILERPLATE(cublasDgemv);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
@@ -224,24 +224,20 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  Values::id_type aKey, xKey, yKey;
-  Values::value_type aVal, xVal, yVal;
-  std::tie(aKey, aVal) = values.find_live((uintptr_t)A, AS);
-  std::tie(xKey, xVal) = values.find_live((uintptr_t)x, AS);
-  std::tie(yKey, yVal) = values.find_live((uintptr_t)y, AS);
+  auto aVal = values.find_live((uintptr_t)A, AS);
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto yVal = values.find_live((uintptr_t)y, AS);
 
-  assert(aKey && xKey && yKey &&
+  assert(aVal && xVal && yVal &&
          "Couldn't find Dgemv argument value on device");
 
   // FIXME: could use these to do better on dependences
   cprof::err() << "WARN: not handling some values (A, alpha, beta)"
                << std::endl;
 
-  Values::id_type newId;
-  Values::value_type newVal;
-  std::tie(newId, newVal) = values.duplicate_value(yVal);
-  newVal->add_depends_on(xKey);
-  newVal->add_depends_on(yKey);
+  auto newVal = values.duplicate_value(yVal);
+  newVal.add_depends_on(xVal);
+  newVal.add_depends_on(yVal);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasDgemv "
@@ -253,10 +249,10 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
 
   auto api = std::make_shared<ApiRecord>(
       "cublasDgemv", cprof::driver().device_from_cublas_handle(handle));
-  api->add_output(newId);
-  api->add_input(aKey);
-  api->add_input(xKey);
-  api->add_input(yKey);
+  api->add_output(newVal);
+  api->add_input(aVal);
+  api->add_input(xVal);
+  api->add_input(yVal);
   APIs::record(api);
 
   return ret;
@@ -273,7 +269,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
                                       const float *alpha, const float *A,
                                       int lda, const float *x, int incx,
                                       const float *beta, float *y, int incy) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasSgemv);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSgemv);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
@@ -283,24 +279,20 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  Values::id_type aKey, xKey, yKey;
-  Values::value_type aVal, xVal, yVal;
-  std::tie(aKey, aVal) = values.find_live((uintptr_t)A, AS);
-  std::tie(xKey, xVal) = values.find_live((uintptr_t)x, AS);
-  std::tie(yKey, yVal) = values.find_live((uintptr_t)y, AS);
+  auto aVal = values.find_live((uintptr_t)A, AS);
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto yVal = values.find_live((uintptr_t)y, AS);
 
-  assert(aKey && xKey && yKey &&
+  assert(aVal && xVal && yVal &&
          "Couldn't find cublasSgemv argument value on device");
 
   // FIXME: could use these to do better on dependences
   cprof::err() << "WARN: not handling some values (A, alpha, beta)"
                << std::endl;
 
-  Values::id_type newId;
-  Values::value_type newVal;
-  std::tie(newId, newVal) = values.duplicate_value(yVal);
-  newVal->add_depends_on(xKey);
-  newVal->add_depends_on(yKey);
+  auto newVal = values.duplicate_value(yVal);
+  newVal.add_depends_on(xVal);
+  newVal.add_depends_on(yVal);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasSgemv "
@@ -312,10 +304,10 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
 
   auto api = std::make_shared<ApiRecord>(
       "cublasSgemv", cprof::driver().device_from_cublas_handle(handle));
-  api->add_output(newId);
-  api->add_input(aKey);
-  api->add_input(xKey);
-  api->add_input(yKey);
+  api->add_output(newVal);
+  api->add_input(aVal);
+  api->add_input(xVal);
+  api->add_input(yVal);
   APIs::record(api);
 
   return ret;
@@ -325,20 +317,19 @@ typedef cublasStatus_t (*cublasSasumFunc)(cublasHandle_t, int, const float *,
                                           int, float *);
 extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
                                       const float *x, int incx, float *result) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasSasum);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSasum);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
-  auto &allocations = Allocations::instance();
+  auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  Values::id_type xId;
-  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, AS);
-  assert(xId && "Couldn't find Sasum x argument value on device");
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  assert(xVal && "Couldn't find Sasum x argument value on device");
 
   // see if we can find an allocation for the result
   auto rAlloc = allocations.find((uintptr_t)result, sizeof(float), AS);
@@ -354,15 +345,13 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   assert(rAlloc && "If there is no allocation, we need to make one");
 
   // Make a new value
-  Values::id_type rId;
-  Values::value_type rVal;
-  std::tie(rId, rVal) =
-      values.new_value((uintptr_t)result, sizeof(float), rAlloc);
-  rVal->add_depends_on(xId);
+  auto rVal = values.new_value((uintptr_t)result, sizeof(float), rAlloc,
+                               true /*initialized*/);
+  rVal.add_depends_on(xVal);
 
   auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
-  api->add_output(rId);
-  api->add_input(xId);
+  api->add_output(rVal);
+  api->add_input(xVal);
   APIs::record(api);
 
   cprof::driver().this_thread().pause_cupti_callbacks();
@@ -382,7 +371,7 @@ extern "C" cublasStatus_t
 cublasSscal(cublasHandle_t handle, int n,
             const float *alpha, /* host or device pointer */
             float *x, int incx) {
-  V2_LD_PRELOAD_BOILERPLATE(cublasSscal);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSscal);
 
   auto &values = Values::instance();
 
@@ -390,19 +379,17 @@ cublasSscal(cublasHandle_t handle, int n,
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find input values
-  Values::id_type xId, outId;
-  Values::value_type xVal, outVal;
-  std::tie(xId, xVal) = values.find_live((uintptr_t)x, AS);
-  assert(xId && "Couldn't find cublasSscal x value on device");
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  assert(xVal && "Couldn't find cublasSscal x value on device");
 
   // Create output value
-  std::tie(outId, outVal) = values.duplicate_value(xVal);
-  outVal->add_depends_on(xId);
+  auto outVal = values.duplicate_value(xVal);
+  outVal.add_depends_on(xVal);
 
   // track api
   auto api = std::make_shared<ApiRecord>("cublasSscal", devId);
-  api->add_output(outId);
-  api->add_input(xId);
+  api->add_output(outVal);
+  api->add_input(xVal);
   APIs::record(api);
 
   // Do the actual call
@@ -423,23 +410,22 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
                                      const float *x, int incx, const float *y,
                                      int incy, float *result) {
 
-  V2_LD_PRELOAD_BOILERPLATE(cublasSdot);
+  CUBLAS_DLSYM_BOILERPLATE(cublasSdot);
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
-  auto &allocations = Allocations::instance();
+  auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  Values::id_type xId, yId;
   cprof::err() << "Looking for x=" << (uintptr_t)x << std::endl;
-  std::tie(xId, std::ignore) = values.find_live((uintptr_t)x, AS);
-  assert(xId && "Couldn't find cublasSdot x argument value on device");
-  std::tie(yId, std::ignore) = values.find_live((uintptr_t)y, AS);
-  assert(yId && "Couldn't find cublasSdot y argument value on device");
+  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto yVal = values.find_live((uintptr_t)y, AS);
+  assert(xVal && "Couldn't find cublasSdot x argument value on device");
+  assert(yVal && "Couldn't find cublasSdot y argument value on device");
 
   // see if we can find an allocation for the result
   cprof::err() << "Looking for allocation result=" << (uintptr_t)result
@@ -455,18 +441,16 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   }
   cprof::err() << "result allocId=" << uintptr_t(rAlloc.get()) << std::endl;
   // Make a new value
-  Values::id_type rId;
-  Values::value_type rVal;
-  std::tie(rId, rVal) =
-      values.new_value((uintptr_t)result, sizeof(float), rAlloc);
-  rVal->add_depends_on(xId);
-  rVal->add_depends_on(yId);
+  auto rVal = values.new_value((uintptr_t)result, sizeof(float), rAlloc,
+                               true /*initialized*/);
+  rVal.add_depends_on(xVal);
+  rVal.add_depends_on(yVal);
 
   auto api = std::make_shared<ApiRecord>(
       "cublasSdot", cprof::driver().device_from_cublas_handle(handle));
-  api->add_output(rId);
-  api->add_input(xId);
-  api->add_input(yId);
+  api->add_output(rVal);
+  api->add_input(xVal);
+  api->add_input(yVal);
   APIs::record(api);
 
   cprof::driver().this_thread().pause_cupti_callbacks();

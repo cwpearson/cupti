@@ -57,9 +57,10 @@ ifndef CUDA_ROOT
 endif
 NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
-LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
+LIB += -ldl \
+       -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
        -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt \
-	   -ldl -lnuma -lopentracing -lzipkin -lzipkin_opentracing
+	   -lnuma -lopentracing -lzipkin -lzipkin_opentracing
 
 
 CXX = g++

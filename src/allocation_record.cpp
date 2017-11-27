@@ -28,8 +28,3 @@ std::string AllocationRecord::json() const {
   write_json(buf, pt, false);
   return buf.str();
 }
-
-std::ostream &operator<<(std::ostream &os, const AllocationRecord &v) {
-  os << v.json();
-  return os;
-}

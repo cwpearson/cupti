@@ -1,5 +1,5 @@
-#ifndef VALUE_HPP
-#define VALUE_HPP
+#ifndef CPROF_VALUE_HPP
+#define CPROF_VALUE_HPP
 
 #include <iostream>
 #include <map>
@@ -9,6 +9,75 @@
 #include "allocation_record.hpp"
 #include "util/extent.hpp"
 
+class ValueRecord : public Extent {
+  friend std::ostream &operator<<(std::ostream &os, const ValueRecord &v);
+
+public:
+  typedef int64_t id_type;
+
+private:
+  friend class Values;
+  friend class Value;
+  Allocation allocation_;
+  bool initialized_;
+
+  ValueRecord(const Extent::pos_t pos, const size_t size,
+              const Allocation &alloc, const bool initialized)
+      : Extent(pos, size), allocation_(alloc), initialized_(initialized) {}
+
+public:
+  ValueRecord &operator+=(const ValueRecord &rhs) {
+    *this = rhs;
+    return *this;
+  }
+
+  void add_depends_on(const ValueRecord &VR);
+  std::string json() const;
+
+  AddressSpace address_space() const;
+  void set_size(const size_t size);
+  bool initialized() const { return initialized_; }
+  const Allocation &allocation() const { return allocation_; }
+};
+
+/*! \brief Thin wrapper to a ValueRecord
+ *
+ * Value is a std::shared_ptr<ValueRecord> with additional operations for
+ * use with boost::icl::interval_map
+ */
+class Value {
+  friend std::ostream &operator<<(std::ostream &os, const ValueRecord &v);
+
+public:
+  Value(ValueRecord *p) : p_(std::shared_ptr<ValueRecord>(p)) {}
+  Value() : Value(nullptr) {}
+
+private:
+  std::shared_ptr<ValueRecord> p_;
+
+public:
+  /*! \brief Needed for icl
+   *
+   *  Used by boost::icl::interval_map for combining Value when a new
+   * interval/value pair is inserted. This effectively has the inserted one
+   * overwrite the old one on that interval.
+   */
+  Value &operator+=(const Value &rhs) {
+    *this = rhs;
+    return *this;
+  }
+
+  ValueRecord &operator*() const noexcept { return p_.operator*(); }
+  ValueRecord *operator->() const noexcept { return p_.operator->(); }
+  /*! \brief Needed for icl
+   */
+  bool operator==(const Value &rhs) const noexcept { return p_ == rhs.p_; }
+  explicit operator bool() const noexcept { return bool(p_); }
+  void add_depends_on(const Value &other) { return p_->add_depends_on(*other); }
+  ValueRecord *get() const noexcept { return p_.get(); }
+};
+std::ostream &operator<<(std::ostream &os, const Value &v);
+/*
 class Value : public Extent {
 public:
   typedef uintptr_t id_type;
@@ -45,5 +114,6 @@ public:
 private:
   std::vector<id_type> dependsOnIdx_; // values this value depends on
 };
+*/
 
 #endif

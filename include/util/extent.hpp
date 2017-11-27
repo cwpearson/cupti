@@ -4,10 +4,8 @@
 #include <cstdint>
 
 class Extent {
-private:
-  typedef uintptr_t pos_t;
-
 protected:
+  typedef uintptr_t pos_t;
   pos_t pos_;
   std::size_t size_;
 

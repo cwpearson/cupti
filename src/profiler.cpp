@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "cprof/callbacks.hpp"
+#include "cprof/model/thread.hpp"
 #include "cprof/profiler.hpp"
 #include "util/environment_variable.hpp"
 
@@ -13,18 +14,15 @@ using namespace cprof;
  *
  * Should not handle any initialization. Defer that to the init() method.
  */
-Profiler::Profiler()
-    : manager_(nullptr), err_(nullptr), out_(nullptr), isInitialized_(false) {}
+Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {}
 
 Profiler::~Profiler() {
+  logging::err() << "Profiler dtor\n";
   delete manager_;
   isInitialized_ = false;
-  if (out_) {
-    out_->flush();
-  }
-  if (err_) {
-    err_->flush();
-  }
+  out().flush();
+  logging::err() << "Profiler dtor almost done...\n";
+  err().flush();
 }
 
 /*! \brief Profiler() initialize a profiler object
@@ -33,18 +31,21 @@ Profiler::~Profiler() {
  * valid, since they've already been constructed.
  */
 void Profiler::init() {
-  auto outPath = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();
-  if (outPath != "-") {
-    out_ = std::unique_ptr<std::ofstream>(
-        new std::ofstream(outPath.c_str(), std::ios::app));
-    assert(out_->good() && "Unable to open out file");
+  // std::cerr << model::get_thread_id() << std::endl;
+
+  if (isInitialized_) {
+    logging::err() << "Profiler alread initialized" << std::endl;
+    return;
   }
 
+  // Configure logging
+  auto outPath = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();
+  if (outPath != "-") {
+    logging::set_out_path(outPath.c_str());
+  }
   auto errPath = EnvironmentVariable<std::string>("CPROF_ERR", "-").get();
   if (errPath != "-") {
-    err_ = std::unique_ptr<std::ofstream>(
-        new std::ofstream(errPath.c_str(), std::ios::app));
-    assert(err_->good() && "Unable to open err file");
+    logging::set_err_path(errPath.c_str());
   }
 
   err() << "INFO: Profiler::init()" << std::endl;
@@ -55,6 +56,10 @@ void Profiler::init() {
   useCuptiActivity_ =
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_ACTIVITY", true).get();
   err() << "INFO: useCuptiActivity: " << useCuptiActivity_ << std::endl;
+
+  const bool enableZipkin =
+      EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
+  err() << "INFO: enableZipkin: " << enableZipkin << std::endl;
 
   zipkinHost_ =
       EnvironmentVariable<std::string>("CPROF_ZIPKIN_HOST", "localhost").get();
@@ -67,7 +72,7 @@ void Profiler::init() {
   hardware_.get_device_properties();
   err() << "INFO: done" << std::endl;
 
-  manager_ = new CuptiSubscriber((CUpti_CallbackFunc)callback);
+  manager_ = new CuptiSubscriber((CUpti_CallbackFunc)callback, enableZipkin);
   manager_->init();
 
   isInitialized_ = true;

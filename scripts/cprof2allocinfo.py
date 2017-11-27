@@ -33,7 +33,7 @@ def api_handler(api):
                 allocRefs.setdefault(a, [])
                 allocRefs[a] += [api]
 
-    if name == "cudaMemcpy":
+    if "cudaMemcpy" in name:
         assert len(api.inputs) == 1
         assert len(api.outputs) == 1
 
@@ -156,16 +156,29 @@ print max(len(D2A), len(A2D)), "devices"
 # pycprof.write_edges("edges")
 
 
-def bin(i):
+def bin_idx(i):
     return int(math.log(i, 2))
 
 
-maxBin = max(bin(a.size) for a in Allocations.itervalues())
+maxBin = max(bin_idx(a.size) for a in Allocations.itervalues())
 
 countHistograms = {}
 sizeHistograms = {}
 xferCountHistograms = {}
 xferSizeHistograms = {}
+
+allocTypes = {}
+
+for i, a in Allocations.iteritems():
+    key = (a.mem, a.loc.type, a.loc.id_)
+    # initialize
+    allocTypes.setdefault(key, [0 for i in range(maxBin + 1)])
+    # fill
+    allocTypes[key][bin_idx(a.size)] += a.size
+
+print "Alloc Type Histograms:"
+for loc, hist in allocTypes.iteritems():
+    print loc, hist
 
 for i, a in Allocations.iteritems():
     loc = (a.loc.type, a.loc.id_)
@@ -173,8 +186,8 @@ for i, a in Allocations.iteritems():
     countHistograms.setdefault(loc, [0 for i in range(maxBin + 1)])
     sizeHistograms.setdefault(loc, [0 for i in range(maxBin + 1)])
     # fill
-    countHistograms[loc][bin(a.size)] += 1
-    sizeHistograms[loc][bin(a.size)] += a.size
+    countHistograms[loc][bin_idx(a.size)] += 1
+    sizeHistograms[loc][bin_idx(a.size)] += a.size
 
 print "Size Histograms:"
 for loc, hist in sizeHistograms.iteritems():
@@ -192,20 +205,19 @@ maxBin = 0
 for src, dsts in xfers.iteritems():
     for dst, sizes in dsts.iteritems():
         for size in sizes:
-            bin = int(math.log(size, 2))
-            maxBin = max(bin, maxBin)
+            maxBin = max(maxBin, bin_idx(size))
 for src, dsts in xfers.iteritems():
     for dst, sizes in dsts.iteritems():
         for size in sizes:
-            bin = int(math.log(size, 2))
+            binIdx = bin_idx(size)
             xferCountHistograms.setdefault(src, {})
             xferCountHistograms[src].setdefault(
                 dst, [0 for i in range(maxBin + 1)])
             xferSizeHistograms.setdefault(src, {})
             xferSizeHistograms[src].setdefault(
                 dst, [0 for i in range(maxBin + 1)])
-            xferCountHistograms[src][dst][bin] += 1
-            xferSizeHistograms[src][dst][bin] += size
+            xferCountHistograms[src][dst][binIdx] += 1
+            xferSizeHistograms[src][dst][binIdx] += size
 
 print "Transfer counts"
 for src, dsts in xfers.iteritems():
