@@ -75,8 +75,7 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
     cprof::err() << "WARN: creating size 0 allocation" << std::endl;
   }
 
-  cprof::out() << *val;
-  cprof::out().flush();
+  logging::atomic_out(val->json());
 
   {
     std::lock_guard<std::mutex> guard(access_mutex_);
