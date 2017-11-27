@@ -3,7 +3,7 @@
 #include "util/extent.hpp"
 
 bool Extent::contains(const Extent::pos_t pos) const {
-  if (pos >= pos_ && pos < pos_ + size_) {
+  if ((pos >= pos_) && (pos < pos_ + size_)) {
     return true;
   } else {
     return false;
