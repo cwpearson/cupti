@@ -27,12 +27,14 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
     return matches[0];
   } else if (matches.empty()) {
     return nullptr;
-  } else {
+  } else { // FIXME for now, return most recent. Issue 11
+    cprof::err() << "ERR: looking for [" << pos << ", + " << size << ")"
+                 << std::endl;
     for (const auto &a : matches) {
-      cprof::err() << "INFO: matching " << a->pos() << ", " << a->size()
+      cprof::err() << "ERR: matching " << a->pos() << " , " << a->size()
                    << std::endl;
     }
-    assert(0 && "Multiple matches in different address spaces!");
+    return matches[matches.size() - 1];
   }
 }
 
