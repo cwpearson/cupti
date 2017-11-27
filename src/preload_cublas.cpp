@@ -321,7 +321,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
-  auto &allocations = Allocations::instance();
+  auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -414,7 +414,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
 
   // record data, we know things about how this API works
   auto &values = Values::instance();
-  auto &allocations = Allocations::instance();
+  auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);

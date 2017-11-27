@@ -12,6 +12,10 @@
 namespace cprof {
 
 class Profiler {
+  friend model::Hardware &hardware();
+  friend model::Driver &driver();
+  friend Allocations &allocations();
+
 public:
   ~Profiler();
 
@@ -24,15 +28,13 @@ public:
   const std::string &zipkin_host() { return zipkinHost_; }
   const uint32_t &zipkin_port() { return zipkinPort_; }
 
-  friend model::Hardware &hardware();
-  friend model::Driver &driver();
-
   CuptiSubscriber *manager_; // FIXME: make this private and add an accessor
 
 private:
   Profiler();
   model::Hardware hardware_;
   model::Driver driver_;
+  Allocations allocations_;
 
   bool useCuptiCallback_;
   bool useCuptiActivity_;
@@ -46,6 +48,7 @@ inline model::Hardware &hardware() { return Profiler::instance().hardware_; }
 inline model::Driver &driver() { return Profiler::instance().driver_; }
 inline std::ostream &out() { return logging::out(); }
 inline std::ostream &err() { return logging::err(); }
+inline Allocations &allocations() { return Profiler::instance().allocations_; }
 
 /* \brief Runs Profiler::init() at load time
  */

@@ -66,7 +66,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationForward);
 
   auto &values = Values::instance();
-  auto &allocations = Allocations::instance();
+  auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -161,7 +161,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationBackward);
 
   auto &values = Values::instance();
-  auto &allocations = Allocations::instance();
+  auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -275,7 +275,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
                              const cudnnTensorDescriptor_t dbDesc, void *db) {
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardBias);
   auto &values = Values::instance();
-  auto &allocations = Allocations::instance();
+  auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -457,7 +457,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   CUDNN_DLSYM_BOILERPLATE(cudnnSoftmaxForward);
 
   auto &values = Values::instance();
-  auto &allocations = Allocations::instance();
+  auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);

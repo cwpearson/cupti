@@ -27,6 +27,5 @@ std::ostream &Logger::set_err_path(const std::string &path) {
 std::ostream &Logger::set_out_path(const std::string &path) {
   out_ = std::unique_ptr<std::ofstream>(new std::ofstream(path.c_str()));
   assert(out_->good() && "Unable to open out file");
-  std::cerr << this << ": out_ set\n";
   return out();
 }

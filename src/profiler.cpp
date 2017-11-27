@@ -16,9 +16,11 @@ using namespace cprof;
 Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {}
 
 Profiler::~Profiler() {
+  logging::err() << "Profiler dtor\n";
   delete manager_;
   isInitialized_ = false;
   out().flush();
+  logging::err() << "Profiler dtor almost done...\n";
   err().flush();
 }
 

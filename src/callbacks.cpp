@@ -654,31 +654,29 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   case CUPTI_CB_DOMAIN_RUNTIME_API: {
     switch (cbid) {
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-      handleCudaMemcpy(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaMemcpy(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020:
-      handleCudaMemcpyAsync(Allocations::instance(), Values::instance(),
-                            cbInfo);
+      handleCudaMemcpyAsync(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyPeerAsync_v4000:
-      handleCudaMemcpyPeerAsync(Allocations::instance(), Values::instance(),
+      handleCudaMemcpyPeerAsync(cprof::allocations(), Values::instance(),
                                 cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
-      handleCudaMalloc(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaMalloc(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020:
-      handleCudaMallocHost(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaMallocHost(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMallocManaged_v6000:
-      handleCudaMallocManaged(Allocations::instance(), Values::instance(),
-                              cbInfo);
+      handleCudaMallocManaged(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaFree_v3020:
-      handleCudaFree(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaFree(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaFreeHost_v3020:
-      handleCudaFreeHost(Allocations::instance(), Values::instance(), cbInfo);
+      handleCudaFreeHost(cprof::allocations(), Values::instance(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
       handleCudaConfigureCall(cbInfo);
@@ -709,7 +707,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   case CUPTI_CB_DOMAIN_DRIVER_API: {
     switch (cbid) {
     case CUPTI_DRIVER_TRACE_CBID_cuMemHostAlloc:
-      handleCuMemHostAlloc(Allocations::instance(), Values::instance(), cbInfo);
+      handleCuMemHostAlloc(cprof::allocations(), Values::instance(), cbInfo);
       break;
     default:
       // cprof::err() <<"skipping driver call %s...\n", cbInfo->functionName);

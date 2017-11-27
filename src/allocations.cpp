@@ -10,20 +10,15 @@ using boost::property_tree::write_json;
 using cprof::model::Location;
 using cprof::model::Memory;
 
-Allocations &Allocations::instance() {
-  static Allocations a;
-  return a;
-}
-
 Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
   assert(pos && "No allocations at null pointer");
-
   std::vector<Allocations::value_type> matches;
-
   std::lock_guard<std::mutex> guard(access_mutex_);
+
   for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
        i != e; ++i) {
     Allocation a = *i;
+    assert(a);
     if (a->contains(pos, size) && !a->freed()) {
       matches.push_back(*i);
     }
@@ -44,11 +39,12 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
 
 Allocations::value_type Allocations::find(uintptr_t pos, size_t size,
                                           const AddressSpace &as) {
-  assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
+  assert(pos && "No allocations at null pointer");
   for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
        i != e; ++i) {
     Allocation a = *i;
+    assert(a);
     if (a->contains(pos, size, as) && !a->freed()) {
       return *i;
     }
@@ -62,7 +58,9 @@ Allocations::value_type Allocations::find_exact(uintptr_t pos,
   std::lock_guard<std::mutex> guard(access_mutex_);
   for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
        i != e; ++i) {
-    if ((*i)->pos() == pos && (*i)->address_space() == as && !(*i)->freed()) {
+    const Allocation &A = *i;
+    assert(A);
+    if (A->pos() == pos && A->address_space() == as && !A->freed()) {
       return *i;
     }
   }
@@ -74,7 +72,7 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
                                                     const Memory &am,
                                                     const Location &al) {
   auto val = value_type(new AllocationRecord(pos, size, as, am, al));
-  assert(val.get());
+  assert(val);
 
   if (val->size() == 0) {
     cprof::err() << "WARN: creating size 0 allocation" << std::endl;
@@ -83,8 +81,10 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
   cprof::out() << *val;
   cprof::out().flush();
 
-  std::lock_guard<std::mutex> guard(access_mutex_);
-  allocations_.push_back(val);
+  {
+    std::lock_guard<std::mutex> guard(access_mutex_);
+    allocations_.push_back(val);
+  }
   return val;
 }
 
