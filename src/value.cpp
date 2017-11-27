@@ -60,13 +60,7 @@ AddressSpace ValueRecord::address_space() const {
 
 void ValueRecord::set_size(const size_t size) {
   size_ = size;
-  cprof::out() << *this;
-  cprof::out().flush();
-}
-
-std::ostream &operator<<(std::ostream &os, const ValueRecord &v) {
-  os << v.json();
-  return os;
+  logging::atomic_out(json());
 }
 
 std::ostream &operator<<(std::ostream &os, const Value &v) {
