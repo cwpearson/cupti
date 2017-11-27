@@ -167,6 +167,19 @@ sizeHistograms = {}
 xferCountHistograms = {}
 xferSizeHistograms = {}
 
+allocTypes = {}
+
+for i, a in Allocations.iteritems():
+    key = (a.mem, a.loc.type, a.loc.id_)
+    # initialize
+    allocTypes.setdefault(key, [0 for i in range(maxBin + 1)])
+    # fill
+    allocTypes[key][bin_idx(a.size)] += a.size
+
+print "Alloc Type Histograms:"
+for loc, hist in allocTypes.iteritems():
+    print loc, hist
+
 for i, a in Allocations.iteritems():
     loc = (a.loc.type, a.loc.id_)
     # initialize

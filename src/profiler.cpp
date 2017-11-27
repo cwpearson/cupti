@@ -31,7 +31,7 @@ Profiler::~Profiler() {
  * valid, since they've already been constructed.
  */
 void Profiler::init() {
-  std::cerr << model::get_thread_id() << std::endl;
+  // std::cerr << model::get_thread_id() << std::endl;
 
   if (isInitialized_) {
     logging::err() << "Profiler alread initialized" << std::endl;
@@ -57,6 +57,10 @@ void Profiler::init() {
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_ACTIVITY", true).get();
   err() << "INFO: useCuptiActivity: " << useCuptiActivity_ << std::endl;
 
+  const bool enableZipkin =
+      EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
+  err() << "INFO: enableZipkin: " << enableZipkin << std::endl;
+
   zipkinHost_ =
       EnvironmentVariable<std::string>("CPROF_ZIPKIN_HOST", "localhost").get();
   err() << "INFO: zipkinEndpoint: " << zipkinHost_ << std::endl;
@@ -68,7 +72,7 @@ void Profiler::init() {
   hardware_.get_device_properties();
   err() << "INFO: done" << std::endl;
 
-  manager_ = new CuptiSubscriber((CUpti_CallbackFunc)callback);
+  manager_ = new CuptiSubscriber((CUpti_CallbackFunc)callback, enableZipkin);
   manager_->init();
 
   isInitialized_ = true;

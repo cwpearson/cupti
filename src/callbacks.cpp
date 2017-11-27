@@ -32,8 +32,8 @@ using cprof::model::Memory;
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
-  cprof::err() << "callback: cudaLaunch preamble (tid="
-               << cprof::model::get_thread_id() << std::endl;
+  cprof::err() << "INFO: callback: cudaLaunch preamble (tid="
+               << cprof::model::get_thread_id() << ")" << std::endl;
   auto kernelTimer = KernelCallTime::instance();
 
   // print_backtrace();
@@ -120,7 +120,6 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
         newVal.add_depends_on(depVal);
       }
       api->add_output(newVal);
-      // }
     }
     APIs::record(api);
     cprof::driver().this_thread().configured_call().valid_ = false;
@@ -143,6 +142,8 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 
   Allocation srcAlloc(nullptr), dstAlloc(nullptr);
 
+  const int devId = cprof::driver().this_thread().current_device();
+
   // Set address space, and create missing allocations along the way
   if (MemoryCopyKind::CudaHostToDevice() == kind) {
     cprof::err() << src << "--[h2d]--> " << dst << std::endl;
@@ -150,10 +151,11 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     // Source allocation may not have been created by a CUDA api
     srcAlloc = allocations.find(src, count);
     if (!srcAlloc) {
-      srcAlloc = allocations.new_allocation(src, count, AddressSpace::Unknown(),
-                                            Memory::Unknown, Location::Host());
+      const auto AS = cprof::hardware().address_space(devId);
+      srcAlloc = allocations.new_allocation(src, count, AS, Memory::Unknown,
+                                            Location::Host());
       cprof::err()
-          << "WARN: Couldn't find src alloc. Created implict host allocation="
+          << "WARN: Couldn't find src alloc. Created implict host allocation= "
           << src << std::endl;
     }
   } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
@@ -162,10 +164,11 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     // Destination allocation may not have been created by a CUDA api
     dstAlloc = allocations.find(dst, count);
     if (!dstAlloc) {
-      dstAlloc = allocations.new_allocation(dst, count, AddressSpace::Unknown(),
-                                            Memory::Unknown, Location::Host());
+      const auto AS = cprof::hardware().address_space(devId);
+      dstAlloc = allocations.new_allocation(dst, count, AS, Memory::Unknown,
+                                            Location::Host());
       cprof::err()
-          << "WARN: Couldn't find dst alloc. Created implict host allocation="
+          << "WARN: Couldn't find dst alloc. Created implict host allocation= "
           << dst << std::endl;
     }
   } else if (MemoryCopyKind::CudaDefault() == kind) {
@@ -208,6 +211,8 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 
   api->add_input(srcVal);
   api->add_output(dstVal);
+  api->add_kv("kind", kind.str());
+  api->add_kv("count", count);
   APIs::record(api);
 }
 
@@ -222,8 +227,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
   const cudaMemcpyKind kind = params->kind;
   const size_t count = params->count;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    cprof::err() << "callback: cudaMemcpy entry" << std::endl;
-
+    cprof::err() << "INFO: callback: cudaMemcpy enter" << std::endl;
     uint64_t start;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
@@ -236,10 +240,9 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     uint64_t endTimeStamp;
     cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
-    cprof::err() << "The end timestamp is " << endTimeStamp << std::endl;
+    // cprof::err() << "The end timestamp is " << endTimeStamp << std::endl;
     // std::cout << "The end time is " << cbInfo->end_time;
     kernelTimer.kernel_end_time(cbInfo);
-    cprof::err() << "INFO: callback: cudaMemcpy end func exec" << std::endl;
     uint64_t end;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end), cprof::err());
     auto api = cprof::driver().this_thread().current_api();
@@ -249,6 +252,7 @@ static void handleCudaMemcpy(Allocations &allocations, Values &values,
 
     record_memcpy(cbInfo, allocations, values, api, dst, src,
                   MemoryCopyKind(kind), count, 0 /*unused*/, 0 /*unused */);
+    cprof::err() << "INFO: callback: cudaMemcpy exit" << std::endl;
 
   } else {
     assert(0 && "How did we get here?");
@@ -436,6 +440,27 @@ static void handleCuMemHostAlloc(Allocations &allocations, Values &values,
                  << std::endl;
 
     record_mallochost(allocations, values, pp, bytesize);
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
+static void handleCuLaunchKernel(Allocations &allocations, Values &values,
+                                 const CUpti_CallbackData *cbInfo) {
+
+  auto &ts = cprof::driver().this_thread();
+  if (ts.in_child_api() && ts.parent_api()->is_runtime() &&
+      ts.parent_api()->cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020) {
+    cprof::err() << "WARN: skipping cuLaunchKernel inside cudaLaunch"
+                 << std::endl;
+    return;
+  }
+
+  assert(0 && "unhandled cuLaunchKernel outside of cudaLaunch!");
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    cprof::err() << "INFO: enter cuLaunchKernel" << std::endl;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    cprof::err() << "INFO: exit cuLaunchKernel" << std::endl;
   } else {
     assert(0 && "How did we get here?");
   }
@@ -643,8 +668,6 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-      // cprof::err() <<"tid=%d about to increase api stack\n",
-      // get_thread_id());
       cprof::driver().this_thread().api_enter(
           cprof::driver().this_thread().current_device(), domain, cbid, cbInfo);
     }
@@ -700,7 +723,8 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCudaStreamSynchronize(cbInfo);
       break;
     default:
-      // cprof::err() <<"skipping runtime call %s...\n", cbInfo->functionName);
+      cprof::err() << "DEBU: skipping runtime call " << cbInfo->functionName
+                   << std::endl;
       break;
     }
   } break;
@@ -709,8 +733,12 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     case CUPTI_DRIVER_TRACE_CBID_cuMemHostAlloc:
       handleCuMemHostAlloc(cprof::allocations(), Values::instance(), cbInfo);
       break;
+    case CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel:
+      handleCuLaunchKernel(cprof::allocations(), Values::instance(), cbInfo);
+      break;
     default:
-      // cprof::err() <<"skipping driver call %s...\n", cbInfo->functionName);
+      cprof::err() << "DEBU: skipping driver call " << cbInfo->functionName
+                   << std::endl;
       break;
     }
   }

@@ -489,3 +489,40 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
 
   return ret;
 }
+
+// FIXME: do something useful here
+typedef cudnnStatus_t (*cudnnPoolingForwardFunc)(
+    cudnnHandle_t handle, const cudnnPoolingDescriptor_t poolingDesc,
+    const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,
+    const void *beta, const cudnnTensorDescriptor_t yDesc, void *y);
+extern "C" cudnnStatus_t cudnnPoolingForward(
+    cudnnHandle_t handle, const cudnnPoolingDescriptor_t poolingDesc,
+    const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,
+    const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
+  CUDNN_DLSYM_BOILERPLATE(cudnnPoolingForward);
+
+  cprof::err() << "WARN: ignoring cudnnPoolingForward" << std::endl;
+
+  // Do the actual call
+  cprof::err()
+      << "WARN: disabling CUPTI callbacks during cudnnPoolingForward call"
+      << std::endl;
+  cprof::driver().this_thread().pause_cupti_callbacks();
+  const cudnnStatus_t ret = real_cudnnPoolingForward(handle, poolingDesc, alpha,
+                                                     xDesc, x, beta, yDesc, y);
+  cprof::driver().this_thread().resume_cupti_callbacks();
+  return ret;
+}
+
+// cudnnPoolingBackward
+// cudnnSoftmaxBackward
+// cudnnSpatialTfGridGeneratorForward
+// cudnnLRNCrossChannelBackward
+// cudnnBatchNormalizationBackward
+// cudnnBatchNormalizationForwardInference
+// cudnnSpatialTfSamplerForward
+// cudnnSpatialTfGridGeneratorBackward
+// cudnnRNNForwardTraining
+// cudnnRNNForwardInference
+// cudnnRNNBackwardWeights
+// cudnnRNNBackwardData

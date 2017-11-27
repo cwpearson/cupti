@@ -21,6 +21,13 @@ void ApiRecord::add_output(const Value &v) {
   outputs_.push_back(v);
 }
 
+void ApiRecord::add_kv(const std::string &k, const std::string &v) {
+  kv_[k] = v;
+}
+void ApiRecord::add_kv(const std::string &k, const size_t &v) {
+  add_kv(k, std::to_string(v));
+}
+
 void ApiRecord::record_start_time(const uint64_t start) { start_ = start; }
 void ApiRecord::record_end_time(const uint64_t end) { end_ = end; }
 
@@ -44,6 +51,11 @@ std::string ApiRecord::json() const {
   pt.add_child("api.outputs", to_json(outputs_));
   pt.put("api.start", start_);
   pt.put("api.end", end_);
+  for (const auto &p : kv_) {
+    const std::string &key = p.first;
+    const std::string &val = p.second;
+    pt.put("api." + key, val);
+  }
   std::ostringstream buf;
   write_json(buf, pt, false);
   return buf.str();

@@ -19,6 +19,7 @@ private:
   int device_;
   uint64_t start_;
   uint64_t end_;
+  std::map<std::string, std::string> kv_;
 
   CUpti_CallbackDomain domain_;
   CUpti_CallbackId cbid_;
@@ -40,6 +41,8 @@ public:
 
   void add_input(const Value &v);
   void add_output(const Value &v);
+  void add_kv(const std::string &key, const std::string &value);
+  void add_kv(const std::string &key, const size_t &value);
 
   void record_start_time(const uint64_t start);
   void record_end_time(const uint64_t end);

@@ -31,8 +31,9 @@ static void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
   }
 }
 
-CuptiSubscriber::CuptiSubscriber(CUpti_CallbackFunc callback)
-    : callback_(callback) {}
+CuptiSubscriber::CuptiSubscriber(CUpti_CallbackFunc callback,
+                                 const bool enableZipkin)
+    : callback_(callback), enableZipkin_(enableZipkin) {}
 
 void CuptiSubscriber::init() {
   assert(callback_);
@@ -41,21 +42,23 @@ void CuptiSubscriber::init() {
   size_t attrValueBufferSize = BUFFER_SIZE * 1024,
          attrValueSize = sizeof(size_t), attrValuePoolSize = BUFFER_SIZE;
 
-  // Create tracers here so that they are not destroyed
-  // when clearing buffer during destruction
-  options.service_name = "Parent";
-  memcpy_tracer_options.service_name = "Memory Copy";
-  launch_tracer_options.service_name = "Kernel Launch";
-  options.collector_host = Profiler::instance().zipkin_host();
-  memcpy_tracer_options.collector_host = Profiler::instance().zipkin_host();
-  launch_tracer_options.collector_host = Profiler::instance().zipkin_host();
-  options.collector_port = Profiler::instance().zipkin_port();
-  memcpy_tracer_options.collector_port = Profiler::instance().zipkin_port();
-  launch_tracer_options.collector_port = Profiler::instance().zipkin_port();
-  memcpy_tracer = makeZipkinOtTracer(memcpy_tracer_options);
-  tracer = makeZipkinOtTracer(options);
-  launch_tracer = makeZipkinOtTracer(launch_tracer_options);
-  parent_span = tracer->StartSpan("Parent");
+  if (enableZipkin_) {
+    // Create tracers here so that they are not destroyed
+    // when clearing buffer during destruction
+    options.service_name = "Parent";
+    memcpy_tracer_options.service_name = "Memory Copy";
+    launch_tracer_options.service_name = "Kernel Launch";
+    options.collector_host = Profiler::instance().zipkin_host();
+    memcpy_tracer_options.collector_host = Profiler::instance().zipkin_host();
+    launch_tracer_options.collector_host = Profiler::instance().zipkin_host();
+    options.collector_port = Profiler::instance().zipkin_port();
+    memcpy_tracer_options.collector_port = Profiler::instance().zipkin_port();
+    launch_tracer_options.collector_port = Profiler::instance().zipkin_port();
+    memcpy_tracer = makeZipkinOtTracer(memcpy_tracer_options);
+    tracer = makeZipkinOtTracer(options);
+    launch_tracer = makeZipkinOtTracer(launch_tracer_options);
+    parent_span = tracer->StartSpan("Parent");
+  }
 
   cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
                             &attrValueSize, &attrValueBufferSize);
@@ -78,7 +81,9 @@ CuptiSubscriber::~CuptiSubscriber() {
   cprof::err() << "INFO: CuptiSubscriber dtor" << std::endl;
   cuptiActivityFlushAll(0);
   cprof::err() << "INFO: done cuptiActivityFlushAll" << std::endl;
-  parent_span->Finish();
+  if (enableZipkin_) {
+    parent_span->Finish();
+  }
   auto kernelTimer = KernelCallTime::instance();
   kernelTimer.flush_tracers();
   cprof::err() << "Deactivating callbacks!" << std::endl;
