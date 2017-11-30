@@ -39,6 +39,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
   static std::vector<Value> dstBuffVals;
   const int dev = cprof::driver().device(comm);
   const auto &AS = cprof::hardware().address_space(dev);
+  const size_t numBytes = count * ncclSizeOf(datatype);
 
   // Only one thread should proceed at a time from here
   std::lock_guard<std::mutex> guard(access);
@@ -46,16 +47,34 @@ static void register_ncclBcast(uintptr_t buff, int count,
   // If we're the root device, we know the location of the buffer that
   // everyone depends on
   if (dev == root) {
-    rootBuffVal =
-        Values::instance().find_live(buff, count * ncclSizeOf(datatype), AS);
+    rootBuffVal = Values::instance().find_live(buff, numBytes, AS);
   }
 
+  const auto &dstBuffAlloc = cprof::allocations().find(buff, numBytes, AS);
+  const auto &dstBuffVal =
+      Values::instance().new_value(buff, numBytes, dstBuffAlloc, true);
+  dstBuffVals.push_back(dstBuffVal);
+
   // If the root has been found, we have enough info to add some deps
-  if (rootBuffVal) {
-    for (const auto &dstBuffVal : dstBuffVals) {
-      dstBuffVal->add_depends_on(*rootBuffVal);
+  // Have the last thread set the deps and create the api call
+  int commSize;
+  ncclResult_t res = ncclCommCount(comm, &commSize);
+  if (res != ncclSuccess) {
+    assert(0);
+  }
+  if (commSize == dstBuffVals.size()) {
+
+    auto api =
+        std::make_shared<ApiRecord>("ncclBcast", cprof::driver().device(comm));
+    api->add_input(rootBuffVal);
+
+    for (const auto &v : dstBuffVals) {
+      v->add_depends_on(*rootBuffVal);
+      api->add_output(v);
     }
+    APIs::record(api);
     dstBuffVals.clear();
+    rootBuffVal = nullptr;
   }
 }
 
