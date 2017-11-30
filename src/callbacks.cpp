@@ -135,8 +135,8 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
         cprof::driver().this_thread().configured_call().args_);
 }
 
-
-static void handleCudaLaunchKernel(Values &values, const CUpti_CallbackData *cbInfo) {
+static void handleCudaLaunchKernel(Values &values,
+                                   const CUpti_CallbackData *cbInfo) {
   cprof::err() << "INFO: callback: cudaLaunchKernel preamble (tid="
                << cprof::model::get_thread_id() << ")" << std::endl;
   auto kernelTimer = KernelCallTime::instance();
@@ -146,15 +146,14 @@ static void handleCudaLaunchKernel(Values &values, const CUpti_CallbackData *cbI
   cprof::err() << "launching " << func << std::endl;
   const dim3 gridDim = params->gridDim;
   const dim3 blockDim = params->blockDim;
-  void * const*args = params->args;
+  void *const *args = params->args;
   const size_t sharedMem = params->sharedMem;
   const cudaStream_t stream = params->stream;
-
 
   // print_backtrace();
 
   const char *symbolName = cbInfo->symbolName;
-  //const char *symbolName = (char*)func;
+  // const char *symbolName = (char*)func;
 
   assert(0 && "Unimplemented");
 
@@ -177,8 +176,6 @@ static void handleCudaLaunchKernel(Values &values, const CUpti_CallbackData *cbI
 
   cprof::err() << "callback: cudaLaunchKernel: done" << std::endl;
 }
-
-
 
 void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
                    Values &values, const ApiRecordRef &api, const uintptr_t dst,
@@ -545,10 +542,13 @@ static void handleCuLaunchKernel(Values &values,
 
   auto &ts = cprof::driver().this_thread();
   if (ts.in_child_api() && ts.parent_api()->is_runtime() &&
-      ts.parent_api()->cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020
-    || ts.parent_api()->cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000) {
-    cprof::err() << "WARN: skipping cuLaunchKernel inside cudaLaunch or cudaLaunchKernel"
-                 << std::endl;
+          ts.parent_api()->cbid() ==
+              CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020 ||
+      ts.parent_api()->cbid() ==
+          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000) {
+    cprof::err()
+        << "WARN: skipping cuLaunchKernel inside cudaLaunch or cudaLaunchKernel"
+        << std::endl;
     return;
   }
 
@@ -562,15 +562,15 @@ static void handleCuLaunchKernel(Values &values,
   }
 }
 
-
 static void handleCuModuleGetFunction(const CUpti_CallbackData *cbInfo) {
 
   auto params = ((cuModuleGetFunction_params *)(cbInfo->functionParams));
   const CUfunction hfunc = *(params->hfunc);
   const CUmodule hmod = params->hmod;
-  const char* name = params->name; 
+  const char *name = params->name;
 
-  cprof::err() << "INFO: cuModuleGetFunction for " << name << " @ " << hfunc << std::endl;
+  cprof::err() << "INFO: cuModuleGetFunction for " << name << " @ " << hfunc
+               << std::endl;
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     cprof::err() << "INFO: enter cuModuleGetFunction" << std::endl;
@@ -586,12 +586,13 @@ static void handleCuModuleGetGlobal_v2(const CUpti_CallbackData *cbInfo) {
   auto params = ((cuModuleGetGlobal_v2_params *)(cbInfo->functionParams));
 
   const CUdeviceptr dptr = *(params->dptr);
-  //assert(params->bytes);
-  //const size_t bytes = *(params->bytes);
+  // assert(params->bytes);
+  // const size_t bytes = *(params->bytes);
   const CUmodule hmod = params->hmod;
-  const char* name = params->name; 
+  const char *name = params->name;
 
-  //cprof::err() << "INFO: cuModuleGetGlobal_v2 for " << name << " @ " << dptr << std::endl;
+  // cprof::err() << "INFO: cuModuleGetGlobal_v2 for " << name << " @ " << dptr
+  // << std::endl;
   cprof::err() << "WARN: ignoring cuModuleGetGlobal_v2" << std::endl;
   return;
 
@@ -692,7 +693,8 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     if (alloc) { // FIXME
       assert(allocations.free(alloc->pos(), alloc->address_space()));
     } else {
-      assert(0 && "Freeing unallocated memory?"); // FIXME - could be async
+      cprof::err() << "ERR: Freeing unallocated memory?"
+                   << std::endl; // FIXME - could be async
     }
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {

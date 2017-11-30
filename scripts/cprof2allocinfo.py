@@ -53,6 +53,12 @@ def api_handler(api):
         xfers[srcLoc].setdefault(dstLoc, [])
         xfers[srcLoc][dstLoc] += [srcAl.size]
 
+    if "nccl" in name:
+        for srcId in api.inputs:
+            pass
+        for dstId in api.inputs:
+            pass
+
     # if name == "cudaLaunch" or "cublas" in name or "cudnn" in name:
     #     dev = api.device
     #     for v_id in api.inputs:

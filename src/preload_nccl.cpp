@@ -116,8 +116,10 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
       api->add_input(sendVal);
       for (const auto &recvVal : recvBuffVals) {
         recvVal->add_depends_on(*sendVal);
-        api->add_output(recvVal);
       }
+    }
+    for (const auto &v : recvBuffVals) {
+      api->add_output(v);
     }
     APIs::record(api);
     sendBuffVals.clear();
