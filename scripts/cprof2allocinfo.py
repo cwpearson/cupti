@@ -23,15 +23,17 @@ def api_handler(api):
     if type(api) != pycprof.API:
         return
 
+    for vId in set(api.inputs + api.outputs):
+        v = Values[vId]
+        a = Allocations[v.allocation_id]
+        if a.loc.type != "host":
+            allocRefs.setdefault(a, [])
+            allocRefs[a] += [api]
+
     name = api.functionName
     if name == "cudaLaunch" or "cublas" in name or "cudnn" in name:
         # print name
-        for vId in set(api.inputs + api.outputs):
-            v = Values[vId]
-            a = Allocations[v.allocation_id]
-            if a.loc.type != "host":
-                allocRefs.setdefault(a, [])
-                allocRefs[a] += [api]
+        pass
 
     if "cudaMemcpy" in name:
         assert len(api.inputs) == 1
@@ -53,11 +55,37 @@ def api_handler(api):
         xfers[srcLoc].setdefault(dstLoc, [])
         xfers[srcLoc][dstLoc] += [srcAl.size]
 
-    if "nccl" in name:
-        for srcId in api.inputs:
-            pass
-        for dstId in api.inputs:
-            pass
+    if "ncclBcast" in name:
+        assert len(api.inputs) == 1
+
+        srcValId = api.inputs[0]
+        srcVal = Values[srcValId]
+        srcAl = Allocations[srcVal.allocation_id]
+        srcLoc = (srcAl.loc.type, srcAl.loc.id_)
+        xfers.setdefault(srcLoc, {})
+
+        for dstValId in api.outputs:
+            dstVal = Values[dstValId]
+            dstAl = Allocations[dstVal.allocation_id]
+            dstLoc = (dstAl.loc.type, dstAl.loc.id_)
+            xfers[srcLoc].setdefault(dstLoc, [])
+            xfers[srcLoc][dstLoc] += [srcAl.size]
+
+    if "ncclAllReduce" in name:
+        assert len(api.inputs) == len(api.outputs)
+
+        for srcValId in api.inputs:
+            srcVal = Values[srcValId]
+            srcAl = Allocations[srcVal.allocation_id]
+            srcLoc = (srcAl.loc.type, srcAl.loc.id_)
+            xfers.setdefault(srcLoc, {})
+
+            for dstValId in api.outputs:
+                dstVal = Values[dstValId]
+                dstAl = Allocations[dstVal.allocation_id]
+                dstLoc = (dstAl.loc.type, dstAl.loc.id_)
+                xfers[srcLoc].setdefault(dstLoc, [])
+                xfers[srcLoc][dstLoc] += [srcAl.size]
 
     # if name == "cudaLaunch" or "cublas" in name or "cudnn" in name:
     #     dev = api.device
@@ -120,7 +148,8 @@ def value_handler(v):
     if type(v) != pycprof.Value:
         return
     if v.id_ in Values:
-        print "duplicate value", v.id_, "overwriting..."
+        # print "duplicate value", v.id_, "overwriting..."
+        pass
     Values[v.id_] = v
 
 
