@@ -9,6 +9,8 @@ Logger &globalLogger() {
 
 std::ostream &out() { return globalLogger().out(); }
 std::ostream &err() { return globalLogger().err(); }
+std::ostream &debug() { return globalLogger().err() << "DEBU: "; }
+
 std::ostream &set_out_path(const std::string &path) {
   return globalLogger().set_out_path(path);
 }

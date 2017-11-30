@@ -10,6 +10,7 @@
 #include <cuda_runtime.h>
 #include <cudnn.h>
 #include <cupti.h>
+#include <nccl.h>
 
 #include "cprof/api_record.hpp"
 #include "cprof/model/cuda/configured_call.hpp"
@@ -62,6 +63,7 @@ private:
   ThreadMap threadStates_;
   std::map<const cublasHandle_t, int> cublasHandleToDevice_;
   std::map<const cudnnHandle_t, int> cudnnHandleToDevice_;
+  std::map<const ncclComm_t, int> ncclCommToDevice_;
   std::mutex access_mutex_;
 
 public:
@@ -73,6 +75,11 @@ public:
     std::lock_guard<std::mutex> guard(access_mutex_);
     cudnnHandleToDevice_[h] = device;
   }
+  void register_ncclComm(const ncclComm_t c, const int device) {
+    std::lock_guard<std::mutex> guard(access_mutex_);
+    ncclCommToDevice_[c] = device;
+  }
+
   int device_from_cublas_handle(const cublasHandle_t h) {
     logging::err() << "DEBU: looking for cublas handle " << h << std::endl;
     return cublasHandleToDevice_.at(h);
@@ -82,6 +89,12 @@ public:
     logging::err() << "DEBU: looking for cudnn handle " << h << std::endl;
     return cudnnHandleToDevice_.at(h);
   }
+
+  int device(const ncclComm_t c) {
+    logging::debug() << "looking for nccl comm " << c << std::endl;
+    return ncclCommToDevice_.at(c);
+  }
+
   mapped_type &this_thread() { return threadStates_[get_thread_id()]; }
 };
 
