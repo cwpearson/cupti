@@ -38,18 +38,62 @@ static void register_ncclBcast(void *buff, int count, ncclDataType_t datatype,
   static std::vector<Value> dstBuffVals;
   const int dev = cprof::driver().device(comm);
   const auto &AS = cprof::hardware().address_space(dev);
+
+  // Only one thread should proceed at a time from here
   std::lock_guard<std::mutex> guard(access);
+
+  // If we're the root device, we know the location of the buffer that
+  // everyone depends on
   if (dev == root) {
     rootBuffVal = Values::instance().find_live(
         uintptr_t(buff), count * ncclSizeOf(datatype), AS);
   }
 
-  // If the root has been found so far
+  // If the root has been found, we have enough info to add some deps
   if (rootBuffVal) {
     for (const auto &dstBuffVal : dstBuffVals) {
       dstBuffVal->add_depends_on(*rootBuffVal);
     }
     dstBuffVals.clear();
+  }
+}
+
+static void register_ncclAllReduce(const uintptr_t sendbuff,
+                                   const uintptr_t recvbuff, int count,
+                                   ncclDataType_t datatype, ncclComm_t comm) {
+  static std::mutex access;
+  static Value rootBuffVal = nullptr;
+  static std::vector<Value> sendBuffVals, recvBuffVals;
+  const int dev = cprof::driver().device(comm);
+  const auto &AS = cprof::hardware().address_space(dev);
+
+  // Only one thread should proceed at a time from here
+  std::lock_guard<std::mutex> guard(access);
+
+  // Look up and add my values
+  const size_t numBytes = ncclSizeOf(datatype) * count;
+  const auto sendBuffVal = Values::instance().find_live(sendbuff, numBytes, AS);
+  sendBuffVals.push_back(sendBuffVal);
+
+  const auto recvBuffVal = Values::instance().find_live(recvbuff, numBytes, AS);
+  recvBuffVals.push_back(recvBuffVal);
+
+  // Once all values have been found, the last thread to enter allreduce can
+  // set up deps
+  assert(sendBuffVals.size() == recvBuffVals.size());
+  int commSize;
+  ncclResult_t res = ncclCommCount(comm, &commSize);
+  if (res != ncclSuccess) {
+    assert(0);
+  }
+  if (commSize == sendBuffVals.size()) {
+    for (const auto &sendVal : sendBuffVals) {
+      for (const auto &recvVal : recvBuffVals) {
+        recvVal->add_depends_on(*sendVal);
+      }
+    }
+    sendBuffVals.clear();
+    recvBuffVals.clear();
   }
 }
 
@@ -112,9 +156,9 @@ extern "C" ncclResult_t ncclBcast(void *buff, int count,
   cprof::err() << "WARN: tid " << cprof::model::get_thread_id()
                << " disabling CUPTI callbacks during ncclBcast" << std::endl;
 
+  cprof::driver().this_thread().pause_cupti_callbacks();
   register_ncclBcast(buff, count, datatype, root, comm);
 
-  cprof::driver().this_thread().pause_cupti_callbacks();
   const ncclResult_t ret =
       real_ncclBcast(buff, count, datatype, root, comm, stream);
   cprof::driver().this_thread().resume_cupti_callbacks();
@@ -136,9 +180,10 @@ extern "C" ncclResult_t ncclAllReduce(const void *sendbuff, void *recvbuff,
                << " disabling CUPTI callbacks during ncclAllReduce"
                << std::endl;
 
-  cprof::err() << "WARN: not doing anything with ncclAllReduce" << std::endl;
-
   cprof::driver().this_thread().pause_cupti_callbacks();
+
+  register_ncclAllReduce(uintptr_t(sendbuff), uintptr_t(recvbuff), count,
+                         datatype, comm);
 
   const ncclResult_t ret =
       real_ncclAllReduce(sendbuff, recvbuff, count, datatype, op, comm, stream);
