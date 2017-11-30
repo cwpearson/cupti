@@ -62,7 +62,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
   if (res != ncclSuccess) {
     assert(0);
   }
-  if (commSize == dstBuffVals.size()) {
+  if (unsigned(commSize) == dstBuffVals.size()) {
 
     auto api =
         std::make_shared<ApiRecord>("ncclBcast", cprof::driver().device(comm));
@@ -82,7 +82,6 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
                                    const uintptr_t recvbuff, int count,
                                    ncclDataType_t datatype, ncclComm_t comm) {
   static std::mutex access;
-  static Value rootBuffVal = nullptr;
   static std::vector<Value> sendBuffVals, recvBuffVals;
   const int dev = cprof::driver().device(comm);
   const auto &AS = cprof::hardware().address_space(dev);
@@ -95,7 +94,9 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
   const auto sendBuffVal = Values::instance().find_live(sendbuff, numBytes, AS);
   sendBuffVals.push_back(sendBuffVal);
 
-  const auto recvBuffVal = Values::instance().find_live(recvbuff, numBytes, AS);
+  const auto &recvBuffAlloc = cprof::allocations().find(recvbuff, numBytes, AS);
+  const auto recvBuffVal =
+      Values::instance().new_value(recvbuff, numBytes, recvBuffAlloc, true);
   recvBuffVals.push_back(recvBuffVal);
 
   // Once all values have been found, the last thread to enter allreduce can
@@ -106,12 +107,19 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
   if (res != ncclSuccess) {
     assert(0);
   }
-  if (commSize == sendBuffVals.size()) {
+  if (unsigned(commSize) == sendBuffVals.size()) {
+
+    auto api = std::make_shared<ApiRecord>("ncclAllReduce",
+                                           cprof::driver().device(comm));
+
     for (const auto &sendVal : sendBuffVals) {
+      api->add_input(sendVal);
       for (const auto &recvVal : recvBuffVals) {
         recvVal->add_depends_on(*sendVal);
+        api->add_output(recvVal);
       }
     }
+    APIs::record(api);
     sendBuffVals.clear();
     recvBuffVals.clear();
   }
