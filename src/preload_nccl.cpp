@@ -31,8 +31,9 @@ static size_t ncclSizeOf(const ncclDataType_t t) noexcept {
   }
 }
 
-static void register_ncclBcast(void *buff, int count, ncclDataType_t datatype,
-                               int root, ncclComm_t comm) {
+static void register_ncclBcast(uintptr_t buff, int count,
+                               ncclDataType_t datatype, int root,
+                               ncclComm_t comm) {
   static std::mutex access;
   static Value rootBuffVal = nullptr;
   static std::vector<Value> dstBuffVals;
@@ -45,8 +46,8 @@ static void register_ncclBcast(void *buff, int count, ncclDataType_t datatype,
   // If we're the root device, we know the location of the buffer that
   // everyone depends on
   if (dev == root) {
-    rootBuffVal = Values::instance().find_live(
-        uintptr_t(buff), count * ncclSizeOf(datatype), AS);
+    rootBuffVal =
+        Values::instance().find_live(buff, count * ncclSizeOf(datatype), AS);
   }
 
   // If the root has been found, we have enough info to add some deps
@@ -157,7 +158,7 @@ extern "C" ncclResult_t ncclBcast(void *buff, int count,
                << " disabling CUPTI callbacks during ncclBcast" << std::endl;
 
   cprof::driver().this_thread().pause_cupti_callbacks();
-  register_ncclBcast(buff, count, datatype, root, comm);
+  register_ncclBcast(uintptr_t(buff), count, datatype, root, comm);
 
   const ncclResult_t ret =
       real_ncclBcast(buff, count, datatype, root, comm, stream);
