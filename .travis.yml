@@ -54,7 +54,7 @@ install:
 - mv -v cuda/include/* $CUDA_ROOT/include/.
 - mv -v cuda/lib64/* $CUDA_ROOT/lib64/.
 - git clone https://github.com/NVIDIA/nccl.git $NCCL_SRC
-- make install -C $NCCL_SRC CUDA_HOME=$CUDA_ROOT
+- make install -C $NCCL_SRC CUDA_HOME=$CUDA_ROOT PREFIX=$CUDA_ROOT
 script:
 - cd $TRAVIS_BUILD_DIR
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
