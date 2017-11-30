@@ -10,7 +10,7 @@ class Logger {
 private:
   std::unique_ptr<std::ostream> err_;
   std::unique_ptr<std::ostream> out_;
-  std::mutex outMutex_;
+  std::mutex outMutex_, errMutex_;
 
 public:
   Logger() : err_(nullptr), out_(nullptr) {}

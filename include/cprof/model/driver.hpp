@@ -81,17 +81,23 @@ public:
   }
 
   int device_from_cublas_handle(const cublasHandle_t h) {
-    logging::err() << "DEBU: looking for cublas handle " << h << std::endl;
+    std::stringstream ss;
+    ss << "DEBU: looking for cublas handle " << h << std::endl;
+    logging::atomic_err(ss.str());
     return cublasHandleToDevice_.at(h);
   }
 
   int device_from_cudnn_handle(const cudnnHandle_t h) {
-    logging::err() << "DEBU: looking for cudnn handle " << h << std::endl;
+    std::stringstream ss;
+    ss << "DEBU: looking for cudnn handle " << h << std::endl;
+    logging::atomic_err(ss.str());
     return cudnnHandleToDevice_.at(h);
   }
 
   int device(const ncclComm_t c) {
-    logging::debug() << "looking for nccl comm " << c << std::endl;
+    std::stringstream ss;
+    ss << "DEBU: looking for nccl comm " << c << std::endl;
+    logging::atomic_err(ss.str());
     return ncclCommToDevice_.at(c);
   }
 

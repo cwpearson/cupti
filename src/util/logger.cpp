@@ -36,6 +36,6 @@ void Logger::atomic_out(const std::string &s) {
 }
 
 void Logger::atomic_err(const std::string &s) {
-  std::lock_guard<std::mutex> guard(outMutex_);
+  std::lock_guard<std::mutex> guard(errMutex_);
   err() << s;
 }

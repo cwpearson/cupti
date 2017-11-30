@@ -13,6 +13,7 @@ std::ostream &info();
 std::ostream &warn();
 std::ostream &error();
 void atomic_out(const std::string &s);
+void atomic_err(const std::string &s);
 } // namespace logging
 
 #endif
