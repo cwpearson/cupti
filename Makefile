@@ -59,7 +59,7 @@ NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
 LIB += -ldl \
        -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
-       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt \
+       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lnccl \
 	   -lnuma -lopentracing -lzipkin -lzipkin_opentracing
 
 
