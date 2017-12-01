@@ -12,7 +12,7 @@
 #include <cupti.h>
 
 #include "cprof/activity_callbacks.hpp"
-#include "cprof/allocation_record.hpp"
+#include "cprof/allocation.hpp"
 #include "cprof/allocations.hpp"
 #include "cprof/apis.hpp"
 #include "cprof/hash.hpp"

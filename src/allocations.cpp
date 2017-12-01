@@ -12,14 +12,19 @@ using cprof::model::Memory;
 
 Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
   assert(pos && "No allocations at null pointer");
+
   std::vector<Allocations::value_type> matches;
   std::lock_guard<std::mutex> guard(access_mutex_);
 
-  for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
-       i != e; ++i) {
-    Allocation a = *i;
-    if (a->contains(pos, size) && !a->freed()) {
-      matches.push_back(*i);
+  for (const auto &kv : addressSpaceAllocations_) {
+    const auto &addressSpace = kv.first;
+    const auto &allocations = kv.second;
+
+    const auto &searchInterval =
+        interval<uintptr_t>::right_open(pos, pos + size);
+    const auto &ai = allocations.find(searchInterval);
+    if (ai != allocations.end()) {
+      matches.push_back(ai->second);
     }
   }
 
@@ -27,44 +32,50 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
     return matches[0];
   } else if (matches.empty()) {
     return nullptr;
-  } else { // FIXME for now, return most recent. Issue 11
-    cprof::err() << "ERR: looking for [" << pos << ", + " << size << ")"
-                 << std::endl;
-    for (const auto &a : matches) {
-      cprof::err() << "ERR: matching " << a->pos() << " , " << a->size()
-                   << std::endl;
-    }
-    return matches[matches.size() - 1];
+  } else { // FIXME for now, return most recent. Issue 11. Should be fused in
+           // allocation creation?
+    assert(0 && "Found allocation in multiple address spaces");
   }
 }
 
 Allocations::value_type Allocations::find(uintptr_t pos, size_t size,
                                           const AddressSpace &as) {
-  std::lock_guard<std::mutex> guard(access_mutex_);
   assert(pos && "No allocations at null pointer");
-  for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
-       i != e; ++i) {
-    Allocation a = *i;
-    if (a->contains(pos, size, as) && !a->freed()) {
-      return *i;
+  std::lock_guard<std::mutex> guard(access_mutex_);
+  const auto &allocationsIter = addressSpaceAllocations_.find(as);
+  if (allocationsIter != addressSpaceAllocations_.end()) {
+    const auto &allocations = allocationsIter->second;
+
+    auto searchInterval = interval<uintptr_t>::right_open(pos, pos + size);
+    const auto &ai = allocations.find(searchInterval);
+    if (ai != allocations.end()) {
+      return ai->second;
+    } else {
+      return nullptr;
     }
+  } else {
+    return nullptr;
   }
-  return nullptr;
 }
 
 Allocations::value_type Allocations::find_exact(uintptr_t pos,
                                                 const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
-  for (reverse_iterator i = allocations_.rbegin(), e = allocations_.rend();
-       i != e; ++i) {
-    const Allocation &A = *i;
-    assert(A);
-    if (A->pos() == pos && A->address_space() == as && !A->freed()) {
-      return *i;
+  const auto &allocationsIter = addressSpaceAllocations_.find(as);
+  if (allocationsIter != addressSpaceAllocations_.end()) {
+    const auto &allocations = allocationsIter->second;
+
+    const auto &ai = allocations.find(pos);
+    if (ai != allocations.end()) {
+      if (ai->second->pos() == pos)
+        return ai->second;
+    } else {
+      return nullptr;
     }
+  } else {
+    return nullptr;
   }
-  return nullptr;
 }
 
 Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
@@ -81,7 +92,8 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
 
   {
     std::lock_guard<std::mutex> guard(access_mutex_);
-    allocations_.push_back(val);
+    const auto &i = interval<uintptr_t>::right_open(pos, pos + size);
+    addressSpaceAllocations_[as].insert(std::make_pair(i, val));
   }
   return val;
 }

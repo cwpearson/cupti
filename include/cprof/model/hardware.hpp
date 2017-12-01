@@ -20,9 +20,6 @@ class Hardware {
 public:
   const cuda::Device &cuda_device(size_t i) { return cudaDevices_[i]; }
   void get_device_properties();
-  // int unified_addressing(const int dev) { // FIXME: should this be private
-  //   return cudaDevices_[dev].unifiedAddressing_;
-  // }
 
   /*! \brief Address space a device participates in
    */

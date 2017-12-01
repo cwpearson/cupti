@@ -23,7 +23,7 @@ env:
   - ZIPKIN_ROOT=$HOME/zipkin
   - ZIPKIN_INCLUDE=$ZIPKIN_ROOT/include
   - NCCL_SRC=$HOME/nccl
-  - NCCL_PREFIX=$TMP/nccl
+  - NCCL_PREFIX=$HOME/nccl
   
 matrix:
   include:

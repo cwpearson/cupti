@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-#include "allocation_record.hpp"
+#include "allocation.hpp"
 #include "util/extent.hpp"
 
 class ValueRecord : public Extent {

@@ -9,8 +9,13 @@
 #include <mutex>
 #include <vector>
 
+#include <boost/icl/interval_map.hpp>
+
+using boost::icl::interval;
+using boost::icl::interval_map;
+
 #include "address_space.hpp"
-#include "allocation_record.hpp"
+#include "allocation.hpp"
 #include "cprof/model/location.hpp"
 #include "util/extent.hpp"
 #include "util/logging.hpp"
@@ -18,10 +23,10 @@
 class Allocations {
 
 public:
-  typedef std::shared_ptr<AllocationRecord> value_type;
+  typedef Allocation value_type;
 
 private:
-  typedef std::vector<value_type> container_type;
+  typedef interval_map<uintptr_t, Allocation> container_type;
 
 public:
   typedef container_type::iterator iterator;
@@ -29,13 +34,12 @@ public:
   typedef container_type::const_iterator const_iterator;
 
 private:
-  container_type allocations_;
+  std::map<AddressSpace, container_type> addressSpaceAllocations_;
   std::mutex access_mutex_;
 
-public:
-  // simple implementations
-  iterator end() { return allocations_.end(); }
+  static void deduplicate(const Allocation &alloc);
 
+public:
   /*! \brief Lookup allocation that contains pos, size.
    */
   value_type find(uintptr_t pos, size_t size);
