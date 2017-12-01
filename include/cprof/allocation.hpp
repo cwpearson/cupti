@@ -30,7 +30,6 @@ private:
   cprof::model::Memory memory_;
   cprof::model::tid_t thread_id_;
   cprof::model::Location location_;
-
   id_type id_;
   bool freed_;
 
@@ -70,16 +69,24 @@ public:
     logging::err() << "adding " << pos_ << " +" << size_ << " to " << rhs.pos_
                    << " +" << rhs.size_ << "\n";
 
-    // Merge the allocations
-    auto overlapStart = std::min(pos_, rhs.pos_);
-    auto overlapEnd = std::max(pos_ + size_, rhs.pos_ + rhs.size_);
+    if (freed_) {
+      *this = rhs;
 
-    pos_ = overlapStart;
-    size_ = overlapEnd - overlapStart;
+    } else {
 
+      // Merge the allocations
+      auto overlapStart = std::min(pos_, rhs.pos_);
+      auto overlapEnd = std::max(pos_ + size_, rhs.pos_ + rhs.size_);
+
+      pos_ = overlapStart;
+      size_ = overlapEnd - overlapStart;
+    }
     return *this;
   }
   bool operator==(const Allocation &rhs) const noexcept {
+    if (pos_ == 0 && rhs.pos_ == 0) {
+      return true;
+    }
     return pos_ == rhs.pos_ && size_ == rhs.size_ &&
            address_space_ == rhs.address_space_;
   }
