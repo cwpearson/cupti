@@ -339,7 +339,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
     rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float), AS,
                                         cprof::model::Memory::Unknown,
                                         Location::Unknown());
-    cprof::err() << "WARN: new allocId=" << uintptr_t(rAlloc.get())
+    cprof::err() << "WARN: new allocId=" << uintptr_t(rAlloc.id())
                  << " for result=" << uintptr_t(result) << std::endl;
   }
   assert(rAlloc && "If there is no allocation, we need to make one");
@@ -439,7 +439,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
                                         Memory::Unknown, Location::Unknown());
     assert(rAlloc);
   }
-  cprof::err() << "result allocId=" << uintptr_t(rAlloc.get()) << std::endl;
+  cprof::err() << "result allocId=" << uintptr_t(rAlloc.id()) << std::endl;
   // Make a new value
   auto rVal = values.new_value((uintptr_t)result, sizeof(float), rAlloc,
                                true /*initialized*/);

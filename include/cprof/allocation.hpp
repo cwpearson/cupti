@@ -8,102 +8,94 @@
 #include <map>
 #include <memory>
 
+#include <boost/icl/interval_set.hpp>
+
 #include "address_space.hpp"
 #include "cprof/model/location.hpp"
 #include "cprof/model/memory.hpp"
 #include "cprof/model/thread.hpp"
-#include "util/extent.hpp"
 
-class AllocationRecord : public Extent {
-  friend class Allocation;
+using namespace boost::icl;
+
+class Allocation {
 
 public:
-  typedef uintptr_t id_type;
-  static const id_type noid;
+  typedef uint64_t id_type;
 
 private:
+  uintptr_t pos_;
+  size_t size_;
   AddressSpace address_space_;
   cprof::model::Memory memory_;
   cprof::model::tid_t thread_id_;
   cprof::model::Location location_;
+
+  id_type id_;
   bool freed_;
 
+  static id_type unique_id() {
+    static id_type count = 0;
+    return count++;
+  }
+
 public:
-  AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
-                   const cprof::model::Memory &mem,
-                   const cprof::model::Location &location);
+  Allocation(const uintptr_t pos, const size_t size)
+      : pos_(pos), size_(size), address_space_(AddressSpace::Host()),
+        location_(cprof::model::Location::Host()) {}
+  Allocation(uintptr_t pos, size_t size, const AddressSpace &as,
+             const cprof::model::Memory &mem,
+             const cprof::model::Location &location)
+      : pos_(pos), size_(size), address_space_(as), memory_(mem),
+        location_(location), id_(unique_id()), freed_(false) {
+    assert(address_space_.is_valid());
+  }
+  Allocation() : Allocation(0, 0) {}
 
   std::string json() const;
 
-  bool overlaps(const AllocationRecord &other) {
-    return (address_space_.maybe_equal(other.address_space_)) &&
-           Extent::overlaps(other);
-  }
-
-  bool contains(uintptr_t pos, size_t size, const AddressSpace &as) {
-    return address_space_ == as && Extent::contains(Extent(pos, size));
-  }
-
-  bool contains(uintptr_t pos, size_t size) {
-    return Extent::contains(Extent(pos, size));
-  }
-
-  bool contains(const AllocationRecord &other) {
-    return (address_space_.maybe_equal(other.address_space_)) &&
-           Extent::contains(other);
-  }
-
-  id_type Id() const { return reinterpret_cast<id_type>(this); }
+  id_type id() const { return id_; }
   AddressSpace address_space() const { return address_space_; }
   cprof::model::Memory memory() const { return memory_; }
 
   void mark_free() { freed_ = true; }
   bool freed() const { return freed_; }
+
+  uintptr_t pos() const noexcept { return pos_; }
+  size_t size() const noexcept { return size_; }
+
+  explicit operator bool() const noexcept { return pos_; }
 };
 
-class Allocation {
-private:
-  typedef AllocationRecord element_type;
+namespace boost {
+namespace icl {
 
-public:
-  Allocation(element_type *p) : p_(std::shared_ptr<element_type>(p)) {}
-  Allocation() : Allocation(nullptr) {}
+template <> struct interval_traits<Allocation> {
 
-private:
-  std::shared_ptr<element_type> p_;
-
-public:
-  /*! \brief Fuse allocations when they overlap
-   */
-  Allocation &operator+=(Allocation &rhs) {
-    // update us to also cover rhs
-    const auto myStart = p_->pos();
-    const auto myEnd = p_->pos() + p_->size();
-    const auto rhsStart = rhs->pos();
-    const auto rhsEnd = rhsStart + rhs->size();
-    assert((myStart >= rhsStart && myStart < rhsEnd) ||
-           (myEnd > rhsStart && myEnd <= rhsEnd)); // should overlap
-    assert(p_->address_space() == rhs->address_space());
-
-    const uintptr_t overlapStart = std::min(myStart, rhsStart);
-    const uintptr_t overlapEnd = std::max(myEnd, rhsEnd);
-    const size_t overlapSize = overlapEnd - overlapStart;
-    p_->pos_ = overlapStart;
-    p_->size_ = overlapSize;
-
-    // point rhs at this so there are duplicates that we can clean up later
-    rhs = *this;
-
-    return *this;
+  typedef Allocation interval_type;
+  typedef uintptr_t domain_type;
+  typedef std::less<uintptr_t> domain_compare;
+  static interval_type construct(const domain_type &lo, const domain_type &up) {
+    return interval_type(lo, up - lo);
   }
-
-  AllocationRecord &operator*() const noexcept { return p_.operator*(); }
-  AllocationRecord *operator->() const noexcept { return p_.operator->(); }
-  /*! \brief Needed for icl
-   */
-  bool operator==(const Allocation &rhs) const noexcept { return p_ == rhs.p_; }
-  explicit operator bool() const noexcept { return bool(p_); }
-  AllocationRecord *get() const noexcept { return p_.get(); }
+  // 3.2 Selection of values
+  static domain_type lower(const interval_type &inter_val) {
+    return inter_val.pos();
+  };
+  static domain_type upper(const interval_type &inter_val) {
+    return inter_val.pos() + inter_val.size();
+  };
 };
+
+template <>
+struct interval_bound_type<Allocation> // 4.  Finally we define the interval
+                                       // borders.
+{ //    Choose between static_open         (lo..up)
+  typedef interval_bound_type
+      type; //                   static_left_open    (lo..up]
+  BOOST_STATIC_CONSTANT(bound_type, value = interval_bounds::static_right_open);
+}; //               and static_closed       [lo..up]
+
+} // namespace icl
+} // namespace boost
 
 #endif

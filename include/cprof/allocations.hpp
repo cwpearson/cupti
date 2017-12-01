@@ -9,10 +9,8 @@
 #include <mutex>
 #include <vector>
 
-#include <boost/icl/interval_map.hpp>
-
-using boost::icl::interval;
-using boost::icl::interval_map;
+#include <boost/icl/interval_set.hpp>
+#include <boost/icl/separate_interval_set.hpp>
 
 #include "address_space.hpp"
 #include "allocation.hpp"
@@ -23,18 +21,14 @@ using boost::icl::interval_map;
 class Allocations {
 
 public:
+private:
+  typedef uintptr_t pos_type;
   typedef Allocation value_type;
+  typedef boost::icl::separate_interval_set<pos_type, std::less, Allocation>
+      icl_type;
 
 private:
-  typedef interval_map<uintptr_t, Allocation> container_type;
-
-public:
-  typedef container_type::iterator iterator;
-  typedef container_type::reverse_iterator reverse_iterator;
-  typedef container_type::const_iterator const_iterator;
-
-private:
-  std::map<AddressSpace, container_type> addressSpaceAllocations_;
+  std::map<AddressSpace, icl_type> addrSpaceAllocs_;
   std::mutex access_mutex_;
 
   static void deduplicate(const Allocation &alloc);
