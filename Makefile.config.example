@@ -1,3 +1,5 @@
+CPROF_ROOT=.
+
 BOOST_ROOT=$(HOME)/software/boost_1_65_1
 
 ZIPKIN_OPENTRACING_INCLUDE ?= $(HOME)/lib/include
