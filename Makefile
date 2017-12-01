@@ -14,15 +14,14 @@ DEPSDIR = $(BUILDDIR)
 GTEST_DIR = $(CPROF_ROOT)/external/googletest
 TEST_DIR = $(CPROF_ROOT)/tests
 
+# How to build gtest
 include $(GTEST_DIR)/Makefile
-TARGETS += $(GTEST_TARGETS)
 
+# how to build tests
 include $(TEST_DIR)/Makefile
 
 # Targets to build
 TARGETS += $(LIBDIR)/libcprof.so
-
-TESTS = tests/test1
 
 # Source and object files
 CPP_SRCS := $(shell find src -name "*.cpp")
