@@ -1,6 +1,8 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <cassert>
+
 #include "cprof/allocations.hpp"
 #include "cprof/profiler.hpp"
 
@@ -20,9 +22,10 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
     const auto &as = kv.first;
     const auto &allocs = kv.second;
 
-    const auto &ai = allocs.find(Allocation(pos, size));
+    const auto &si = interval<uintptr_t>::right_open(pos, pos + size);
+    const auto &ai = allocs.find(si);
     if (ai != allocs.end()) {
-      matches.push_back(*ai);
+      matches.push_back(ai->second);
     }
   }
 
@@ -44,9 +47,10 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size,
   if (allocationsIter != addrSpaceAllocs_.end()) {
     const auto &allocations = allocationsIter->second;
 
-    const auto &ai = allocations.find(Allocation(pos, size));
+    const auto &si = interval<uintptr_t>::right_open(pos, pos + size);
+    const auto &ai = allocations.find(si);
     if (ai != allocations.end()) {
-      return *ai;
+      return ai->second;
     } else {
       return Allocation();
     }
@@ -65,8 +69,11 @@ Allocations::value_type Allocations::find_exact(uintptr_t pos,
 
     const auto &ai = allocations.find(pos);
     if (ai != allocations.end()) {
-      if (ai->pos() == pos)
-        return *ai;
+      if (ai->second.pos() == pos) {
+        return ai->second;
+      } else {
+        return Allocation();
+      }
     } else {
       return Allocation();
     }
@@ -89,7 +96,9 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
 
   {
     std::lock_guard<std::mutex> guard(access_mutex_);
-    addrSpaceAllocs_[as].insert(val);
+    auto &allocs = addrSpaceAllocs_[as];
+    const auto &i = interval<uintptr_t>::right_open(pos, pos + size);
+    allocs += std::make_pair(i, val);
   }
   return val;
 }

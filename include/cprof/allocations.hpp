@@ -9,8 +9,7 @@
 #include <mutex>
 #include <vector>
 
-#include <boost/icl/interval_set.hpp>
-#include <boost/icl/separate_interval_set.hpp>
+#include <boost/icl/interval_map.hpp>
 
 #include "address_space.hpp"
 #include "allocation.hpp"
@@ -24,14 +23,11 @@ public:
 private:
   typedef uintptr_t pos_type;
   typedef Allocation value_type;
-  typedef boost::icl::separate_interval_set<pos_type, std::less, Allocation>
-      icl_type;
+  typedef boost::icl::interval_map<pos_type, Allocation> icl_type;
 
 private:
   std::map<AddressSpace, icl_type> addrSpaceAllocs_;
   std::mutex access_mutex_;
-
-  static void deduplicate(const Allocation &alloc);
 
 public:
   /*! \brief Lookup allocation that contains pos, size.

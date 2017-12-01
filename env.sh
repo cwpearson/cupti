@@ -36,7 +36,7 @@ export CPROF_ZIPKIN_PORT=16686
 #   ./env.sh examples/samples/vectorAdd/vec
 
 if [ -z "${LD_PRELOAD+xxx}" ]; then 
-  LD_PRELOAD="$CPROF_ROOT/lib/libcprof.so" $@; # unset
+  LD_PRELOAD="$CPROF_ROOT/lib/libcprof.so" gdb $@; # unset
 else
   echo "Error: LD_PRELOAD is set"
 fi

@@ -14,6 +14,7 @@
 #include "cprof/model/location.hpp"
 #include "cprof/model/memory.hpp"
 #include "cprof/model/thread.hpp"
+#include "util/logging.hpp"
 
 using namespace boost::icl;
 
@@ -64,8 +65,27 @@ public:
   size_t size() const noexcept { return size_; }
 
   explicit operator bool() const noexcept { return pos_; }
+
+  Allocation &operator+=(const Allocation &rhs) {
+    logging::err() << "adding " << pos_ << " +" << size_ << " to " << rhs.pos_
+                   << " +" << rhs.size_ << "\n";
+
+    // Merge the allocations
+    auto overlapStart = std::min(pos_, rhs.pos_);
+    auto overlapEnd = std::max(pos_ + size_, rhs.pos_ + rhs.size_);
+
+    pos_ = overlapStart;
+    size_ = overlapEnd - overlapStart;
+
+    return *this;
+  }
+  bool operator==(const Allocation &rhs) const noexcept {
+    return pos_ == rhs.pos_ && size_ == rhs.size_ &&
+           address_space_ == rhs.address_space_;
+  }
 };
 
+/*
 namespace boost {
 namespace icl {
 
@@ -75,6 +95,7 @@ template <> struct interval_traits<Allocation> {
   typedef uintptr_t domain_type;
   typedef std::less<uintptr_t> domain_compare;
   static interval_type construct(const domain_type &lo, const domain_type &up) {
+    logging::err() << "construct called\n";
     return interval_type(lo, up - lo);
   }
   // 3.2 Selection of values
@@ -97,5 +118,5 @@ struct interval_bound_type<Allocation> // 4.  Finally we define the interval
 
 } // namespace icl
 } // namespace boost
-
+*/
 #endif

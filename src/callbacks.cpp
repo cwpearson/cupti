@@ -461,10 +461,14 @@ void record_mallochost(Allocations &allocations, Values &values,
   const int devId = cprof::driver().this_thread().current_device();
   auto AS = cprof::hardware().address_space(devId);
 
-  Allocation alloc = allocations.find(ptr, size, AS);
-  if (!alloc) {
-    alloc = allocations.new_allocation(ptr, size, AS, AM, Location::Host());
-  }
+  // Allocation alloc = allocations.find(ptr, size, AS);
+
+  // if (!alloc) {
+  Allocation alloc =
+      allocations.new_allocation(ptr, size, AS, AM, Location::Host());
+  cprof::err() << "INFO: made new mallochost @ " << ptr << std::endl;
+  // }
+  assert(alloc);
 
   values.new_value(ptr, size, alloc, false /*initialized*/);
 }
