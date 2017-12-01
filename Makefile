@@ -11,18 +11,28 @@ SRCDIR = src
 BUILDDIR = build
 DEPSDIR = $(BUILDDIR)
 
+GTEST_DIR = $(CPROF_ROOT)/external/googletest
+TEST_DIR = $(CPROF_ROOT)/tests
+
+include $(GTEST_DIR)/Makefile
+TARGETS += $(GTEST_TARGETS)
+
+include $(TEST_DIR)/Makefile
+
 # Targets to build
-TARGETS = $(LIBDIR)/libcprof.so
+TARGETS += $(LIBDIR)/libcprof.so
+
+TESTS = tests/test1
 
 # Source and object files
 CPP_SRCS := $(shell find src -name "*.cpp")
-# CPP_SRCS := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/**/*.cpp) 
 CPP_OBJECTS = $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(CPP_SRCS))
 CPP_DEPS=$(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$(CPP_OBJECTS))
 DEPS = $(CPP_DEPS)
 
 INC += -Iinclude -isystem$(ZIPKIN_OPENTRACING_INCLUDE)
 LIB += -L$(LIBDIR) -L$(OPENTRACING_LIB) -L$(ZIPKIN_OPENTRACING_LIB)
+
 
 # Use BOOST_ROOT if set
 ifdef BOOST_ROOT
@@ -79,11 +89,13 @@ else
   $(error BUILD_TYPE must be Release or Debug)
 endif
 
+# Since this is not the first target, use .DEFAULT_GOAL
+.DEFAULT_GOAL := all
 all: $(TARGETS)
 
 .PHONY: clean
 clean:
-	rm -rf $(BUILDDIR)/* $(LIBDIR)/*
+	rm -rf $(BUILDDIR)/* $(LIBDIR)/* $(CLEAN_TARGETS)
 
 .PHONY: distclean
 disclean: clean
@@ -95,6 +107,8 @@ disclean: clean
 .PHONY: cppcheck
 cppcheck:
 	cppcheck --enable=all src $(INC)
+
+
 
 $(LIBDIR)/libcprof.so: $(CPP_OBJECTS)
 	mkdir -p $(LIBDIR)
@@ -120,6 +134,9 @@ docker_docs:
 
 docker_build: Dockerfile
 	@docker build . -t cwpearson/cprof
+
+
+tests: $(TEST_TARGETS)
 
 -include $(DEPS)
 
