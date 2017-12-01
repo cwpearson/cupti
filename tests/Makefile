@@ -1,7 +1,7 @@
 TEST_TARGETS += $(TEST_DIR)/test1
 
 TEST_INC_ += -isystem$(GTEST_DIR)/include -Iinclude
-TEST_LIB_ += $(GTEST_DIR)/lib/gtest.a -L$(LIBDIR) -lcprof
+TEST_LIB_ += $(GTEST_DIR)/lib/gtest.a -L$(LIBDIR) -lcprof $(LIB)
 
 $(TEST_DIR)/%.o: $(TEST_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(TEST_INC_) $< -c -o $@

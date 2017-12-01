@@ -17,8 +17,7 @@ TEST_DIR = $(CPROF_ROOT)/tests
 # How to build gtest
 include $(GTEST_DIR)/Makefile
 
-# how to build tests
-include $(TEST_DIR)/Makefile
+
 
 # Targets to build
 TARGETS += $(LIBDIR)/libcprof.so
@@ -134,8 +133,8 @@ docker_docs:
 docker_build: Dockerfile
 	@docker build . -t cwpearson/cprof
 
-
-tests: $(TEST_TARGETS)
+# how to build tests
+include $(TEST_DIR)/Makefile
 
 -include $(DEPS)
 
