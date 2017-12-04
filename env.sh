@@ -30,7 +30,7 @@ export CPROF_OUT="output.cprof"
 # endpoint for tracing
 export CPROF_ENABLE_ZIPKIN=0
 export CPROF_ZIPKIN_HOST=34.215.126.137
-export CPROF_ZIPKIN_PORT=16686
+export CPROF_ZIPKIN_PORT=9411
 
 ## Run the provided program. For example
 #   ./env.sh examples/samples/vectorAdd/vec
