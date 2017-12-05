@@ -9,6 +9,8 @@ using boost::property_tree::write_json;
 using cprof::model::Location;
 using cprof::model::Memory;
 
+namespace cprof {
+
 Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
   assert(pos && "No allocations at null pointer");
   std::vector<Allocations::value_type> matches;
@@ -97,4 +99,6 @@ size_t Allocations::free(uintptr_t pos, const AddressSpace &as) {
   }
   assert(0 && "Expecting to erase an allocation.");
   return 0;
+}
+
 }

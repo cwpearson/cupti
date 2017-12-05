@@ -8,7 +8,7 @@ SRCDIR = src
 
 # Where to do intermediate stuff
 BUILDDIR = build
-DEPSDIR = $(BUILDDIR)
+DEPSDIR = deps
 
 # Targets to build
 TARGETS = $(LIBDIR)/libcprof.so
@@ -63,7 +63,7 @@ all: $(TARGETS)
 
 .PHONY: clean
 clean:
-	rm -rf $(BUILDDIR)/* $(LIBDIR)/*
+	rm -rf $(BUILDDIR)/* $(LIBDIR)/* $(DEPSDIR)/*
 
 .PHONY: distclean
 distclean: clean
@@ -80,8 +80,9 @@ $(LIBDIR)/libcprof.so: $(CPP_OBJECTS)
 	$(CXX) $(CXXFLAGS) -shared -Wl,--no-undefined $^ -o $@ $(LIB)
 
 $(BUILDDIR)/%.o : $(SRCDIR)/%.cpp
+	mkdir -p `dirname $(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$@)`
 	mkdir -p `dirname $@`
-	$(CXX) -MMD -MP $(CXXFLAGS) $(INC) $< -c -o $@
+	$(CXX) -MMD -MP -MF $(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$@) $(CXXFLAGS) $(INC) $< -c -o $@
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cu
 	mkdir -p `dirname $@`

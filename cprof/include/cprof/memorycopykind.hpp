@@ -4,8 +4,6 @@
 #include <cassert>
 #include <cuda_runtime.h>
 
-#include "cprof/profiler.hpp"
-
 class MemoryCopyKind {
 private:
   enum class Type {
@@ -32,7 +30,7 @@ public:
     } else if (cudaMemcpyDefault == kind) {
       type_ = Type::CudaDefault;
     } else {
-      cprof::err() << "Unhandled cudaMemcpyKind " << kind << std::endl;
+      logging::err() << "Unhandled cudaMemcpyKind " << kind << std::endl;
       assert(0 && "Unsupported cudaMemcpy kind");
     }
   }

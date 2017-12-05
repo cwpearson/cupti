@@ -15,6 +15,7 @@
 #include "util/extent.hpp"
 #include "util/logging.hpp"
 
+namespace cprof {
 class Allocations {
 
 public:
@@ -62,4 +63,5 @@ public:
   ~Allocations() { logging::err() << "DEBU: Allocations dtor\n"; }
 };
 
+} // namespace cprof
 #endif
