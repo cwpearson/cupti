@@ -11,12 +11,7 @@
 #include <cuda_runtime_api.h>
 #include <cupti.h>
 
-<<<<<<< HEAD:profiler/src/cupti_callbacks.cpp
-#include "cprof/allocation_record.hpp"
-=======
-#include "cprof/activity_callbacks.hpp"
 #include "cprof/allocation.hpp"
->>>>>>> feature/googletest:src/callbacks.cpp
 #include "cprof/allocations.hpp"
 #include "cprof/hash.hpp"
 #include "cprof/memorycopykind.hpp"
@@ -483,7 +478,7 @@ void record_mallochost(Allocations &allocations, Values &values,
   // if (!alloc) {
   Allocation alloc =
       allocations.new_allocation(ptr, size, AS, AM, Location::Host());
-  cprof::err() << "INFO: made new mallochost @ " << ptr << std::endl;
+  profiler::err() << "INFO: made new mallochost @ " << ptr << std::endl;
   // }
   assert(alloc);
 
@@ -680,13 +675,8 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
 
     Allocation a = allocations.new_allocation(devPtr, size, AS, AM,
                                               Location::CudaDevice(devId));
-<<<<<<< HEAD:profiler/src/cupti_callbacks.cpp
-    profiler::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.get()
-                    << " pos=" << a->pos() << std::endl;
-=======
-    cprof::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.id()
-                 << " pos=" << a.pos() << std::endl;
->>>>>>> feature/googletest:src/callbacks.cpp
+    profiler::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.id()
+                    << " pos=" << a.pos() << std::endl;
 
     values.new_value(devPtr, size, a, false /*initialized*/);
     // auto digest = hash_device(devPtr, size);
