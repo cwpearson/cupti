@@ -59,7 +59,7 @@ install:
 - mv -v $NCCL_PREFIX/include/* $CUDA_ROOT/include/.
 - mv -v $NCCL_PREFIX/lib/* $CUDA_ROOT/lib64/.
 script:
-- cd $TRAVIS_BUILD_DIR
+- cd $TRAVIS_BUILD_DIR/cprof
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
 - echo OPENTRACING_INCLUDE = $OPENTRACING_INCLUDE >> Makefile.config
 - echo OPENTRACING_LIB = $OPENTRACING_ROOT/lib >> Makefile.config
