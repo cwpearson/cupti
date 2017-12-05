@@ -2,7 +2,6 @@
 #include <fstream>
 #include <map>
 
-#include "cprof/profiler.hpp"
 #include "cprof/values.hpp"
 
 namespace cprof {
@@ -10,8 +9,8 @@ namespace cprof {
 // FIXME: address space
 Value Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
   std::lock_guard<std::mutex> guard(access_mutex_);
-  cprof::err() << "INFO: Looking for value @ [" << pos << ", +" << size << ")"
-               << std::endl;
+  logging::err() << "INFO: Looking for value @ [" << pos << ", +" << size << ")"
+                 << std::endl;
 
   auto i = interval<uintptr_t>::right_open(pos, pos + size);
   auto found = values_.find(i);

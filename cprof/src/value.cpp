@@ -5,7 +5,6 @@
 #include <sstream>
 
 #include "cprof/allocations.hpp"
-#include "cprof/profiler.hpp"
 #include "cprof/value.hpp"
 
 using boost::property_tree::ptree;

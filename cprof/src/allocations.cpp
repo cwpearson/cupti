@@ -2,7 +2,6 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "cprof/allocations.hpp"
-#include "cprof/profiler.hpp"
 
 using boost::property_tree::ptree;
 using boost::property_tree::read_json;
@@ -28,11 +27,11 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
   } else if (matches.empty()) {
     return nullptr;
   } else { // FIXME for now, return most recent. Issue 11
-    cprof::err() << "ERR: looking for [" << pos << ", + " << size << ")"
-                 << std::endl;
-    for (const auto &a : matches) {
-      cprof::err() << "ERR: matching " << a->pos() << " , " << a->size()
+    logging::err() << "ERR: looking for [" << pos << ", + " << size << ")"
                    << std::endl;
+    for (const auto &a : matches) {
+      logging::err() << "ERR: matching " << a->pos() << " , " << a->size()
+                     << std::endl;
     }
     return matches[matches.size() - 1];
   }
@@ -74,7 +73,7 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
   auto val = value_type(new AllocationRecord(pos, size, as, am, al));
 
   if (val->size() == 0) {
-    cprof::err() << "WARN: creating size 0 allocation" << std::endl;
+    logging::err() << "WARN: creating size 0 allocation" << std::endl;
   }
 
   logging::atomic_out(val->json());
@@ -89,8 +88,8 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
 size_t Allocations::free(uintptr_t pos, const AddressSpace &as) {
   auto i = find_exact(pos, as);
   if (i->freed()) {
-    cprof::err() << "WARN: allocation " << i->pos() << " double-free?"
-                 << std::endl;
+    logging::err() << "WARN: allocation " << i->pos() << " double-free?"
+                   << std::endl;
   }
   if (i) {
     i->mark_free();
