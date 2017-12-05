@@ -10,6 +10,10 @@ SRCDIR = src
 BUILDDIR = build
 DEPSDIR = deps
 
+# How to build tests
+TEST_DIR = $(CPROF_ROOT)/tests
+include $(TEST_DIR)/Makefile
+
 # Targets to build
 TARGETS = $(LIBDIR)/libcprof.so
 
@@ -59,11 +63,14 @@ else
   $(error BUILD_TYPE must be Release or Debug)
 endif
 
+
+# Since this is not the first target, use .DEFAULT_GOAL
+.DEFAULT_GOAL := all
 all: $(TARGETS)
 
 .PHONY: clean
 clean:
-	rm -rf $(BUILDDIR)/* $(LIBDIR)/* $(DEPSDIR)/*
+	rm -rf $(BUILDDIR)/* $(LIBDIR)/* $(DEPSDIR)/* $(CLEAN_TARGETS)
 
 .PHONY: distclean
 distclean: clean

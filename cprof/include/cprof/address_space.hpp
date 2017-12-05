@@ -21,6 +21,7 @@ private:
   int device_; ///< which device the address space is associated with
 
 public:
+  // FIXME device
   bool operator==(const AddressSpace &rhs) const { return type_ == rhs.type_; }
   bool operator<(const AddressSpace &rhs) const { return type_ < rhs.type_; }
 

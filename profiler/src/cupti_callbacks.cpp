@@ -11,7 +11,12 @@
 #include <cuda_runtime_api.h>
 #include <cupti.h>
 
+<<<<<<< HEAD:profiler/src/cupti_callbacks.cpp
 #include "cprof/allocation_record.hpp"
+=======
+#include "cprof/activity_callbacks.hpp"
+#include "cprof/allocation.hpp"
+>>>>>>> feature/googletest:src/callbacks.cpp
 #include "cprof/allocations.hpp"
 #include "cprof/hash.hpp"
 #include "cprof/memorycopykind.hpp"
@@ -187,7 +192,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
                    const size_t srcCount, const size_t dstCount,
                    const int peerSrc, const int peerDst) {
 
-  Allocation srcAlloc(nullptr), dstAlloc(nullptr);
+  Allocation srcAlloc, dstAlloc;
 
   const int devId = profiler::driver().this_thread().current_device();
 
@@ -242,7 +247,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   assert(dstAlloc && "Couldn't find or create dst allocation");
   // There may not be a source value, because it may have been initialized
   // on the host
-  auto srcVal = values.find_live(src, srcCount, srcAlloc->address_space());
+  auto srcVal = values.find_live(src, srcCount, srcAlloc.address_space());
   if (srcVal) {
     profiler::err() << "memcpy: found src value srcId=" << srcVal << std::endl;
     profiler::err() << "WARN: Setting srcVal size by memcpy count" << std::endl;
@@ -473,10 +478,14 @@ void record_mallochost(Allocations &allocations, Values &values,
   const int devId = profiler::driver().this_thread().current_device();
   auto AS = profiler::hardware().address_space(devId);
 
-  Allocation alloc = allocations.find(ptr, size, AS);
-  if (!alloc) {
-    alloc = allocations.new_allocation(ptr, size, AS, AM, Location::Host());
-  }
+  // Allocation alloc = allocations.find(ptr, size, AS);
+
+  // if (!alloc) {
+  Allocation alloc =
+      allocations.new_allocation(ptr, size, AS, AM, Location::Host());
+  cprof::err() << "INFO: made new mallochost @ " << ptr << std::endl;
+  // }
+  assert(alloc);
 
   values.new_value(ptr, size, alloc, false /*initialized*/);
 }
@@ -640,7 +649,7 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
 
     auto alloc = allocations.find_exact(ptr, AS);
     if (alloc) {
-      assert(allocations.free(alloc->pos(), alloc->address_space()) &&
+      assert(allocations.free(alloc.pos(), alloc.address_space()) &&
              "memory not freed");
     } else {
       assert(0 && "Freeing unallocated memory?");
@@ -671,8 +680,13 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
 
     Allocation a = allocations.new_allocation(devPtr, size, AS, AM,
                                               Location::CudaDevice(devId));
+<<<<<<< HEAD:profiler/src/cupti_callbacks.cpp
     profiler::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.get()
                     << " pos=" << a->pos() << std::endl;
+=======
+    cprof::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.id()
+                 << " pos=" << a.pos() << std::endl;
+>>>>>>> feature/googletest:src/callbacks.cpp
 
     values.new_value(devPtr, size, a, false /*initialized*/);
     // auto digest = hash_device(devPtr, size);
@@ -706,7 +720,7 @@ static void handleCudaFree(Allocations &allocations, Values &values,
     profiler::err() << "Looking for " << devPtr << std::endl;
     auto alloc = allocations.find_exact(devPtr, AS);
     if (alloc) { // FIXME
-      assert(allocations.free(alloc->pos(), alloc->address_space()));
+      assert(allocations.free(alloc.pos(), alloc.address_space()));
     } else {
       profiler::err() << "ERR: Freeing unallocated memory?"
                       << std::endl; // FIXME - could be async

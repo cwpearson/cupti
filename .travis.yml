@@ -24,7 +24,7 @@ env:
   - ZIPKIN_ROOT=$HOME/zipkin
   - ZIPKIN_INCLUDE=$ZIPKIN_ROOT/include
   - NCCL_SRC=$HOME/nccl
-  - NCCL_PREFIX=$TMP/nccl
+  - NCCL_PREFIX=$HOME/nccl
   
 matrix:
   include:
@@ -67,6 +67,7 @@ script:
 - echo ZIPKIN_OPENTRACING_INCLUDE = $ZIPKIN_INCLUDE >> Makefile.config
 - echo ZIPKIN_OPENTRACING_LIB = $ZIPKIN_ROOT/lib >> Makefile.config
 - make
+- make tests
 - make docker_docs
 after_success:
 - export DEPLOY=dist/amd64

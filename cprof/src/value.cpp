@@ -28,7 +28,7 @@ std::string ValueRecord::json() const {
   pt.put("val.id", uintptr_t(this));
   pt.put("val.pos", pos_);
   pt.put("val.size", size_);
-  pt.put("val.allocation_", std::to_string(uintptr_t(allocation_.get())));
+  pt.put("val.allocation_", std::to_string(allocation_.id()));
   pt.put("val.initialized", initialized_);
   std::stringstream buf;
   write_json(buf, pt, false);
@@ -56,7 +56,7 @@ void VB::record_meta_set(const std::string &s) {
 AddressSpace ValueRecord::address_space() const {
   // FIXME - not thread-safe
   assert(allocation_);
-  return allocation_->address_space();
+  return allocation_.address_space();
 }
 
 void ValueRecord::set_size(const size_t size) {

@@ -51,7 +51,6 @@ public:
   ConfiguredCall &configured_call() { return configuredCall_; }
 };
 
-// FIXME: not thread-safe
 class Driver {
 public:
   typedef ThreadState mapped_type;
