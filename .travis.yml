@@ -11,7 +11,7 @@ sudo: required
 services: docker
 env:
   global:
-  - TMP = /tmp
+  - TMP=/tmp
   - CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-8.0-linux-x64-v6.0.tgz"
   - CUDNN_PATH=cudnn.tar.gz
   - CUDA_ROOT=$HOME/cuda
