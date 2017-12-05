@@ -45,6 +45,9 @@ TEST_F(AllocationsTest, find) {
   const auto L = Location::Host();
 
   const auto a1 = as.new_allocation(1, 1, AS, M, L);
+  EXPECT_EQ(1, a1.pos());
+  EXPECT_EQ(1, a1.size());
+  EXPECT_EQ(1, as.size());
 
   auto a2 = as.find(a1.pos(), a1.size());
   EXPECT_EQ(a1, a2);
@@ -59,11 +62,12 @@ TEST_F(AllocationsTest, free) {
   const auto AS = AddressSpace::Host();
   const auto M = Memory::Pageable;
   const auto L = Location::Host();
-
   auto a1 = as.new_allocation(1, 1, AS, M, L);
-  as.free(a1.pos(), a1.address_space());
-  auto a2 = as.find(a1.pos(), a1.size());
 
+  as.free(a1.pos(), a1.address_space());
+  EXPECT_EQ(true, a1.freed());
+
+  auto a2 = as.find(a1.pos(), a1.size());
   EXPECT_EQ(Allocation(), a2);
 }
 

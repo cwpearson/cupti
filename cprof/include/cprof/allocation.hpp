@@ -58,8 +58,8 @@ public:
   cprof::model::Memory memory() const { return memory_; }
 
   void mark_free() { freed_ = true; }
-  bool freed() const { return freed_; }
 
+  bool freed() const noexcept { return freed_; }
   uintptr_t pos() const noexcept { return pos_; }
   size_t size() const noexcept { return size_; }
 

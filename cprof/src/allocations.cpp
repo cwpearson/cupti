@@ -13,7 +13,9 @@ using cprof::model::Memory;
 
 namespace cprof {
 
-Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
+Allocation Allocations::npos_ = Allocation();
+
+Allocation &Allocations::find(uintptr_t pos, size_t size) {
   assert(pos && "No allocations at null pointer");
 
   std::vector<Allocations::value_type> matches;
@@ -33,35 +35,33 @@ Allocations::value_type Allocations::find(uintptr_t pos, size_t size) {
   if (matches.size() == 1) {
     return matches[0];
   } else if (matches.empty()) {
-    return Allocation();
+    return end();
   } else { // FIXME for now, return most recent. Issue 11. Should be fused in
            // allocation creation?
     assert(0 && "Found allocation in multiple address spaces");
   }
 }
 
-Allocations::value_type Allocations::find(uintptr_t pos, size_t size,
-                                          const AddressSpace &as) {
+Allocation &Allocations::find(uintptr_t pos, size_t size, AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
-  const auto &allocationsIter = addrSpaceAllocs_.find(as);
+  auto allocationsIter = addrSpaceAllocs_.find(as);
   if (allocationsIter != addrSpaceAllocs_.end()) {
-    const auto &allocations = allocationsIter->second;
+    auto &allocations = allocationsIter->second;
 
-    const auto &si = interval<uintptr_t>::right_open(pos, pos + size);
-    const auto &ai = allocations.find(si);
+    auto si = interval<uintptr_t>::right_open(pos, pos + size);
+    auto ai = allocations.find(si);
     if (ai != allocations.end()) {
       return ai->second;
     } else {
-      return Allocation();
+      return end();
     }
   } else {
-    return Allocation();
+    return end();
   }
 }
 
-Allocations::value_type Allocations::find_exact(uintptr_t pos,
-                                                const AddressSpace &as) {
+Allocation &Allocations::find_exact(uintptr_t pos, const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
   const auto &allocationsIter = addrSpaceAllocs_.find(as);
@@ -73,20 +73,19 @@ Allocations::value_type Allocations::find_exact(uintptr_t pos,
       if (ai->second.pos() == pos) {
         return ai->second;
       } else {
-        return Allocation();
+        return end();
       }
     } else {
-      return Allocation();
+      return end();
     }
   } else {
-    return Allocation();
+    return end();
   }
 }
 
-Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
-                                                    const AddressSpace &as,
-                                                    const Memory &am,
-                                                    const Location &al) {
+Allocation &Allocations::new_allocation(uintptr_t pos, size_t size,
+                                        const AddressSpace &as,
+                                        const Memory &am, const Location &al) {
   Allocation val(pos, size, as, am, al);
 
   if (val.size() == 0) {
@@ -106,9 +105,9 @@ Allocations::value_type Allocations::new_allocation(uintptr_t pos, size_t size,
 
 size_t Allocations::free(uintptr_t pos, const AddressSpace &as) {
   auto i = find_exact(pos, as);
-  if (i.address_space() == as && !i.freed()) {
-    logging::err() << "WARN: allocation " << i.pos() << " double-free?"
-                 << std::endl;
+  if (i.address_space() == as && i.freed()) {
+    logging::err() << "WARN: allocation @" << i.pos() << " double-free?"
+                   << std::endl;
   }
   if (i) {
     i.mark_free();
@@ -118,4 +117,4 @@ size_t Allocations::free(uintptr_t pos, const AddressSpace &as) {
   return 0;
 }
 
-}
+} // namespace cprof
