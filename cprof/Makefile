@@ -1,7 +1,6 @@
 include Makefile.config
 
 # Where to place outputs
-BINDIR = bin
 LIBDIR = lib
 
 # Where to find inputs
@@ -16,13 +15,12 @@ TARGETS = $(LIBDIR)/libcprof.so
 
 # Source and object files
 CPP_SRCS := $(shell find src -name "*.cpp")
-# CPP_SRCS := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/**/*.cpp) 
 CPP_OBJECTS = $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(CPP_SRCS))
 CPP_DEPS=$(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$(CPP_OBJECTS))
 DEPS = $(CPP_DEPS)
 
-INC += -Iinclude -isystem$(ZIPKIN_OPENTRACING_INCLUDE)
-LIB += -L$(LIBDIR) -L$(OPENTRACING_LIB) -L$(ZIPKIN_OPENTRACING_LIB)
+INC += -Iinclude
+LIB += -L$(LIBDIR)
 
 # Use BOOST_ROOT if set
 ifdef BOOST_ROOT
@@ -33,35 +31,17 @@ ifdef BOOST_ROOT
 endif
 
 
-ifdef OPENTRACING_INCLUDE 
-  INC += -isystem$(OPENTRACING_INCLUDE)
-else
-$(error OPENTRACING_INCLUDE is not set)
-endif
-
-ifndef ZIPKIN_OPENTRACING_INCLUDE 
-$(error ZIPKIN_OPENTRACING_INCLUDE is not set)
-endif
-
-ifndef ZIPKIN_OPENTRACING_LIB 
-$(error ZIPKIN_OPENTRACING_LIB is not set)
-endif
-
-ifndef OPENTRACING_LIB 
-$(error OPENTRACING_LIB is not set)
-endif
-
 # Set CUDA-related variables
 ifndef CUDA_ROOT
   $(error set CUDA_ROOT in Makefile.config)
 endif
 NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
-LIB += -ldl \
-       -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
-       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lnccl \
-	   -lnuma -lopentracing -lzipkin -lzipkin_opentracing
+LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
+       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt
 
+# libnuma
+LIB += -lnuma
 
 CXX = g++
 LD = ld
@@ -86,8 +66,7 @@ clean:
 	rm -rf $(BUILDDIR)/* $(LIBDIR)/*
 
 .PHONY: distclean
-disclean: clean
-	rm -rf $(BINDIR)
+distclean: clean
 	rm -rf $(LIBDIR)
 	rm -rf $(BUILDDIR)
 	rm -rf $(DEPSDIR)
