@@ -5,6 +5,8 @@
 #include "cprof/profiler.hpp"
 #include "cprof/values.hpp"
 
+namespace cprof {
+
 // FIXME: address space
 Value Values::find_live(uintptr_t pos, size_t size, const AddressSpace &as) {
   std::lock_guard<std::mutex> guard(access_mutex_);
@@ -51,10 +53,4 @@ Value Values::new_value(const uintptr_t pos, const size_t size,
   return V;
 }
 
-Values &Values::instance() {
-  static Values v;
-  return v;
-}
-
-// Values::Values() : values_(map_type()), value_order_(std::vector<id_type>())
-// {}
+} // namespace cprof

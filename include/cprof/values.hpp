@@ -11,6 +11,7 @@
 
 using boost::icl::interval;
 using boost::icl::interval_map;
+namespace cprof {
 
 class Values {
 private:
@@ -18,7 +19,6 @@ private:
   std::mutex access_mutex_;
 
 public:
-  static Values &instance();
   Value new_value(const uintptr_t pos, const size_t size,
                   const Allocation &alloc, const bool initialized);
 
@@ -34,6 +34,8 @@ public:
     return new_value(v->pos(), v->size(), v->allocation(), v->initialized());
   }
 };
+
+} // namespace cprof
 
 /*
 class Values {

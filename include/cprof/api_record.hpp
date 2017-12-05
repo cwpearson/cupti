@@ -12,8 +12,8 @@ public:
   static const id_type noid;
 
 private:
-  std::vector<Value> inputs_;
-  std::vector<Value> outputs_;
+  std::vector<cprof::Value> inputs_;
+  std::vector<cprof::Value> outputs_;
   std::string apiName_;
   std::string kernelName_;
   int device_;
@@ -39,10 +39,10 @@ public:
       : apiName_(cbInfo->functionName), device_(device), start_(0), end_(0),
         domain_(domain), cbid_(cbid), cbInfo_(cbInfo) {}
 
-  void add_input(const Value &v);
-  void add_output(const Value &v);
-  void add_kv(const std::string &key, const std::string &value);
-  void add_kv(const std::string &key, const size_t &value);
+  void add_input(const cprof::Value &v);
+  void add_output(const cprof::Value &v);
+  void add_kv(const std::string &key, const std::string &val);
+  void add_kv(const std::string &key, const size_t &val);
 
   void record_start_time(const uint64_t start);
   void record_end_time(const uint64_t end);

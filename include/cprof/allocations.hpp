@@ -58,8 +58,6 @@ public:
 
   size_t free(uintptr_t pos, const AddressSpace &as);
 
-  // static Allocations &instance();
-
   Allocations() {}
   ~Allocations() { logging::err() << "DEBU: Allocations dtor\n"; }
 };

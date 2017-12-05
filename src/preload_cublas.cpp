@@ -4,7 +4,6 @@
 #include <cublas_v2.h>
 
 #include "cprof/allocations.hpp"
-#include "cprof/apis.hpp"
 #include "cprof/callbacks.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
@@ -68,7 +67,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -97,7 +96,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   api->add_input(aVal);
   api->add_input(bVal);
   api->add_input(cVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   const cublasStatus_t ret = real_cublasDgemm(
       handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
@@ -117,7 +116,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
 
   CUBLAS_DLSYM_BOILERPLATE(cublasSaxpy);
 
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -139,7 +138,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
   api->add_output(outVal);
   api->add_input(xVal);
   api->add_input(yVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   // Do the actual call
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasSaxpy call"
@@ -169,7 +168,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -200,7 +199,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   api->add_input(aVal);
   api->add_input(bVal);
   api->add_input(cVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   return ret;
 }
@@ -217,7 +216,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   CUBLAS_DLSYM_BOILERPLATE(cublasDgemv);
 
   // record data, we know things about how this API works
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -253,7 +252,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   api->add_input(aVal);
   api->add_input(xVal);
   api->add_input(yVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   return ret;
 }
@@ -272,7 +271,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   CUBLAS_DLSYM_BOILERPLATE(cublasSgemv);
 
   // record data, we know things about how this API works
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -308,7 +307,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   api->add_input(aVal);
   api->add_input(xVal);
   api->add_input(yVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   return ret;
 }
@@ -320,7 +319,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   CUBLAS_DLSYM_BOILERPLATE(cublasSasum);
 
   // record data, we know things about how this API works
-  auto &values = Values::instance();
+  auto &values = cprof::values();
   auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
@@ -352,7 +351,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
   api->add_output(rVal);
   api->add_input(xVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: tid=" << cprof::model::get_thread_id()
@@ -373,7 +372,7 @@ cublasSscal(cublasHandle_t handle, int n,
             float *x, int incx) {
   CUBLAS_DLSYM_BOILERPLATE(cublasSscal);
 
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -390,7 +389,7 @@ cublasSscal(cublasHandle_t handle, int n,
   auto api = std::make_shared<ApiRecord>("cublasSscal", devId);
   api->add_output(outVal);
   api->add_input(xVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   // Do the actual call
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasSscal call"
@@ -413,7 +412,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   CUBLAS_DLSYM_BOILERPLATE(cublasSdot);
 
   // record data, we know things about how this API works
-  auto &values = Values::instance();
+  auto &values = cprof::values();
   auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cublas_handle(handle);
@@ -451,7 +450,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   api->add_output(rVal);
   api->add_input(xVal);
   api->add_input(yVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   cprof::driver().this_thread().pause_cupti_callbacks();
   cprof::err() << "WARN: disabling CUPTI callbacks during cublasSdot call"

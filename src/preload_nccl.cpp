@@ -5,12 +5,13 @@
 #include <nccl.h>
 
 #include "cprof/allocations.hpp"
-#include "cprof/apis.hpp"
 #include "cprof/callbacks.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
 #include "cprof/profiler.hpp"
 #include "cprof/values.hpp"
+
+using cprof::Value;
 
 static size_t ncclSizeOf(const ncclDataType_t t) noexcept {
   switch (t) {
@@ -47,12 +48,12 @@ static void register_ncclBcast(uintptr_t buff, int count,
   // If we're the root device, we know the location of the buffer that
   // everyone depends on
   if (dev == root) {
-    rootBuffVal = Values::instance().find_live(buff, numBytes, AS);
+    rootBuffVal = cprof::values().find_live(buff, numBytes, AS);
   }
 
   const auto &dstBuffAlloc = cprof::allocations().find(buff, numBytes, AS);
   const auto &dstBuffVal =
-      Values::instance().new_value(buff, numBytes, dstBuffAlloc, true);
+      cprof::values().new_value(buff, numBytes, dstBuffAlloc, true);
   dstBuffVals.push_back(dstBuffVal);
 
   // If the root has been found, we have enough info to add some deps
@@ -72,7 +73,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
       v->add_depends_on(*rootBuffVal);
       api->add_output(v);
     }
-    APIs::record(api);
+    cprof::atomic_out(api->json());
     dstBuffVals.clear();
     rootBuffVal = nullptr;
   }
@@ -91,12 +92,12 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
 
   // Look up and add my values
   const size_t numBytes = ncclSizeOf(datatype) * count;
-  const auto sendBuffVal = Values::instance().find_live(sendbuff, numBytes, AS);
+  const auto sendBuffVal = cprof::values().find_live(sendbuff, numBytes, AS);
   sendBuffVals.push_back(sendBuffVal);
 
   const auto &recvBuffAlloc = cprof::allocations().find(recvbuff, numBytes, AS);
   const auto recvBuffVal =
-      Values::instance().new_value(recvbuff, numBytes, recvBuffAlloc, true);
+      cprof::values().new_value(recvbuff, numBytes, recvBuffAlloc, true);
   recvBuffVals.push_back(recvBuffVal);
 
   // Once all values have been found, the last thread to enter allreduce can
@@ -121,7 +122,7 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
     for (const auto &v : recvBuffVals) {
       api->add_output(v);
     }
-    APIs::record(api);
+    cprof::atomic_out(api->json());
     sendBuffVals.clear();
     recvBuffVals.clear();
   }

@@ -9,6 +9,8 @@
 #include "allocation_record.hpp"
 #include "util/extent.hpp"
 
+namespace cprof {
+
 class ValueRecord : public Extent {
   friend std::ostream &operator<<(std::ostream &os, const ValueRecord &v);
 
@@ -115,5 +117,7 @@ private:
   std::vector<id_type> dependsOnIdx_; // values this value depends on
 };
 */
+
+} // namespace cprof
 
 #endif

@@ -4,7 +4,6 @@
 #include <cudnn.h>
 
 #include "cprof/allocations.hpp"
-#include "cprof/apis.hpp"
 #include "cprof/callbacks.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
@@ -65,7 +64,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   // FIXME - also depends on alpha, beta
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationForward);
 
-  auto &values = Values::instance();
+  auto &values = cprof::values();
   auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
@@ -85,7 +84,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   auto api = std::make_shared<ApiRecord>("cudnnActivationForward", devId);
   api->add_output(yVal);
   api->add_input(xVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   cprof::err()
       << "WARN: disabling CUPTI callbacks during cudnnActivationForward call"
@@ -113,7 +112,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
 
   // FIXME - alpha and beta
 
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -132,7 +131,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   api->add_output(dstVal);
   api->add_input(aVal);
   api->add_input(cVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   cprof::err() << "WARN: thread " << cprof::model::get_thread_id()
                << " disabling CUPTI callbacks during cudnnAddTensor call"
@@ -160,7 +159,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
 
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationBackward);
 
-  auto &values = Values::instance();
+  auto &values = cprof::values();
   auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
@@ -192,7 +191,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   api->add_input(xVal);
   api->add_input(yVal);
   api->add_input(dyVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   cprof::err()
       << "WARN: disabling CUPTI callbacks during cudnnActivationBackward call"
@@ -220,7 +219,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
     size_t workSpaceSizeInBytes, const void *beta,
     const cudnnTensorDescriptor_t dxDesc, void *dx) {
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardData);
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -249,7 +248,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   api->add_input(dyVal);
   api->add_input(workSpaceVal);
   api->add_input(dxVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   // Do the actual call
   cprof::err() << "WARN: disabling CUPTI callbacks during "
@@ -274,7 +273,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
                              const void *dy, const void *beta,
                              const cudnnTensorDescriptor_t dbDesc, void *db) {
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardBias);
-  auto &values = Values::instance();
+  auto &values = cprof::values();
   auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
@@ -299,7 +298,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
       cprof::driver().device_from_cudnn_handle(handle));
   api->add_output(dbVal);
   api->add_input(dyVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   // Do the actual call
   cprof::err() << "WARN: disabling CUPTI callbacks during "
@@ -332,7 +331,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
     const cudnnFilterDescriptor_t dwDesc, void *dw) {
 
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardFilter);
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -364,7 +363,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   api->add_input(dyVal);
   api->add_input(workSpaceVal);
   api->add_input(dwVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   cprof::err() << "WARN: disabling CUPTI callbacks during "
                   "cudnnConvolutionBackwardFilter call"
@@ -397,7 +396,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
 
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionForward);
 
-  auto &values = Values::instance();
+  auto &values = cprof::values();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = cprof::hardware().address_space(devId);
@@ -430,7 +429,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   api->add_input(wVal);
   api->add_input(workSpaceVal);
   api->add_input(yVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   cprof::err()
       << "WARN: thread " << cprof::model::get_thread_id()
@@ -456,7 +455,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
 
   CUDNN_DLSYM_BOILERPLATE(cudnnSoftmaxForward);
 
-  auto &values = Values::instance();
+  auto &values = cprof::values();
   auto &allocations = cprof::allocations();
 
   const int devId = cprof::driver().device_from_cudnn_handle(handle);
@@ -476,7 +475,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   auto api = std::make_shared<ApiRecord>("cudnnSoftmaxForward", devId);
   api->add_output(yVal);
   api->add_input(xVal);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 
   // Do the actual call
   cprof::err()

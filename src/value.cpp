@@ -12,6 +12,8 @@ using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
 
+namespace cprof {
+
 void ValueRecord::add_depends_on(const ValueRecord &vr) {
   ptree pt;
   pt.put("dep.dst_id", uintptr_t(&vr));
@@ -67,3 +69,5 @@ std::ostream &operator<<(std::ostream &os, const Value &v) {
   os << uintptr_t(v.get());
   return os;
 }
+
+} // namespace cprof

@@ -7,6 +7,7 @@
 
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
+using cprof::Value;
 
 const ApiRecord::id_type ApiRecord::noid =
     reinterpret_cast<ApiRecord::id_type>(nullptr);

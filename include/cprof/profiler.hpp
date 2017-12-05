@@ -15,6 +15,7 @@ class Profiler {
   friend model::Hardware &hardware();
   friend model::Driver &driver();
   friend Allocations &allocations();
+  friend Values &values();
 
 public:
   ~Profiler();
@@ -35,6 +36,7 @@ private:
   model::Hardware hardware_;
   model::Driver driver_;
   Allocations allocations_;
+  Values values_;
 
   bool useCuptiCallback_;
   bool useCuptiActivity_;
@@ -47,8 +49,10 @@ private:
 inline model::Hardware &hardware() { return Profiler::instance().hardware_; }
 inline model::Driver &driver() { return Profiler::instance().driver_; }
 inline std::ostream &out() { return logging::out(); }
+inline void atomic_out(const std::string &s) { logging::atomic_out(s); }
 inline std::ostream &err() { return logging::err(); }
 inline Allocations &allocations() { return Profiler::instance().allocations_; }
+inline Values &values() { return Profiler::instance().values_; }
 
 /* \brief Runs Profiler::init() at load time
  */

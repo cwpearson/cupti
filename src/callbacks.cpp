@@ -14,7 +14,6 @@
 #include "cprof/activity_callbacks.hpp"
 #include "cprof/allocation_record.hpp"
 #include "cprof/allocations.hpp"
-#include "cprof/apis.hpp"
 #include "cprof/hash.hpp"
 #include "cprof/kernel_time.hpp"
 #include "cprof/memorycopykind.hpp"
@@ -26,6 +25,8 @@
 #include "cprof/values.hpp"
 #include "util/backtrace.hpp"
 
+using cprof::Value;
+using cprof::Values;
 using cprof::model::Location;
 using cprof::model::Memory;
 
@@ -121,7 +122,7 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
       }
       api->add_output(newVal);
     }
-    APIs::record(api);
+    cprof::atomic_out(api->json());
     cprof::driver().this_thread().configured_call().valid_ = false;
     cprof::driver().this_thread().configured_call().args_.clear();
   } else {
@@ -168,7 +169,7 @@ static void handleCudaLaunchKernel(Values &values,
         cbInfo->functionName, cbInfo->symbolName,
         cprof::driver().this_thread().current_device());
 
-    APIs::record(api);
+    cprof::atomic_out(api->json());
 
   } else {
     assert(0 && "How did we get here?");
@@ -262,7 +263,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   api->add_kv("kind", kind.str());
   api->add_kv("srcCount", srcCount);
   api->add_kv("dstCount", dstCount);
-  APIs::record(api);
+  cprof::atomic_out(api->json());
 }
 
 static void handleCudaMemcpy(Allocations &allocations, Values &values,
@@ -817,29 +818,28 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   case CUPTI_CB_DOMAIN_RUNTIME_API: {
     switch (cbid) {
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-      handleCudaMemcpy(cprof::allocations(), Values::instance(), cbInfo);
+      handleCudaMemcpy(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020:
-      handleCudaMemcpyAsync(cprof::allocations(), Values::instance(), cbInfo);
+      handleCudaMemcpyAsync(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyPeerAsync_v4000:
-      handleCudaMemcpyPeerAsync(cprof::allocations(), Values::instance(),
-                                cbInfo);
+      handleCudaMemcpyPeerAsync(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
-      handleCudaMalloc(cprof::allocations(), Values::instance(), cbInfo);
+      handleCudaMalloc(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020:
-      handleCudaMallocHost(cprof::allocations(), Values::instance(), cbInfo);
+      handleCudaMallocHost(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMallocManaged_v6000:
-      handleCudaMallocManaged(cprof::allocations(), Values::instance(), cbInfo);
+      handleCudaMallocManaged(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaFree_v3020:
-      handleCudaFree(cprof::allocations(), Values::instance(), cbInfo);
+      handleCudaFree(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaFreeHost_v3020:
-      handleCudaFreeHost(cprof::allocations(), Values::instance(), cbInfo);
+      handleCudaFreeHost(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
       handleCudaConfigureCall(cbInfo);
@@ -848,7 +848,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCudaSetupArgument(cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
-      handleCudaLaunch(Values::instance(), cbInfo);
+      handleCudaLaunch(cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020:
       handleCudaSetDevice(cbInfo);
@@ -863,10 +863,10 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCudaStreamSynchronize(cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy2DAsync_v3020:
-      handleCudaMemcpy2DAsync(cprof::allocations(), Values::instance(), cbInfo);
+      handleCudaMemcpy2DAsync(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000:
-      handleCudaLaunchKernel(Values::instance(), cbInfo);
+      handleCudaLaunchKernel(cprof::values(), cbInfo);
       break;
     default:
       cprof::err() << "DEBU: skipping runtime call " << cbInfo->functionName
@@ -877,10 +877,10 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   case CUPTI_CB_DOMAIN_DRIVER_API: {
     switch (cbid) {
     case CUPTI_DRIVER_TRACE_CBID_cuMemHostAlloc:
-      handleCuMemHostAlloc(cprof::allocations(), Values::instance(), cbInfo);
+      handleCuMemHostAlloc(cprof::allocations(), cprof::values(), cbInfo);
       break;
     case CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel:
-      handleCuLaunchKernel(Values::instance(), cbInfo);
+      handleCuLaunchKernel(cprof::values(), cbInfo);
       break;
     case CUPTI_DRIVER_TRACE_CBID_cuModuleGetFunction:
       handleCuModuleGetFunction(cbInfo);
