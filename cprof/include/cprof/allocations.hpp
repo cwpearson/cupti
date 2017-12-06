@@ -25,37 +25,39 @@ private:
   typedef uintptr_t pos_type;
   typedef Allocation value_type;
   typedef boost::icl::interval_map<pos_type, Allocation> icl_type;
-  static Allocation npos_;
 
 private:
   std::map<AddressSpace, icl_type> addrSpaceAllocs_;
   std::mutex access_mutex_;
 
+  Allocation insert(const Allocation &a);
+
 public:
-  size_t size() { return addrSpaceAllocs_.size(); }
-  Allocation &end() {
-    npos_ = Allocation();
-    return npos_;
+  size_t size() {
+    size_t tot = 0;
+    for (const auto &m : addrSpaceAllocs_) {
+      tot += m.second.iterative_size();
+    }
+    return tot;
   }
 
   /*! \brief Lookup allocation that contains pos, size, and address space.
    */
-  const Allocation &find(uintptr_t pos, size_t size, const AddressSpace &as);
+  Allocation find(uintptr_t pos, size_t size, const AddressSpace &as);
   /*! \brief Lookup allocation containing pos and address space
    */
-  const Allocation &find(uintptr_t pos, const AddressSpace &as) {
+  Allocation find(uintptr_t pos, const AddressSpace &as) {
     return find(pos, 1, as);
   }
   /*! \brief Lookup allocation starting at pos in address space
    */
-  const Allocation &find_exact(uintptr_t pos, const AddressSpace &as);
+  Allocation find_exact(uintptr_t pos, const AddressSpace &as);
 
-  const Allocation &new_allocation(uintptr_t pos, size_t size,
-                                   const AddressSpace &as,
-                                   const cprof::model::Memory &am,
-                                   const cprof::model::Location &al);
+  Allocation new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
+                            const cprof::model::Memory &am,
+                            const cprof::model::Location &al);
 
-  const Allocation &free(uintptr_t pos, const AddressSpace &as);
+  Allocation free(uintptr_t pos, const AddressSpace &as);
 
   Allocations() {}
   ~Allocations() { logging::err() << "DEBU: Allocations dtor\n"; }

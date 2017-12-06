@@ -50,7 +50,6 @@ TEST_F(AllocationsTest, find) {
   EXPECT_EQ(1, as.size());
 
   const auto a2 = as.find(a1.pos(), a1.size(), AS);
-  std::cerr << a2.pos() << "(a2 in find test) \n";
   EXPECT_EQ(a1, a2);
 
   const auto a3 = as.find(a1.pos(), AS);
@@ -64,12 +63,10 @@ TEST_F(AllocationsTest, free) {
   const auto M = Memory::Pageable;
   const auto L = Location::Host();
   auto a1 = as.new_allocation(1, 1, AS, M, L);
+  EXPECT_TRUE(a1);
 
-  as.free(a1.pos(), AS);
+  a1 = as.free(a1.pos(), AS);
   EXPECT_EQ(true, a1.freed());
-
-  auto a2 = as.find(a1.pos(), AS);
-  EXPECT_EQ(Allocation(), a2);
 }
 
 TEST_F(AllocationsTest, merge) {
@@ -81,8 +78,13 @@ TEST_F(AllocationsTest, merge) {
 
   const auto a1 = as.new_allocation(1, 3, AS, M, L);
   const auto a2 = as.new_allocation(2, 3, AS, M, L);
+  EXPECT_EQ(2, as.size());
 
-  EXPECT_EQ(a1, a2);
-  EXPECT_EQ(a1.pos(), 1);
-  EXPECT_EQ(a1.size(), 4);
+  const auto a3 = as.find(2, AS);
+  EXPECT_EQ(a3.pos(), 1);
+  EXPECT_EQ(a3.size(), 4);
+
+  const auto a4 = as.find(1, AS);
+  EXPECT_EQ(a4.pos(), 1);
+  EXPECT_EQ(a4.size(), 4);
 }

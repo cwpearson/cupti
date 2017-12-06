@@ -18,120 +18,86 @@
 
 using namespace boost::icl;
 
-class Allocation {
+class AllocationRecord {
 
 public:
-  typedef uint64_t id_type;
-
-private:
   uintptr_t pos_;
   size_t size_;
   AddressSpace address_space_;
   cprof::model::Memory memory_;
   cprof::model::tid_t thread_id_;
   cprof::model::Location location_;
-  id_type id_;
   bool freed_;
 
-  static id_type unique_id() {
-    static id_type count = 0;
-    return count++;
-  }
-
 public:
-  Allocation(uintptr_t pos, size_t size, const AddressSpace &as,
-             const cprof::model::Memory &mem,
-             const cprof::model::Location &location, size_t id)
+  AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
+                   const cprof::model::Memory &mem,
+                   const cprof::model::Location &location)
       : pos_(pos), size_(size), address_space_(as), memory_(mem),
-        location_(location), id_(id), freed_(false) {}
-  Allocation(uintptr_t pos, size_t size, const AddressSpace &as,
-             const cprof::model::Memory &mem,
-             const cprof::model::Location &location)
-      : Allocation(pos, size, as, mem, location, unique_id()) {
-    assert(address_space_.is_valid());
-  }
-  Allocation(const uintptr_t pos, const size_t size)
-      : Allocation(pos, size, AddressSpace::Host(),
-                   cprof::model::Memory::Unknown,
-                   cprof::model::Location::Unknown()) {}
-  Allocation() : Allocation(0, 0) {}
+        location_(location), freed_(false) {}
+  AllocationRecord(const uintptr_t pos, const size_t size)
+      : AllocationRecord(pos, size, AddressSpace::Host(),
+                         cprof::model::Memory::Unknown,
+                         cprof::model::Location::Unknown()) {}
+  AllocationRecord() : AllocationRecord(0, 0) {}
 
   std::string json() const;
-
-  id_type id() const { return id_; }
-  AddressSpace address_space() const { return address_space_; }
-  cprof::model::Memory memory() const { return memory_; }
-  cprof::model::Location location() const { return location_; }
-
-  bool freed() const noexcept { return freed_; }
-  uintptr_t pos() const noexcept { return pos_; }
-  size_t size() const noexcept { return size_; }
 
   boost::icl::interval<uintptr_t>::interval_type interval() const {
     return boost::icl::interval<uintptr_t>::right_open(pos_, pos_ + size_);
   }
+};
 
-  explicit operator bool() const noexcept { return pos_; }
+class Allocation {
 
+public:
+private:
+  std::shared_ptr<AllocationRecord> ar_;
+
+public:
+  Allocation(AllocationRecord *ar)
+      : ar_(std::shared_ptr<AllocationRecord>(ar)) {}
+  Allocation() : Allocation(nullptr) {}
+
+  std::string json() const { return ar_->json(); }
+
+  uintptr_t pos() const noexcept;
+  size_t size() const noexcept;
+  AddressSpace address_space() const;
+  cprof::model::Memory memory() const;
+  cprof::model::Location location() const;
+  bool freed() const noexcept;
+  void free();
+  explicit operator bool() const noexcept { return bool(ar_); }
+  bool operator!() const noexcept { return !bool(); }
+  uintptr_t id() const { return uintptr_t(ar_.get()); }
+
+  boost::icl::interval<uintptr_t>::interval_type interval() const {
+    return ar_->interval();
+  }
+
+  // update our underlying interval the incoming one
   Allocation &operator+=(const Allocation &rhs) {
-    logging::err() << "adding " << pos_ << " +" << size_ << " to " << rhs.pos_
-                   << " +" << rhs.size_ << "\n";
+    assert(*this);
+    assert(rhs);
+    logging::err() << "adding " << pos() << " +" << size() << " to "
+                   << rhs.pos() << " +" << rhs.size() << "\n";
 
-    if (freed_) {
+    if (freed()) {
       *this = rhs;
-
     } else {
 
       // Merge the allocations
-      auto overlapStart = std::min(pos_, rhs.pos_);
-      auto overlapEnd = std::max(pos_ + size_, rhs.pos_ + rhs.size_);
+      auto overlapStart = std::min(pos(), rhs.pos());
+      auto overlapEnd = std::max(pos() + size(), rhs.pos() + rhs.size());
 
-      pos_ = overlapStart;
-      size_ = overlapEnd - overlapStart;
+      ar_->pos_ = overlapStart;
+      ar_->size_ = overlapEnd - overlapStart;
     }
     return *this;
   }
-  bool operator==(const Allocation &rhs) const noexcept {
-    if (pos_ == 0 && rhs.pos_ == 0) {
-      return true;
-    }
-    return pos_ == rhs.pos_ && size_ == rhs.size_ &&
-           address_space_ == rhs.address_space_;
-  }
+
+  bool operator==(const Allocation &rhs) const;
 };
 
-/*
-namespace boost {
-namespace icl {
-
-template <> struct interval_traits<Allocation> {
-
-  typedef Allocation interval_type;
-  typedef uintptr_t domain_type;
-  typedef std::less<uintptr_t> domain_compare;
-  static interval_type construct(const domain_type &lo, const domain_type &up) {
-    logging::err() << "construct called\n";
-    return interval_type(lo, up - lo);
-  }
-  // 3.2 Selection of values
-  static domain_type lower(const interval_type &inter_val) {
-    return inter_val.pos();
-  };
-  static domain_type upper(const interval_type &inter_val) {
-    return inter_val.pos() + inter_val.size();
-  };
-};
-
-template <>
-struct interval_bound_type<Allocation> // 4.  Finally we define the interval
-                                       // borders.
-{ //    Choose between static_open         (lo..up)
-  typedef interval_bound_type
-      type; //                   static_left_open    (lo..up]
-  BOOST_STATIC_CONSTANT(bound_type, value = interval_bounds::static_right_open);
-}; //               and static_closed       [lo..up]
-
-} // namespace icl
-} // namespace boost
-*/
 #endif
