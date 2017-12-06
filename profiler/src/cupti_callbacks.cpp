@@ -191,16 +191,34 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 
   const int devId = profiler::driver().this_thread().current_device();
 
+  // guess the src and dst address space
+  auto srcAS = AddressSpace::Invalid();
+  auto dstAS = AddressSpace::Invalid();
+  if (profiler::hardware().cuda_device(devId).unifiedAddressing_) {
+    srcAS = dstAS = profiler::hardware().address_space(devId);
+  } else if (MemoryCopyKind::CudaHostToDevice() == kind) {
+    srcAS = AddressSpace::Host();
+    dstAS = profiler::hardware().address_space(devId);
+  } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
+    dstAS = AddressSpace::Host();
+    srcAS = profiler::hardware().address_space(devId);
+  } else if (MemoryCopyKind::CudaDefault() == kind) {
+    srcAS = dstAS = AddressSpace::CudaUVA();
+  } else {
+    assert(0 && "Unhandled MemoryCopyKind");
+  }
+
+  assert(srcAS.is_valid());
+  assert(dstAS.is_valid());
   // Set address space, and create missing allocations along the way
   if (MemoryCopyKind::CudaHostToDevice() == kind) {
     profiler::err() << src << "--[h2d]--> " << dst << std::endl;
 
     // Source allocation may not have been created by a CUDA api
-    srcAlloc = allocations.find(src, srcCount);
+    srcAlloc = allocations.find(src, srcCount, srcAS);
     if (!srcAlloc) {
-      const auto AS = profiler::hardware().address_space(devId);
-      srcAlloc = allocations.new_allocation(src, srcCount, AS, Memory::Unknown,
-                                            Location::Host());
+      srcAlloc = allocations.new_allocation(src, srcCount, srcAS,
+                                            Memory::Unknown, Location::Host());
       profiler::err() << "WARN: Couldn't find src alloc. Created implict host "
                          "allocation= [ "
                       << src << " , + " << srcCount << " )" << std::endl;
@@ -211,30 +229,24 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     // Destination allocation may not have been created by a CUDA api
     // FIXME: we may be copying only a slice of an existing allocation. if
     // it overlaps, it should be joined
-    dstAlloc = allocations.find(dst, dstCount);
+    dstAlloc = allocations.find(dst, dstCount, dstAS);
     if (!dstAlloc) {
-      const auto AS = profiler::hardware().address_space(devId);
-      dstAlloc = allocations.new_allocation(dst, dstCount, AS, Memory::Unknown,
-                                            Location::Host());
+      dstAlloc = allocations.new_allocation(dst, dstCount, dstAS,
+                                            Memory::Unknown, Location::Host());
       profiler::err() << "WARN: Couldn't find dst alloc. Created implict host "
                          "allocation= [ "
                       << dst << " , + " << dstCount << " )" << std::endl;
     }
-  } else if (MemoryCopyKind::CudaDefault() == kind) {
-    srcAlloc = srcAlloc =
-        allocations.find(src, srcCount, AddressSpace::CudaUVA());
-    srcAlloc = srcAlloc =
-        allocations.find(dst, dstCount, AddressSpace::CudaUVA());
   }
 
   // Look for existing src / dst allocations.
   // Either we just made it, or it should already exist.
   if (!srcAlloc) {
-    srcAlloc = allocations.find(src, srcCount);
+    srcAlloc = allocations.find(src, srcCount, srcAS);
     assert(srcAlloc);
   }
   if (!dstAlloc) {
-    dstAlloc = allocations.find(dst, dstCount);
+    dstAlloc = allocations.find(dst, dstCount, dstAS);
     assert(dstAlloc);
   }
 
@@ -642,13 +654,8 @@ static void handleCudaFreeHost(Allocations &allocations, Values &values,
     const int devId = profiler::driver().this_thread().current_device();
     auto AS = profiler::hardware().address_space(devId);
 
-    auto alloc = allocations.find_exact(ptr, AS);
-    if (alloc) {
-      assert(allocations.free(alloc.pos(), alloc.address_space()) &&
-             "memory not freed");
-    } else {
-      assert(0 && "Freeing unallocated memory?");
-    }
+    auto freeAlloc = allocations.free(ptr, AS);
+    assert(freeAlloc && "Freeing unallocated memory?");
   } else {
     assert(0 && "How did we get here?");
   }
@@ -708,13 +715,9 @@ static void handleCudaFree(Allocations &allocations, Values &values,
 
     // Find the live matching allocation
     profiler::err() << "Looking for " << devPtr << std::endl;
-    auto alloc = allocations.find_exact(devPtr, AS);
-    if (alloc) { // FIXME
-      assert(allocations.free(alloc.pos(), alloc.address_space()));
-    } else {
-      profiler::err() << "ERR: Freeing unallocated memory?"
-                      << std::endl; // FIXME - could be async
-    }
+    auto freeAlloc = allocations.free(devPtr, AS);
+    assert(freeAlloc && "Freeing unallocated memory?");
+
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");

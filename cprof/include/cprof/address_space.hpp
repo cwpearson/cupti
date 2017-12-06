@@ -17,6 +17,7 @@ public:
 private:
   AddressSpace(Type type, int device) : type_(type), device_(device) {}
   AddressSpace(Type type) : AddressSpace(type, -1) {}
+  AddressSpace() : AddressSpace(Type::Invalid) {}
   Type type_;
   int device_; ///< which device the address space is associated with
 
@@ -45,6 +46,7 @@ public:
   static AddressSpace Unknown() {
     return AddressSpace(AddressSpace::Type::Unknown);
   }
+  static AddressSpace Invalid() { return AddressSpace(); }
 };
 
 #endif
