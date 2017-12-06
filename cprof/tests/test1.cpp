@@ -79,6 +79,7 @@ TEST_F(AllocationsTest, merge) {
   const auto a1 = as.new_allocation(1, 3, AS, M, L);
   const auto a2 = as.new_allocation(2, 3, AS, M, L);
   EXPECT_EQ(2, as.size());
+  EXPECT_EQ(a1, a2);
 
   const auto a3 = as.find(2, AS);
   EXPECT_EQ(a3.pos(), 1);

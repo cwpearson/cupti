@@ -50,11 +50,27 @@ location you can use the DCMAKE_INSTALL_PREFIX flag to change the installation l
 -DCMAKE_INSTALL_PREFIX=/custom/installation/path
 ```
 
-Create a `Makfile.config`
+## Building cprof
 
+The cprof library contains functionality to model the system and cuda driver state.
+
+Create a `Makefile.config` in `cprof` that matches your environment.
+
+    cd cprof
     cp Makefile.config.example Makefile.config
+    make tests
 
-Edit that makefile to match your system setup.
+## Building profiler
+
+The profiler uses cprof to model the system state, and uses CUPTI and LD\_PRELOAD to observe the system.
+
+Create a `Makefile.config` in `profiler` that matches your environment.
+
+    cd profiler
+    cp Makefile.config.example Makefile.config
+    make
+
+## Using the profiler
 
 Make sure the CUPTI library is in your `LD_LIBRARY_PATH`. For example:
 
