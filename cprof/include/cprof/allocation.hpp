@@ -39,16 +39,21 @@ private:
   }
 
 public:
-  Allocation(const uintptr_t pos, const size_t size)
-      : pos_(pos), size_(size), address_space_(AddressSpace::Host()),
-        location_(cprof::model::Location::Host()) {}
+  Allocation(uintptr_t pos, size_t size, const AddressSpace &as,
+             const cprof::model::Memory &mem,
+             const cprof::model::Location &location, size_t id)
+      : pos_(pos), size_(size), address_space_(as), memory_(mem),
+        location_(location), id_(id), freed_(false) {}
   Allocation(uintptr_t pos, size_t size, const AddressSpace &as,
              const cprof::model::Memory &mem,
              const cprof::model::Location &location)
-      : pos_(pos), size_(size), address_space_(as), memory_(mem),
-        location_(location), id_(unique_id()), freed_(false) {
+      : Allocation(pos, size, as, mem, location, unique_id()) {
     assert(address_space_.is_valid());
   }
+  Allocation(const uintptr_t pos, const size_t size)
+      : Allocation(pos, size, AddressSpace::Host(),
+                   cprof::model::Memory::Unknown,
+                   cprof::model::Location::Unknown()) {}
   Allocation() : Allocation(0, 0) {}
 
   std::string json() const;
@@ -56,12 +61,15 @@ public:
   id_type id() const { return id_; }
   AddressSpace address_space() const { return address_space_; }
   cprof::model::Memory memory() const { return memory_; }
-
-  void mark_free() { freed_ = true; }
+  cprof::model::Location location() const { return location_; }
 
   bool freed() const noexcept { return freed_; }
   uintptr_t pos() const noexcept { return pos_; }
   size_t size() const noexcept { return size_; }
+
+  boost::icl::interval<uintptr_t>::interval_type interval() const {
+    return boost::icl::interval<uintptr_t>::right_open(pos_, pos_ + size_);
+  }
 
   explicit operator bool() const noexcept { return pos_; }
 

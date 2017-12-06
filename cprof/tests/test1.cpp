@@ -49,10 +49,11 @@ TEST_F(AllocationsTest, find) {
   EXPECT_EQ(1, a1.size());
   EXPECT_EQ(1, as.size());
 
-  auto a2 = as.find(a1.pos(), a1.size());
+  const auto a2 = as.find(a1.pos(), a1.size(), AS);
+  std::cerr << a2.pos() << "(a2 in find test) \n";
   EXPECT_EQ(a1, a2);
 
-  auto a3 = as.find(a1.pos(), a1.size(), a1.address_space());
+  const auto a3 = as.find(a1.pos(), AS);
   EXPECT_EQ(a1, a3);
 }
 
@@ -64,10 +65,10 @@ TEST_F(AllocationsTest, free) {
   const auto L = Location::Host();
   auto a1 = as.new_allocation(1, 1, AS, M, L);
 
-  as.free(a1.pos(), a1.address_space());
+  as.free(a1.pos(), AS);
   EXPECT_EQ(true, a1.freed());
 
-  auto a2 = as.find(a1.pos(), a1.size());
+  auto a2 = as.find(a1.pos(), AS);
   EXPECT_EQ(Allocation(), a2);
 }
 

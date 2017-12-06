@@ -15,35 +15,10 @@ namespace cprof {
 
 Allocation Allocations::npos_ = Allocation();
 
-Allocation &Allocations::find(uintptr_t pos, size_t size) {
+const Allocation &Allocations::find(uintptr_t pos, size_t size,
+                                    const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
-
-  std::vector<Allocations::value_type> matches;
-  std::lock_guard<std::mutex> guard(access_mutex_);
-
-  for (const auto &kv : addrSpaceAllocs_) {
-    const auto &as = kv.first;
-    const auto &allocs = kv.second;
-
-    const auto &si = interval<uintptr_t>::right_open(pos, pos + size);
-    const auto &ai = allocs.find(si);
-    if (ai != allocs.end()) {
-      matches.push_back(ai->second);
-    }
-  }
-
-  if (matches.size() == 1) {
-    return matches[0];
-  } else if (matches.empty()) {
-    return end();
-  } else { // FIXME for now, return most recent. Issue 11. Should be fused in
-           // allocation creation?
-    assert(0 && "Found allocation in multiple address spaces");
-  }
-}
-
-Allocation &Allocations::find(uintptr_t pos, size_t size, AddressSpace &as) {
-  assert(pos && "No allocations at null pointer");
+  // std::cerr << " looking for " << pos << "\n";
   std::lock_guard<std::mutex> guard(access_mutex_);
   auto allocationsIter = addrSpaceAllocs_.find(as);
   if (allocationsIter != addrSpaceAllocs_.end()) {
@@ -52,26 +27,34 @@ Allocation &Allocations::find(uintptr_t pos, size_t size, AddressSpace &as) {
     auto si = interval<uintptr_t>::right_open(pos, pos + size);
     auto ai = allocations.find(si);
     if (ai != allocations.end()) {
+      // std::cerr << "matching allocation at " << ai->second.pos() << "\n";
       return ai->second;
     } else {
+      // std::cerr << "no matching alloc\n";
       return end();
     }
   } else {
+    // std::cerr << "no matching AS\n";
     return end();
   }
 }
 
-Allocation &Allocations::find_exact(uintptr_t pos, const AddressSpace &as) {
+const Allocation &Allocations::free(uintptr_t pos, const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
-  const auto &allocationsIter = addrSpaceAllocs_.find(as);
+  auto allocationsIter = addrSpaceAllocs_.find(as);
   if (allocationsIter != addrSpaceAllocs_.end()) {
-    const auto &allocations = allocationsIter->second;
+    auto &allocations = allocationsIter->second;
 
-    const auto &ai = allocations.find(pos);
+    auto ai = allocations.find(pos);
     if (ai != allocations.end()) {
       if (ai->second.pos() == pos) {
-        return ai->second;
+        const auto &alloc = ai->second;
+        const auto size = alloc.size();
+        const auto am = alloc.memory();
+        const auto al = alloc.location();
+        allocations.erase(ai->second.interval());
+        return new_allocation(pos, size, as, am, al);
       } else {
         return end();
       }
@@ -83,9 +66,10 @@ Allocation &Allocations::find_exact(uintptr_t pos, const AddressSpace &as) {
   }
 }
 
-Allocation &Allocations::new_allocation(uintptr_t pos, size_t size,
-                                        const AddressSpace &as,
-                                        const Memory &am, const Location &al) {
+const Allocation &Allocations::new_allocation(uintptr_t pos, size_t size,
+                                              const AddressSpace &as,
+                                              const Memory &am,
+                                              const Location &al) {
   Allocation val(pos, size, as, am, al);
 
   if (val.size() == 0) {
@@ -94,27 +78,12 @@ Allocation &Allocations::new_allocation(uintptr_t pos, size_t size,
 
   logging::atomic_out(val.json());
 
-  {
-    std::lock_guard<std::mutex> guard(access_mutex_);
-    auto &allocs = addrSpaceAllocs_[as];
-    const auto &i = interval<uintptr_t>::right_open(pos, pos + size);
-    allocs += std::make_pair(i, val);
-  }
-  return val;
-}
+  std::lock_guard<std::mutex> guard(access_mutex_);
+  auto &allocs = addrSpaceAllocs_[as];
+  const auto &i = interval<uintptr_t>::right_open(pos, pos + size);
+  allocs += std::make_pair(i, val);
 
-size_t Allocations::free(uintptr_t pos, const AddressSpace &as) {
-  auto i = find_exact(pos, as);
-  if (i.address_space() == as && i.freed()) {
-    logging::err() << "WARN: allocation @" << i.pos() << " double-free?"
-                   << std::endl;
-  }
-  if (i) {
-    i.mark_free();
-    return 1;
-  }
-  assert(0 && "Expecting to erase an allocation.");
-  return 0;
+  return allocs.find(i)->second;
 }
 
 } // namespace cprof
