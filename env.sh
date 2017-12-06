@@ -11,14 +11,35 @@ if [ -z "${ZIPKIN_LIB+xxx}" ]; then
   export ZIPKIN_LIB="$HOME/software/zipkin-cpp-opentracing/lib";
 fi
 
-export LD_LIBRARY_PATH="/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH="$OPENTRACING_LIB:$LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH="$ZIPKIN_LIB:$LD_LIBRARY_PATH"
-
 # where to look for prof.so
 if [ -z "${CPROF_ROOT+xxx}" ]; then 
   export CPROF_ROOT="$HOME/repos/cupti"; # not set at all
 fi
+
+# Check that libcprof.so exists
+LIBCPROF="$CPROF_ROOT/cprof/lib/libcprof.so"
+if [ ! -f "$LIBCPROF" ]; then
+    echo "$LIBCPROF" "not found! try"
+    echo "make -C $CPROF_ROOT/cprof"
+    exit -1
+fi
+
+# Check that libprofiler.so exists
+LIBPROFILER="$CPROF_ROOT/profiler/lib/libprofiler.so"
+if [ ! -f "$LIBPROFILER" ]; then
+    echo "$LIBPROFILER" "not found! try"
+    echo "make -C $CPROF_ROOT/profiler"
+    exit -1
+fi
+
+
+
+
+## Add the libraries libprofiler.so depends on to the load library path
+export LD_LIBRARY_PATH="/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$OPENTRACING_LIB:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$ZIPKIN_LIB:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$CPROF_ROOT/cprof/lib:$LD_LIBRARY_PATH"
 
 ## Control some profiling parameters.
 
@@ -36,7 +57,7 @@ export CPROF_ZIPKIN_PORT=9411
 #   ./env.sh examples/samples/vectorAdd/vec
 
 if [ -z "${LD_PRELOAD+xxx}" ]; then 
-  LD_PRELOAD="$CPROF_ROOT/lib/libcprof.so" gdb $@; # unset
+  LD_PRELOAD="$CPROF_ROOT/profiler/lib/libprofiler.so" $@; # unset
 else
   echo "Error: LD_PRELOAD is set"
 fi
