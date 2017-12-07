@@ -89,3 +89,21 @@ TEST_F(AllocationsTest, merge) {
   EXPECT_EQ(a4.pos(), 1);
   EXPECT_EQ(a4.size(), 4);
 }
+
+TEST_F(AllocationsTest, newsame) {
+  cprof::Allocations as;
+
+  const auto AS = AddressSpace::Host();
+  const auto M = Memory::Pageable;
+  const auto L = Location::Host();
+
+  const auto a1 = as.new_allocation(70366076463264, 200, AS, M, L);
+  const auto a2 = as.find(70366076463264, 200, AS);
+  EXPECT_EQ(a1, a2);
+
+  const auto a3 = as.new_allocation(70366076463264, 200, AS, M, L);
+  EXPECT_EQ(1, as.size());
+  EXPECT_EQ(a1, a3);
+  EXPECT_EQ(200, a3.size());
+  EXPECT_EQ(70366076463264, a3.pos());
+}

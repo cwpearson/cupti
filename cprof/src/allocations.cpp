@@ -21,7 +21,7 @@ Allocation Allocations::find(uintptr_t pos, size_t size,
   if (allocationsIter != addrSpaceAllocs_.end()) {
     auto &allocations = allocationsIter->second;
 
-    // std::cerr << "looking for " << pos << " +" << size << "\n";
+    // std::cerr << "looking for " <<q pos << " +" << size << "\n";
     auto si = interval<uintptr_t>::right_open(pos, pos + size);
     auto ai = allocations.find(si);
     if (ai != allocations.end()) {
