@@ -57,16 +57,20 @@ static void handleCudaLaunch(Allocations &allocations,
     auto AS = profiler::hardware().address_space(devId);
 
     // FIXME: assuming with p2p access, it could be on any device?
-    const auto &val = allocations.find_value(
-        profiler::driver().this_thread().configured_call().args_[argIdx],
-        1 /*size*/, AS);
+    const uintptr_t pos =
+        profiler::driver().this_thread().configured_call().args_[argIdx];
 
-    if (val) {
-      kernelArgIds.push_back(val);
-      profiler::err()
-          << "found val " << val.id() << " for kernel arg="
-          << profiler::driver().this_thread().configured_call().args_[argIdx]
-          << std::endl;
+    // if the arg is 0 it's not going to point at an allocation
+    if (pos) {
+      const auto &val = allocations.find_value(pos, 1 /*size*/, AS);
+
+      if (val) {
+        kernelArgIds.push_back(val);
+        profiler::err()
+            << "found val " << val.id() << " for kernel arg="
+            << profiler::driver().this_thread().configured_call().args_[argIdx]
+            << std::endl;
+      }
     }
   }
 
@@ -308,8 +312,8 @@ static void handleCudaMemcpy(Allocations &allocations,
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     uint64_t endTimeStamp;
     cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
-    // profiler::err() << "The end timestamp is " << endTimeStamp << std::endl;
-    // std::cout << "The end time is " << cbInfo->end_time;
+    // profiler::err() << "The end timestamp is " << endTimeStamp <<
+    // std::endl; std::cout << "The end time is " << cbInfo->end_time;
     kernelTimer.kernel_end_time(cbInfo);
     uint64_t end;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end),
@@ -574,9 +578,9 @@ static void handleCuLaunchKernel(Allocations &allocations,
               CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020 ||
       ts.parent_api()->cbid() ==
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000) {
-    profiler::err()
-        << "WARN: skipping cuLaunchKernel inside cudaLaunch or cudaLaunchKernel"
-        << std::endl;
+    profiler::err() << "WARN: skipping cuLaunchKernel inside cudaLaunch or "
+                       "cudaLaunchKernel"
+                    << std::endl;
     return;
   }
 
