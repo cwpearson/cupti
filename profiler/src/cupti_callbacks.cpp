@@ -19,7 +19,6 @@
 #include "cprof/util_cuda.hpp"
 #include "cprof/util_cupti.hpp"
 #include "cprof/value.hpp"
-#include "cprof/values.hpp"
 #include "util/backtrace.hpp"
 
 #include "activity_callbacks.hpp"

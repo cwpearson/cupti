@@ -3,6 +3,7 @@
 
 #include <map>
 #include <mutex>
+#include <sstream>
 #include <vector>
 
 #include <cublas_v2.h>

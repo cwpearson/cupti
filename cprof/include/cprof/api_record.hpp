@@ -4,7 +4,7 @@
 #include <cupti.h>
 #include <vector>
 
-#include "values.hpp"
+#include "cprof/value.hpp"
 
 class ApiRecord {
 public:

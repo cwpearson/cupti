@@ -8,13 +8,14 @@
 using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
+using namespace boost::icl;
 using cprof::model::Location;
 using cprof::model::Memory;
 
 namespace cprof {
 
-Allocation Allocations::find(uintptr_t pos, size_t size,
-                             const AddressSpace &as) {
+Allocation Allocations::unsafe_find(uintptr_t pos, size_t size,
+                                    const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
   auto allocationsIter = addrSpaceAllocs_.find(as);
@@ -71,6 +72,28 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
   std::lock_guard<std::mutex> guard(access_mutex_);
   auto ar = new AllocationRecord(pos, size, as, am, al);
   return insert(Allocation(ar));
+}
+
+Value Allocations::find_value(const uintptr_t pos, const size_t size,
+                              const AddressSpace &as) {
+  std::lock_guard<std::mutex> guard(access_mutex_);
+  logging::err() << "INFO: Looking for value @ [" << pos << ", +" << size << ")"
+                 << std::endl;
+
+  const auto &alloc = unsafe_find(pos, size, as);
+  const auto val = alloc.value(pos, size);
+  return val;
+}
+
+Value Allocations::new_value(const uintptr_t pos, const size_t size,
+                             const AddressSpace &as, const bool initialized) {
+  std::lock_guard<std::mutex> guard(access_mutex_);
+
+  // Find the allocation
+  auto alloc = unsafe_find(pos, size, as);
+  assert(alloc && "Allocation should be valid");
+
+  return alloc.new_value(pos, size, initialized);
 }
 
 } // namespace cprof

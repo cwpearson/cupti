@@ -7,7 +7,6 @@
 #include "cprof/allocations.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
-#include "cprof/values.hpp"
 
 #include "cupti_callbacks.hpp"
 #include "profiler.hpp"

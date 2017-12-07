@@ -14,11 +14,17 @@
 #include "cprof/model/location.hpp"
 #include "cprof/model/memory.hpp"
 #include "cprof/model/thread.hpp"
+#include "cprof/value.hpp"
 #include "util/logging.hpp"
 
-using namespace boost::icl;
-
 class AllocationRecord {
+private:
+  static size_t unique_val() {
+    static size_t i = 1;
+    return i++;
+  }
+  size_t val_;
+  bool val_initialized_;
 
 public:
   uintptr_t pos_;
@@ -29,12 +35,11 @@ public:
   cprof::model::Location location_;
   bool freed_;
 
-public:
   AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
                    const cprof::model::Memory &mem,
                    const cprof::model::Location &location)
-      : pos_(pos), size_(size), address_space_(as), memory_(mem),
-        location_(location), freed_(false) {}
+      : pos_(pos), size_(size), val_(0), val_initialized_(0),
+        address_space_(as), memory_(mem), location_(location), freed_(false) {}
   AllocationRecord(const uintptr_t pos, const size_t size)
       : AllocationRecord(pos, size, AddressSpace::Host(),
                          cprof::model::Memory::Unknown,
@@ -45,6 +50,17 @@ public:
 
   boost::icl::interval<uintptr_t>::interval_type interval() const {
     return boost::icl::interval<uintptr_t>::right_open(pos_, pos_ + size_);
+  }
+
+  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized) {
+    if (!val_) {
+      val_ = unique_val();
+      val_initialized_ = initialized;
+    }
+    return value(pos, size);
+  }
+  cprof::Value value(const uintptr_t pos, const size_t size) const {
+    return cprof::Value(val_, pos, size, address_space_, val_initialized_);
   }
 };
 
@@ -98,6 +114,13 @@ public:
   }
 
   bool operator==(const Allocation &rhs) const;
+
+  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized) {
+    return ar_->new_value(pos, size, initialized);
+  }
+  cprof::Value value(const uintptr_t pos, const size_t size) const {
+    return ar_->value(pos, size);
+  }
 };
 
 #endif

@@ -12,7 +12,7 @@
 #include <boost/icl/interval_map.hpp>
 
 #include "address_space.hpp"
-#include "allocation.hpp"
+#include "cprof/allocation.hpp"
 #include "cprof/model/location.hpp"
 #include "util/extent.hpp"
 #include "util/logging.hpp"
@@ -32,6 +32,8 @@ private:
 
   Allocation insert(const Allocation &a);
 
+  Allocation unsafe_find(uintptr_t pos, size_t size, const AddressSpace &as);
+
 public:
   size_t size() {
     size_t tot = 0;
@@ -43,21 +45,37 @@ public:
 
   /*! \brief Lookup allocation that contains pos, size, and address space.
    */
-  Allocation find(uintptr_t pos, size_t size, const AddressSpace &as);
+  Allocation find(uintptr_t pos, size_t size, const AddressSpace &as) {
+    std::lock_guard<std::mutex> guard(access_mutex_);
+    return unsafe_find(pos, size, as);
+  }
   /*! \brief Lookup allocation containing pos and address space
    */
   Allocation find(uintptr_t pos, const AddressSpace &as) {
     return find(pos, 1, as);
   }
-  /*! \brief Lookup allocation starting at pos in address space
-   */
-  Allocation find_exact(uintptr_t pos, const AddressSpace &as);
 
   Allocation new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
                             const cprof::model::Memory &am,
                             const cprof::model::Location &al);
 
   Allocation free(uintptr_t pos, const AddressSpace &as);
+
+  Value new_value(const uintptr_t pos, const size_t size,
+                  const AddressSpace &as, const bool initialized);
+  Value find_live(uintptr_t pos, size_t size, const AddressSpace &as);
+  Value find_live(const uintptr_t pos, const AddressSpace &as) {
+    return find_live(pos, 1, as);
+  }
+  Value find_value(const uintptr_t pos, const size_t size,
+                   const AddressSpace &as);
+
+  Value duplicate_value(const Value &v) {
+    // ensure the existing value exists
+    auto orig = find_live(v.pos(), v.size(), v.address_space());
+    assert(orig);
+    return new_value(v.pos(), v.size(), v.address_space(), v.initialized());
+  }
 
   Allocations() {}
   ~Allocations() { logging::err() << "DEBU: Allocations dtor\n"; }
