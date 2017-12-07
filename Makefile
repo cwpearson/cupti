@@ -7,3 +7,7 @@ libcprof.so:
 .PHONY: libprofiler.so
 libprofiler.so: libcprof.so
 	make -C profiler
+
+clean:
+	make clean -C cprof
+	make clean -C profiler

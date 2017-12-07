@@ -19,14 +19,12 @@ std::ostream &Logger::err() {
 }
 
 std::ostream &Logger::set_err_path(const std::string &path) {
-  err_ = std::unique_ptr<std::ofstream>(
-      new std::ofstream(path.c_str(), std::ios::app));
+  err_ = std::unique_ptr<std::ofstream>(new std::ofstream(path.c_str()));
   return err();
 }
 
 std::ostream &Logger::set_out_path(const std::string &path) {
-  out_ = std::unique_ptr<std::ofstream>(
-      new std::ofstream(path.c_str(), std::ios::app));
+  out_ = std::unique_ptr<std::ofstream>(new std::ofstream(path.c_str()));
   return out();
 }
 
