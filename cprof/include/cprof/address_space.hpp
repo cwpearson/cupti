@@ -35,6 +35,7 @@ public:
   bool maybe_equal(const AddressSpace &other) const;
 
   std::string json() const;
+  std::string str() const;
 
   static AddressSpace Host() { return AddressSpace(AddressSpace::Type::Host); }
   static AddressSpace CudaDevice(int device) {

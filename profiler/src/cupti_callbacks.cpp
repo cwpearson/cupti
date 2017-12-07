@@ -220,8 +220,9 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
       srcAlloc = allocations.new_allocation(src, srcCount, srcAS,
                                             Memory::Unknown, Location::Host());
       profiler::err() << "WARN: Couldn't find src alloc. Created implict host "
-                         "allocation= [ "
-                      << src << " , + " << srcCount << " )" << std::endl;
+                         "allocation= {"
+                      << srcAS.str() << "}[ " << src << " , +" << srcCount
+                      << " )" << std::endl;
     }
   } else if (MemoryCopyKind::CudaDeviceToHost() == kind) {
     profiler::err() << src << "--[d2h]--> " << dst << std::endl;
@@ -234,8 +235,9 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
       dstAlloc = allocations.new_allocation(dst, dstCount, dstAS,
                                             Memory::Unknown, Location::Host());
       profiler::err() << "WARN: Couldn't find dst alloc. Created implict host "
-                         "allocation= [ "
-                      << dst << " , + " << dstCount << " )" << std::endl;
+                         "allocation= {"
+                      << dstAS.str() << "}[ " << src << " , +" << srcCount
+                      << " )" << std::endl;
     }
   }
 

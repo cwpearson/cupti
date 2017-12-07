@@ -19,9 +19,10 @@ static std::string to_string(const AddressSpace::Type &t) {
     return "unknown";
   default:
     assert(0 && "Unhandled AddressSpace::Type");
-    return "default";
   }
 }
+
+std::string AddressSpace::str() const { return to_string(type_); }
 
 std::string AddressSpace::json() const {
   ptree pt;
