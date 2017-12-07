@@ -36,7 +36,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
                                ncclDataType_t datatype, int root,
                                ncclComm_t comm) {
   static std::mutex access;
-  static Value rootBuffVal = nullptr;
+  static Value rootBuffVal = Value();
   static std::vector<Value> dstBuffVals;
   const int dev = profiler::driver().device(comm);
   const auto &AS = profiler::hardware().address_space(dev);
@@ -48,12 +48,11 @@ static void register_ncclBcast(uintptr_t buff, int count,
   // If we're the root device, we know the location of the buffer that
   // everyone depends on
   if (dev == root) {
-    rootBuffVal = profiler::values().find_live(buff, numBytes, AS);
+    rootBuffVal = profiler::allocations().find_value(buff, numBytes, AS);
   }
 
-  const auto &dstBuffAlloc = profiler::allocations().find(buff, numBytes, AS);
-  const auto &dstBuffVal =
-      profiler::values().new_value(buff, numBytes, dstBuffAlloc, true);
+  auto dstBuffAlloc = profiler::allocations().find(buff, numBytes, AS);
+  const auto &dstBuffVal = dstBuffAlloc.new_value(buff, numBytes, true);
   dstBuffVals.push_back(dstBuffVal);
 
   // If the root has been found, we have enough info to add some deps
@@ -69,13 +68,13 @@ static void register_ncclBcast(uintptr_t buff, int count,
                                            profiler::driver().device(comm));
     api->add_input(rootBuffVal);
 
-    for (const auto &v : dstBuffVals) {
-      v->add_depends_on(*rootBuffVal);
+    for (auto &v : dstBuffVals) {
+      v.add_depends_on(rootBuffVal);
       api->add_output(v);
     }
     profiler::atomic_out(api->json());
     dstBuffVals.clear();
-    rootBuffVal = nullptr;
+    rootBuffVal = Value();
   }
 }
 
@@ -92,13 +91,12 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
 
   // Look up and add my values
   const size_t numBytes = ncclSizeOf(datatype) * count;
-  const auto sendBuffVal = profiler::values().find_live(sendbuff, numBytes, AS);
+  const auto sendBuffVal =
+      profiler::allocations().find_value(sendbuff, numBytes, AS);
   sendBuffVals.push_back(sendBuffVal);
 
-  const auto &recvBuffAlloc =
-      profiler::allocations().find(recvbuff, numBytes, AS);
-  const auto recvBuffVal =
-      profiler::values().new_value(recvbuff, numBytes, recvBuffAlloc, true);
+  auto recvBuffAlloc = profiler::allocations().find(recvbuff, numBytes, AS);
+  auto recvBuffVal = recvBuffAlloc.new_value(recvbuff, numBytes, true);
   recvBuffVals.push_back(recvBuffVal);
 
   // Once all values have been found, the last thread to enter allreduce can
@@ -117,7 +115,7 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
     for (const auto &sendVal : sendBuffVals) {
       api->add_input(sendVal);
       for (const auto &recvVal : recvBuffVals) {
-        recvVal->add_depends_on(*sendVal);
+        recvVal.add_depends_on(sendVal);
       }
     }
     for (const auto &v : recvBuffVals) {

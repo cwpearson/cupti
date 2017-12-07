@@ -36,7 +36,7 @@ static ptree to_json(const std::vector<Value> &v) {
   ptree array;
   for (const auto &e : v) {
     ptree elem;
-    elem.put("", e);
+    elem.put("", e.id());
     array.push_back(std::make_pair("", elem));
   }
   return array;

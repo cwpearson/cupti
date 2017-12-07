@@ -64,21 +64,20 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   // FIXME - also depends on alpha, beta
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationForward);
 
-  auto &values = profiler::values();
   auto &allocations = profiler::allocations();
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
 
   // Get src value
-  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
   assert(xVal && "x should be on device");
 
   // Get dst allocation
   auto yAlloc = allocations.find((uintptr_t)y, AS);
   assert(yAlloc && "y alloc should be on device");
 
-  auto yVal = values.new_value((uintptr_t)y, 0 /*FIXME*/, yAlloc, true);
+  auto yVal = yAlloc.new_value((uintptr_t)y, 0 /*FIXME*/, true);
   yVal.add_depends_on(xVal);
 
   auto api = std::make_shared<ApiRecord>("cudnnActivationForward", devId);
@@ -112,18 +111,17 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
 
   // FIXME - alpha and beta
 
-  auto &values = profiler::values();
-
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Get src value
-  auto aVal = values.find_live((uintptr_t)A, 1, AS);
+  auto aVal = allocations.find_value((uintptr_t)A, 1, AS);
   assert(aVal && "A should be on device");
-  auto cVal = values.find_live((uintptr_t)C, 1, AS);
+  auto cVal = allocations.find_value((uintptr_t)C, 1, AS);
   assert(cVal && "C should be on device");
 
-  auto dstVal = values.duplicate_value(cVal);
+  auto dstVal = allocations.duplicate_value(cVal);
   dstVal.add_depends_on(aVal);
   dstVal.add_depends_on(cVal);
 
@@ -158,17 +156,15 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
     const cudnnTensorDescriptor_t dxDesc, void *dx) {
 
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationBackward);
-
-  auto &values = profiler::values();
   auto &allocations = profiler::allocations();
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
 
   // Get src value
-  auto yVal = values.find_live((uintptr_t)y, 1, AS);
-  auto dyVal = values.find_live((uintptr_t)dy, 1, AS);
-  auto xVal = values.find_live((uintptr_t)x, 1, AS);
+  auto yVal = allocations.find_value((uintptr_t)y, 1, AS);
+  auto dyVal = allocations.find_value((uintptr_t)dy, 1, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, 1, AS);
   assert(yVal && "y should be on device");
   assert(dyVal && "dy should be on device");
   assert(xVal && "x should be on device");
@@ -178,7 +174,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   assert(dxAlloc && "dx alloc should be on device");
 
   // FIXME - this size is wrong
-  auto dxVal = values.new_value((uintptr_t)dx, 0, dxAlloc, true);
+  auto dxVal = dxAlloc.new_value((uintptr_t)dx, 0, true);
   dxVal.add_depends_on(xVal);
   dxVal.add_depends_on(yVal);
   dxVal.add_depends_on(dyVal);
@@ -219,22 +215,22 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
     size_t workSpaceSizeInBytes, const void *beta,
     const cudnnTensorDescriptor_t dxDesc, void *dx) {
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardData);
-  auto &values = profiler::values();
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find input values
-  auto dyVal = values.find_live((uintptr_t)dy, AS);
-  auto wVal = values.find_live((uintptr_t)w, AS);
-  auto workSpaceVal = values.find_live((uintptr_t)workSpace, AS);
-  auto dxVal = values.find_live((uintptr_t)dx, AS);
+  auto dyVal = allocations.find_value((uintptr_t)dy, AS);
+  auto wVal = allocations.find_value((uintptr_t)w, AS);
+  auto workSpaceVal = allocations.find_value((uintptr_t)workSpace, AS);
+  auto dxVal = allocations.find_value((uintptr_t)dx, AS);
 
   assert(dyVal &&
          "Couldn't find cudnnConvolutionBackwardData dy value on device");
 
   // Create output value
-  auto outVal = values.duplicate_value(dxVal);
+  auto outVal = allocations.duplicate_value(dxVal);
   outVal.add_depends_on(wVal);
   outVal.add_depends_on(dyVal);
   outVal.add_depends_on(workSpaceVal);
@@ -273,14 +269,13 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
                              const void *dy, const void *beta,
                              const cudnnTensorDescriptor_t dbDesc, void *db) {
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardBias);
-  auto &values = profiler::values();
   auto &allocations = profiler::allocations();
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
 
   // Find input values
-  auto dyVal = values.find_live((uintptr_t)dy, AS);
+  auto dyVal = allocations.find_value((uintptr_t)dy, AS);
 
   assert(dyVal &&
          "Couldn't find cudnnConvolutionBackwardBias dy value on device");
@@ -288,8 +283,8 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   // Create output value
   auto dbAlloc = allocations.find((uintptr_t)db, 1, AS);
   assert(dbAlloc && "y allocation should be on device");
-  auto dbVal = values.new_value((uintptr_t)db, 0 /*FIXME*/, dbAlloc,
-                                true /*initialized*/);
+  auto dbVal =
+      dbAlloc.new_value((uintptr_t)db, 0 /*FIXME*/, true /*initialized*/);
   dbVal.add_depends_on(dyVal);
 
   // track api
@@ -331,22 +326,22 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
     const cudnnFilterDescriptor_t dwDesc, void *dw) {
 
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardFilter);
-  auto &values = profiler::values();
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find input values
-  auto xVal = values.find_live((uintptr_t)x, AS);
-  auto dyVal = values.find_live((uintptr_t)dy, AS);
-  auto workSpaceVal = values.find_live((uintptr_t)workSpace, AS);
-  auto dwVal = values.find_live((uintptr_t)dw, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
+  auto dyVal = allocations.find_value((uintptr_t)dy, AS);
+  auto workSpaceVal = allocations.find_value((uintptr_t)workSpace, AS);
+  auto dwVal = allocations.find_value((uintptr_t)dw, AS);
   assert(
       xVal && dyVal && workSpaceVal && dwVal &&
       "Couldn't find cudnnConvolutionBackwardFilter argument value on device");
 
   // See if there is an existing output value to take info from
-  auto outVal = values.duplicate_value(dwVal);
+  auto outVal = allocations.duplicate_value(dwVal);
   outVal.add_depends_on(xVal);
   outVal.add_depends_on(dyVal);
   outVal.add_depends_on(workSpaceVal);
@@ -396,23 +391,22 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
 
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionForward);
 
-  auto &values = profiler::values();
-
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find input values
   profiler::err() << "Looking for x=" << (uintptr_t)x << ", w=" << (uintptr_t)w
                   << ", workSpace=" << (uintptr_t)workSpace << std::endl;
-  auto xVal = values.find_live((uintptr_t)x, AS);
-  auto wVal = values.find_live((uintptr_t)w, AS);
-  auto workSpaceVal = values.find_live((uintptr_t)workSpace, AS);
-  auto yVal = values.find_live((uintptr_t)y, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
+  auto wVal = allocations.find_value((uintptr_t)w, AS);
+  auto workSpaceVal = allocations.find_value((uintptr_t)workSpace, AS);
+  auto yVal = allocations.find_value((uintptr_t)y, AS);
   assert(xVal && wVal && workSpaceVal && yVal &&
          "Couldn't find cudnnConvolutionForward argument value on device");
 
   // See if there is an existing output value to take info from
-  auto outVal = values.duplicate_value(yVal);
+  auto outVal = allocations.duplicate_value(yVal);
   outVal.add_depends_on(xVal);
   outVal.add_depends_on(wVal);
   outVal.add_depends_on(workSpaceVal);
@@ -455,20 +449,19 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
 
   CUDNN_DLSYM_BOILERPLATE(cudnnSoftmaxForward);
 
-  auto &values = profiler::values();
   auto &allocations = profiler::allocations();
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
 
   // Find input values
-  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
   assert(xVal && "Couldn't find cudnnSoftmaxForward x value on device");
 
   // Create output value
   auto yAlloc = allocations.find((uintptr_t)y, 1, AS);
   assert(yAlloc && "y allocation should be on device");
-  auto yVal = values.new_value((uintptr_t)y, 0, yAlloc, true /*initialized*/);
+  auto yVal = yAlloc.new_value((uintptr_t)y, 0, true /*initialized*/);
   yVal.add_depends_on(xVal);
 
   // track api

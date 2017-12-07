@@ -8,6 +8,8 @@ using boost::property_tree::write_json;
 using cprof::model::Location;
 using cprof::model::Memory;
 
+size_t AllocationRecord::next_val_ = 1;
+
 std::string AllocationRecord::json() const {
   ptree pt;
   pt.put("allocation.id", std::to_string(uintptr_t(this)));

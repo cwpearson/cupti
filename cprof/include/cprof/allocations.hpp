@@ -63,16 +63,16 @@ public:
 
   Value new_value(const uintptr_t pos, const size_t size,
                   const AddressSpace &as, const bool initialized);
-  Value find_live(uintptr_t pos, size_t size, const AddressSpace &as);
-  Value find_live(const uintptr_t pos, const AddressSpace &as) {
-    return find_live(pos, 1, as);
-  }
+
   Value find_value(const uintptr_t pos, const size_t size,
                    const AddressSpace &as);
+  Value find_value(const uintptr_t pos, const AddressSpace &as) {
+    return find_value(pos, 1, as);
+  }
 
   Value duplicate_value(const Value &v) {
     // ensure the existing value exists
-    auto orig = find_live(v.pos(), v.size(), v.address_space());
+    auto orig = find_value(v.pos(), v.size(), v.address_space());
     assert(orig);
     return new_value(v.pos(), v.size(), v.address_space(), v.initialized());
   }

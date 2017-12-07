@@ -17,13 +17,17 @@ namespace cprof {
 Allocation Allocations::unsafe_find(uintptr_t pos, size_t size,
                                     const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
-  std::lock_guard<std::mutex> guard(access_mutex_);
   auto allocationsIter = addrSpaceAllocs_.find(as);
   if (allocationsIter != addrSpaceAllocs_.end()) {
     auto &allocations = allocationsIter->second;
 
-    // std::cerr << "looking for " <<q pos << " +" << size << "\n";
+    // std::cerr << "(unsafe_find) looking for {" << as.str() << "}[" << pos
+    //           << ", +" << size << ")\n";
     auto si = interval<uintptr_t>::right_open(pos, pos + size);
+    // std::cerr << si.lower() << " " << si.upper() << "\n";
+    // for (auto &e : allocations) {
+    //   std::cerr << e.first.lower() << " " << e.first.upper() << "\n";
+    // }
     auto ai = allocations.find(si);
     if (ai != allocations.end()) {
       // std::cerr << "matching allocation at " << ai->second.pos() << "\n";
@@ -60,7 +64,7 @@ Allocation Allocations::insert(const Allocation &a) {
   logging::atomic_out(a.json());
   auto &allocs = addrSpaceAllocs_[a.address_space()];
   allocs += std::make_pair(a.interval(), a);
-  return allocs.find(a.interval())->second;
+  return a;
 }
 
 Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
@@ -77,10 +81,19 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
 Value Allocations::find_value(const uintptr_t pos, const size_t size,
                               const AddressSpace &as) {
   std::lock_guard<std::mutex> guard(access_mutex_);
-  logging::err() << "INFO: Looking for value @ [" << pos << ", +" << size << ")"
-                 << std::endl;
+  logging::err() << "INFO: Looking for value @ {" << as.str() << "}[" << pos
+                 << ", +" << size << ")" << std::endl;
 
   const auto &alloc = unsafe_find(pos, size, as);
+  if (!alloc) {
+    logging::err() << "DEBU: Didn't find alloc while looking for value @ ["
+                   << pos << ", +" << size << ")" << std::endl;
+    return Value();
+  } else {
+    logging::err() << "DEBU: Found alloc [" << alloc.pos() << ", +"
+                   << alloc.size() << ") while looking for value @ [" << pos
+                   << ", +" << size << ")" << std::endl;
+  }
   const auto val = alloc.value(pos, size);
   return val;
 }

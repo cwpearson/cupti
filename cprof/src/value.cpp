@@ -11,9 +11,14 @@ using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
 
+std::ostream &operator<<(std::ostream &os, const cprof::Value &dt) {
+  os << dt.id();
+  return os;
+}
+
 namespace cprof {
 
-void Value::add_depends_on(const Value &v) {
+void Value::add_depends_on(const Value &v) const {
   ptree pt;
   pt.put("dep.dst_id", v.id());
   pt.put("dep.src_id", id());

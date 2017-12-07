@@ -23,13 +23,14 @@ private:
 public:
   Value(size_t id, const uintptr_t pos, const size_t size,
         const AddressSpace &as, const bool initialized)
-      : Extent(pos, size), id_(id), address_space_(as),
-        initialized_(initialized) {}
+      : Extent(pos, size), address_space_(as), initialized_(initialized),
+        id_(id) {}
+  Value() : Value(0, 0, 0, AddressSpace::Unknown(), false) {}
 
-  void add_depends_on(const Value &V);
+  void add_depends_on(const Value &V) const;
   std::string json() const;
 
-  operator bool() const noexcept { return id_ != 0; }
+  explicit operator bool() const noexcept { return id_ != 0; }
   size_t id() const { return id_; }
   AddressSpace address_space() const;
   void set_size(const size_t size);
@@ -37,5 +38,7 @@ public:
 };
 
 } // namespace cprof
+
+std::ostream &operator<<(std::ostream &os, const cprof::Value &dt);
 
 #endif

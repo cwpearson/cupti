@@ -19,10 +19,7 @@
 
 class AllocationRecord {
 private:
-  static size_t unique_val() {
-    static size_t i = 1;
-    return i++;
-  }
+  static size_t next_val_;
   size_t val_;
   bool val_initialized_;
 
@@ -54,7 +51,7 @@ public:
 
   cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized) {
     if (!val_) {
-      val_ = unique_val();
+      val_ = next_val_++;
       val_initialized_ = initialized;
     }
     return value(pos, size);
@@ -85,7 +82,6 @@ public:
   bool freed() const noexcept;
   void free();
   explicit operator bool() const noexcept { return bool(ar_); }
-  bool operator!() const noexcept { return !bool(); }
   uintptr_t id() const { return uintptr_t(ar_.get()); }
 
   boost::icl::interval<uintptr_t>::interval_type interval() const {

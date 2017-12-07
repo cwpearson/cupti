@@ -70,21 +70,21 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
-  auto &values = profiler::values();
 
   const int devId = driver().device_from_cublas_handle(handle);
   AddressSpace AS = hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  auto aVal = values.find_live((uintptr_t)A, AS);
-  auto bVal = values.find_live((uintptr_t)B, AS);
-  auto cVal = values.find_live((uintptr_t)C, AS);
+  auto aVal = allocations.find_value((uintptr_t)A, AS);
+  auto bVal = allocations.find_value((uintptr_t)B, AS);
+  auto cVal = allocations.find_value((uintptr_t)C, AS);
 
   assert(aVal && bVal && cVal &&
          "Couldn't find Dgemm argument value on device");
 
-  auto newVal = values.duplicate_value(cVal);
+  auto newVal = allocations.duplicate_value(cVal);
   newVal.add_depends_on(aVal);
   newVal.add_depends_on(bVal);
   newVal.add_depends_on(cVal);
@@ -119,19 +119,18 @@ cublasSaxpy(cublasHandle_t handle, int n,
 
   CUBLAS_DLSYM_BOILERPLATE(cublasSaxpy);
 
-  auto &values = profiler::values();
-
   const int devId = driver().device_from_cublas_handle(handle);
   AddressSpace AS = hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find input values
-  auto xVal = values.find_live((uintptr_t)x, AS);
-  auto yVal = values.find_live((uintptr_t)y, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
+  auto yVal = allocations.find_value((uintptr_t)y, AS);
 
   assert(xVal && "Couldn't find cublasSaxpy x value on device");
 
   // Create output value
-  auto outVal = values.duplicate_value(yVal);
+  auto outVal = allocations.duplicate_value(yVal);
   outVal.add_depends_on(xVal);
   outVal.add_depends_on(yVal);
 
@@ -171,19 +170,19 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
-  auto &values = profiler::values();
 
   const int devId = driver().device_from_cublas_handle(handle);
   AddressSpace AS = hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find the argument values
-  auto aVal = values.find_live((uintptr_t)A, AS);
-  auto bVal = values.find_live((uintptr_t)B, AS);
-  auto cVal = values.find_live((uintptr_t)C, AS);
+  auto aVal = allocations.find_value((uintptr_t)A, AS);
+  auto bVal = allocations.find_value((uintptr_t)B, AS);
+  auto cVal = allocations.find_value((uintptr_t)C, AS);
   assert(aVal && bVal && cVal &&
          "Couldn't find Dgemm argument value on device");
 
-  auto newVal = values.duplicate_value(cVal);
+  auto newVal = allocations.duplicate_value(cVal);
   newVal.add_depends_on(aVal);
   newVal.add_depends_on(bVal);
   newVal.add_depends_on(cVal);
@@ -219,16 +218,16 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   CUBLAS_DLSYM_BOILERPLATE(cublasDgemv);
 
   // record data, we know things about how this API works
-  auto &values = profiler::values();
 
   const int devId = driver().device_from_cublas_handle(handle);
   AddressSpace AS = hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  auto aVal = values.find_live((uintptr_t)A, AS);
-  auto xVal = values.find_live((uintptr_t)x, AS);
-  auto yVal = values.find_live((uintptr_t)y, AS);
+  auto aVal = allocations.find_value((uintptr_t)A, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
+  auto yVal = allocations.find_value((uintptr_t)y, AS);
 
   assert(aVal && xVal && yVal &&
          "Couldn't find Dgemv argument value on device");
@@ -237,7 +236,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   profiler::err() << "WARN: not handling some values (A, alpha, beta)"
                   << std::endl;
 
-  auto newVal = values.duplicate_value(yVal);
+  auto newVal = allocations.duplicate_value(yVal);
   newVal.add_depends_on(xVal);
   newVal.add_depends_on(yVal);
 
@@ -274,16 +273,16 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   CUBLAS_DLSYM_BOILERPLATE(cublasSgemv);
 
   // record data, we know things about how this API works
-  auto &values = profiler::values();
 
   const int devId = driver().device_from_cublas_handle(handle);
   AddressSpace AS = hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  auto aVal = values.find_live((uintptr_t)A, AS);
-  auto xVal = values.find_live((uintptr_t)x, AS);
-  auto yVal = values.find_live((uintptr_t)y, AS);
+  auto aVal = allocations.find_value((uintptr_t)A, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
+  auto yVal = allocations.find_value((uintptr_t)y, AS);
 
   assert(aVal && xVal && yVal &&
          "Couldn't find cublasSgemv argument value on device");
@@ -292,7 +291,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   profiler::err() << "WARN: not handling some values (A, alpha, beta)"
                   << std::endl;
 
-  auto newVal = values.duplicate_value(yVal);
+  auto newVal = allocations.duplicate_value(yVal);
   newVal.add_depends_on(xVal);
   newVal.add_depends_on(yVal);
 
@@ -322,7 +321,6 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   CUBLAS_DLSYM_BOILERPLATE(cublasSasum);
 
   // record data, we know things about how this API works
-  auto &values = profiler::values();
   auto &allocations = profiler::allocations();
 
   const int devId = driver().device_from_cublas_handle(handle);
@@ -330,7 +328,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
 
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
-  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
   assert(xVal && "Couldn't find Sasum x argument value on device");
 
   // see if we can find an allocation for the result
@@ -347,8 +345,8 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   assert(rAlloc && "If there is no allocation, we need to make one");
 
   // Make a new value
-  auto rVal = values.new_value((uintptr_t)result, sizeof(float), rAlloc,
-                               true /*initialized*/);
+  auto rVal =
+      rAlloc.new_value((uintptr_t)result, sizeof(float), true /*initialized*/);
   rVal.add_depends_on(xVal);
 
   auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
@@ -375,17 +373,16 @@ cublasSscal(cublasHandle_t handle, int n,
             float *x, int incx) {
   CUBLAS_DLSYM_BOILERPLATE(cublasSscal);
 
-  auto &values = profiler::values();
-
   const int devId = driver().device_from_cublas_handle(handle);
   AddressSpace AS = hardware().address_space(devId);
+  auto &allocations = profiler::allocations();
 
   // Find input values
-  auto xVal = values.find_live((uintptr_t)x, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
   assert(xVal && "Couldn't find cublasSscal x value on device");
 
   // Create output value
-  auto outVal = values.duplicate_value(xVal);
+  auto outVal = allocations.duplicate_value(xVal);
   outVal.add_depends_on(xVal);
 
   // track api
@@ -415,7 +412,6 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   CUBLAS_DLSYM_BOILERPLATE(cublasSdot);
 
   // record data, we know things about how this API works
-  auto &values = profiler::values();
   auto &allocations = profiler::allocations();
 
   const int devId = driver().device_from_cublas_handle(handle);
@@ -424,8 +420,8 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   // Find the argument values
   // http://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-gemv
   profiler::err() << "Looking for x=" << (uintptr_t)x << std::endl;
-  auto xVal = values.find_live((uintptr_t)x, AS);
-  auto yVal = values.find_live((uintptr_t)y, AS);
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
+  auto yVal = allocations.find_value((uintptr_t)y, AS);
   assert(xVal && "Couldn't find cublasSdot x argument value on device");
   assert(yVal && "Couldn't find cublasSdot y argument value on device");
 
@@ -444,8 +440,8 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   }
   profiler::err() << "result allocId=" << uintptr_t(rAlloc.id()) << std::endl;
   // Make a new value
-  auto rVal = values.new_value((uintptr_t)result, sizeof(float), rAlloc,
-                               true /*initialized*/);
+  auto rVal =
+      rAlloc.new_value((uintptr_t)result, sizeof(float), true /*initialized*/);
   rVal.add_depends_on(xVal);
   rVal.add_depends_on(yVal);
 
