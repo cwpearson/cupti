@@ -48,20 +48,19 @@ Allocation Allocations::free(uintptr_t pos, const AddressSpace &as) {
     auto &allocations = allocationsIter->second;
     auto ai = allocations.find(pos);
     if (ai != allocations.end()) {
-      if (ai->second.pos() == pos) {
-        auto alloc = ai->second;
-        alloc.free();
-        return alloc;
+      if (ai->pos() == pos) {
+        ai->free();
+        return *ai;
       }
     }
   }
-  return nullptr;
+  return Allocation();
 }
 
 Allocation Allocations::insert(const Allocation &a) {
   logging::atomic_out(a.json());
   auto &allocs = addrSpaceAllocs_[a.address_space()];
-  allocs += std::make_pair(a.interval(), a);
+  allocs.insert_join(a);
   return a;
 }
 
@@ -72,8 +71,7 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
     logging::err() << "WARN: creating size 0 allocation" << std::endl;
   }
   std::lock_guard<std::mutex> guard(access_mutex_);
-  auto ar = new AllocationRecord(pos, size, as, am, al);
-  return insert(Allocation(ar));
+  return insert(Allocation(pos, size, as, am, al));
 }
 
 Value Allocations::find_value(const uintptr_t pos, const size_t size,

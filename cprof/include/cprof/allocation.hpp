@@ -39,6 +39,8 @@ public:
 public: // interval interface
   pos_type lower() const noexcept { return lower_; }
   pos_type upper() const noexcept { return upper_; }
+  void set_lower(const pos_type &p) { lower_ = p; }
+  void set_upper(const pos_type &p) { upper_ = p; }
 
 public:
   Allocation(pos_type pos, size_t size, const AddressSpace &as,
@@ -74,5 +76,7 @@ public:
   bool freed() const noexcept;
   uintptr_t id() const;
   void free();
+
+  bool operator!() const noexcept { return pos() == 0; }
 };
 #endif
