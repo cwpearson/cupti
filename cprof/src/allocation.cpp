@@ -9,6 +9,7 @@ using cprof::model::Location;
 using cprof::model::Memory;
 
 size_t Allocation::next_val_ = 1;
+size_t Allocation::nextId_ = 1;
 
 std::string Allocation::json() const {
   ptree pt;
@@ -30,6 +31,7 @@ Memory Allocation::memory() const { return memory_; }
 Location Allocation::location() const { return location_; }
 bool Allocation::freed() const noexcept { return freed_; }
 void Allocation::free() { freed_ = true; }
+size_t Allocation::id() const noexcept { return id_; }
 
 // bool Allocation::operator==(const Allocation &rhs) const {
 //   return ar_ == rhs.ar_;

@@ -25,10 +25,14 @@ private:
   bool val_initialized_;
 
 private:
+  static size_t nextId_;
+
+private:
   AddressSpace address_space_;
   cprof::model::Memory memory_;
   cprof::model::Location location_;
   bool freed_;
+  size_t id_;
 
 public:
   typedef uintptr_t pos_type;
@@ -46,8 +50,10 @@ public:
   Allocation(pos_type pos, size_t size, const AddressSpace &as,
              const cprof::model::Memory &mem,
              const cprof::model::Location &location)
-      : val_(0), lower_(pos), upper_(pos + size), address_space_(as),
-        memory_(mem), location_(location), freed_(false) {}
+      : val_(0), id_(nextId_), lower_(pos), upper_(pos + size),
+        address_space_(as), memory_(mem), location_(location), freed_(false) {
+    ++nextId_;
+  }
   Allocation(const pos_type &pos, const size_t &size)
       : Allocation(pos, size, AddressSpace::Host(),
                    cprof::model::Memory::Unknown,
@@ -74,9 +80,10 @@ public:
   cprof::model::Memory memory() const;
   cprof::model::Location location() const;
   bool freed() const noexcept;
-  uintptr_t id() const;
+  size_t id() const noexcept;
   void free();
 
   bool operator!() const noexcept { return pos() == 0; }
+  explicit operator bool() const noexcept { return pos() != 0; }
 };
 #endif

@@ -94,16 +94,15 @@ Value Allocations::find_value(const uintptr_t pos, const size_t size,
   return val;
 }
 
-// Value Allocations::new_value(const uintptr_t pos, const size_t size,
-//                              const AddressSpace &as, const bool initialized)
-//                              {
-//   std::lock_guard<std::mutex> guard(access_mutex_);
+Value Allocations::new_value(const uintptr_t pos, const size_t size,
+                             const AddressSpace &as, const bool initialized) {
+  std::lock_guard<std::mutex> guard(access_mutex_);
 
-//   // Find the allocation
-//   auto alloc = unsafe_find(pos, size, as);
-//   assert(alloc && "Allocation should be valid");
+  // Find the allocation
+  auto alloc = unsafe_find(pos, size, as);
+  assert(alloc && "Allocation should be valid");
 
-//   return alloc.new_value(pos, size, initialized);
-// }
+  return alloc.new_value(pos, size, initialized);
+}
 
 } // namespace cprof
