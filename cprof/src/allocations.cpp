@@ -8,14 +8,13 @@
 using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
-using namespace boost::icl;
 using cprof::model::Location;
 using cprof::model::Memory;
 
 namespace cprof {
 
-Allocation Allocations::unsafe_find(uintptr_t pos, size_t size,
-                                    const AddressSpace &as) {
+Allocation &Allocations::unsafe_find(uintptr_t pos, size_t size,
+                                     const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   auto allocationsIter = addrSpaceAllocs_.find(as);
   if (allocationsIter != addrSpaceAllocs_.end()) {
@@ -23,12 +22,11 @@ Allocation Allocations::unsafe_find(uintptr_t pos, size_t size,
 
     // std::cerr << "(unsafe_find) looking for {" << as.str() << "}[" << pos
     //           << ", +" << size << ")\n";
-    auto si = interval<uintptr_t>::right_open(pos, pos + size);
     // std::cerr << si.lower() << " " << si.upper() << "\n";
     // for (auto &e : allocations) {
     //   std::cerr << e.first.lower() << " " << e.first.upper() << "\n";
     // }
-    auto ai = allocations.find(si);
+    auto ai = allocations.find(Allocation(pos, size));
     if (ai != allocations.end()) {
       // std::cerr << "matching allocation at " << ai->second.pos() << "\n";
       return ai->second;
@@ -98,15 +96,16 @@ Value Allocations::find_value(const uintptr_t pos, const size_t size,
   return val;
 }
 
-Value Allocations::new_value(const uintptr_t pos, const size_t size,
-                             const AddressSpace &as, const bool initialized) {
-  std::lock_guard<std::mutex> guard(access_mutex_);
+// Value Allocations::new_value(const uintptr_t pos, const size_t size,
+//                              const AddressSpace &as, const bool initialized)
+//                              {
+//   std::lock_guard<std::mutex> guard(access_mutex_);
 
-  // Find the allocation
-  auto alloc = unsafe_find(pos, size, as);
-  assert(alloc && "Allocation should be valid");
+//   // Find the allocation
+//   auto alloc = unsafe_find(pos, size, as);
+//   assert(alloc && "Allocation should be valid");
 
-  return alloc.new_value(pos, size, initialized);
-}
+//   return alloc.new_value(pos, size, initialized);
+// }
 
 } // namespace cprof
