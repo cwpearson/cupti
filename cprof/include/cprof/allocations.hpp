@@ -23,13 +23,13 @@ public:
 private:
   typedef uintptr_t pos_type;
   typedef Allocation value_type;
-  typedef IntervalSet<Allocation> icl_type;
+  typedef IntervalSet<AllocationRecord> icl_type;
 
 private:
   std::map<AddressSpace, icl_type> addrSpaceAllocs_;
   std::mutex access_mutex_;
 
-  Allocation insert(const Allocation &a);
+  Allocation insert(const AllocationRecord &ar);
 
   Allocation unsafe_find(uintptr_t pos, size_t size, const AddressSpace &as);
 

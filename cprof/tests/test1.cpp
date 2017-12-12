@@ -78,6 +78,7 @@ TEST_F(AllocationsTest, merge) {
 
   const auto a1 = as.new_allocation(1, 3, AS, M, L);
   const auto a2 = as.new_allocation(2, 3, AS, M, L);
+  std::cerr << a1.id() << " " << a2.id() << "\n";
   EXPECT_EQ(1, as.size());
   EXPECT_EQ(a1, a2);
 

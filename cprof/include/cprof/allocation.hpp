@@ -18,52 +18,41 @@
 #include "util/interval_set.hpp"
 #include "util/logging.hpp"
 
-class Allocation {
+class AllocationRecord {
 private:
   static size_t next_val_;
   size_t val_;
   bool val_initialized_;
 
-private:
-  static size_t nextId_;
-
-private:
+public:
+  uintptr_t lower_;
+  uintptr_t upper_;
   AddressSpace address_space_;
   cprof::model::Memory memory_;
+  cprof::model::tid_t thread_id_;
   cprof::model::Location location_;
   bool freed_;
-  size_t id_;
 
-public:
   typedef uintptr_t pos_type;
-  pos_type lower_;
-  pos_type upper_;
-  cprof::model::tid_t thread_id_;
-
-public: // interval interface
   pos_type lower() const noexcept { return lower_; }
   pos_type upper() const noexcept { return upper_; }
   void set_lower(const pos_type &p) { lower_ = p; }
   void set_upper(const pos_type &p) { upper_ = p; }
 
-public:
-  Allocation(pos_type pos, size_t size, const AddressSpace &as,
-             const cprof::model::Memory &mem,
-             const cprof::model::Location &location)
-      : val_(0), id_(nextId_), lower_(pos), upper_(pos + size),
-        address_space_(as), memory_(mem), location_(location), freed_(false) {
-    ++nextId_;
-  }
-  Allocation(const pos_type &pos, const size_t &size)
-      : Allocation(pos, size, AddressSpace::Host(),
-                   cprof::model::Memory::Unknown,
-                   cprof::model::Location::Unknown()) {}
-  Allocation() : Allocation(0, 0) {}
+  AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
+                   const cprof::model::Memory &mem,
+                   const cprof::model::Location &location)
+      : lower_(pos), upper_(pos + size), val_(0), val_initialized_(0),
+        address_space_(as), memory_(mem), location_(location), freed_(false) {}
+  AllocationRecord(const uintptr_t pos, const size_t size)
+      : AllocationRecord(pos, size, AddressSpace::Host(),
+                         cprof::model::Memory::Unknown,
+                         cprof::model::Location::Unknown()) {}
+  AllocationRecord() : AllocationRecord(0, 0) {}
 
   std::string json() const;
 
-  cprof::Value new_value(pos_type pos, size_t size, const bool initialized) {
-    assert(pos >= lower_ && pos + size < upper_);
+  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized) {
     if (!val_) {
       val_ = next_val_++;
       val_initialized_ = initialized;
@@ -74,6 +63,31 @@ public:
     return cprof::Value(val_, pos, size, address_space_, val_initialized_);
   }
 
+  pos_type pos() const noexcept { return lower_; }
+  const AddressSpace &address_space() const { return address_space_; }
+  void free() { freed_ = true; }
+};
+
+class Allocation {
+
+private:
+  std::shared_ptr<AllocationRecord> ar_;
+
+public: // interval interface
+  typedef uintptr_t pos_type;
+  pos_type lower() const noexcept { return ar_->lower_; }
+  pos_type upper() const noexcept { return ar_->upper_; }
+  void set_lower(const pos_type &p) { ar_->lower_ = p; }
+  void set_upper(const pos_type &p) { ar_->upper_ = p; }
+
+public:
+  Allocation(AllocationRecord *ar)
+      : ar_(std::shared_ptr<AllocationRecord>(ar)) {}
+  Allocation(std::shared_ptr<AllocationRecord> p) : ar_(p) {}
+  Allocation() : Allocation(nullptr) {}
+
+  std::string json() const;
+
   pos_type pos() const noexcept;
   size_t size() const noexcept;
   AddressSpace address_space() const;
@@ -83,11 +97,15 @@ public:
   size_t id() const noexcept;
   void free();
 
-  bool operator!() const noexcept { return pos() == 0; }
-  explicit operator bool() const noexcept { return pos() != 0; }
-  bool operator==(const Allocation &rhs) const noexcept {
-    return pos() == rhs.pos() && size() == rhs.size() &&
-           address_space() == rhs.address_space();
+  bool operator!() const noexcept;
+  explicit operator bool() const noexcept;
+  bool operator==(const Allocation &rhs) const noexcept;
+
+  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized) {
+    return ar_->new_value(pos, size, initialized);
+  }
+  cprof::Value value(const uintptr_t pos, const size_t size) const {
+    return ar_->value(pos, size);
   }
 };
 #endif

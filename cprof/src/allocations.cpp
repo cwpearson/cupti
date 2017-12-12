@@ -26,10 +26,10 @@ Allocation Allocations::unsafe_find(uintptr_t pos, size_t size,
     // for (auto &e : allocations) {
     //   std::cerr << e.first.lower() << " " << e.first.upper() << "\n";
     // }
-    auto ai = allocations.find(Allocation(pos, size));
+    auto ai = allocations.find(pos, size);
     if (ai != allocations.end()) {
       // std::cerr << "matching allocation at " << ai->second.pos() << "\n";
-      return *ai;
+      return Allocation(*ai);
     } else {
       // std::cerr << "no matching alloc\n";
       return Allocation();
@@ -48,20 +48,21 @@ Allocation Allocations::free(uintptr_t pos, const AddressSpace &as) {
     auto &allocations = allocationsIter->second;
     auto ai = allocations.find(pos);
     if (ai != allocations.end()) {
-      if (ai->pos() == pos) {
-        ai->free();
-        return *ai;
+      if (ai->second->pos() == pos) {
+        ai->second->free();
+        return Allocation(ai->second);
       }
     }
   }
   return Allocation();
 }
 
-Allocation Allocations::insert(const Allocation &a) {
-  logging::atomic_out(a.json());
-  auto &allocs = addrSpaceAllocs_[a.address_space()];
-  allocs.insert_join(a);
-  return a;
+Allocation Allocations::insert(const AllocationRecord &ar) {
+
+  auto &allocs = addrSpaceAllocs_[ar.address_space()];
+  auto i = allocs.insert_join(ar).first;
+  logging::atomic_out(i->second->json());
+  return Allocation(*i);
 }
 
 Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
@@ -71,7 +72,12 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
     logging::err() << "WARN: creating size 0 allocation" << std::endl;
   }
   std::lock_guard<std::mutex> guard(access_mutex_);
-  return insert(Allocation(pos, size, as, am, al));
+
+  // Create a new AllocationRecord with the right properties
+  AllocationRecord ar(pos, size, as, am, al);
+
+  // Get back an allocation
+  return insert(ar);
 }
 
 Value Allocations::find_value(const uintptr_t pos, const size_t size,
