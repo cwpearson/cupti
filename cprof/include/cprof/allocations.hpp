@@ -29,9 +29,9 @@ private:
   std::map<AddressSpace, icl_type> addrSpaceAllocs_;
   std::mutex access_mutex_;
 
-  Allocation &insert(const Allocation &a);
+  Allocation insert(const Allocation &a);
 
-  Allocation &unsafe_find(uintptr_t pos, size_t size, const AddressSpace &as);
+  Allocation unsafe_find(uintptr_t pos, size_t size, const AddressSpace &as);
 
 public:
   size_t size() {
@@ -42,21 +42,23 @@ public:
     return tot;
   }
 
+  Allocation free(uintptr_t pos, const AddressSpace &as);
+
   /*! \brief Lookup allocation that contains pos, size, and address space.
    */
-  Allocation &find(uintptr_t pos, size_t size, const AddressSpace &as) {
+  Allocation find(uintptr_t pos, size_t size, const AddressSpace &as) {
     std::lock_guard<std::mutex> guard(access_mutex_);
     return unsafe_find(pos, size, as);
   }
   /*! \brief Lookup allocation containing pos and address space
    */
-  Allocation &find(uintptr_t pos, const AddressSpace &as) {
+  Allocation find(uintptr_t pos, const AddressSpace &as) {
     return find(pos, 1, as);
   }
 
-  Allocation &new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
-                             const cprof::model::Memory &am,
-                             const cprof::model::Location &al);
+  Allocation new_allocation(uintptr_t pos, size_t size, const AddressSpace &as,
+                            const cprof::model::Memory &am,
+                            const cprof::model::Location &al);
 
   Value new_value(const uintptr_t pos, const size_t size,
                   const AddressSpace &as, const bool initialized);

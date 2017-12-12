@@ -13,8 +13,8 @@ using cprof::model::Memory;
 
 namespace cprof {
 
-Allocation &Allocations::unsafe_find(uintptr_t pos, size_t size,
-                                     const AddressSpace &as) {
+Allocation Allocations::unsafe_find(uintptr_t pos, size_t size,
+                                    const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   auto allocationsIter = addrSpaceAllocs_.find(as);
   if (allocationsIter != addrSpaceAllocs_.end()) {
@@ -29,14 +29,14 @@ Allocation &Allocations::unsafe_find(uintptr_t pos, size_t size,
     auto ai = allocations.find(Allocation(pos, size));
     if (ai != allocations.end()) {
       // std::cerr << "matching allocation at " << ai->second.pos() << "\n";
-      return ai->second;
+      return *ai;
     } else {
       // std::cerr << "no matching alloc\n";
-      return nullptr;
+      return Allocation();
     }
   } else {
     // std::cerr << "no matching AS\n";
-    return nullptr;
+    return Allocation();
   }
 }
 
