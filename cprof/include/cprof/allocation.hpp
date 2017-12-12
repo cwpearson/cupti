@@ -85,5 +85,9 @@ public:
 
   bool operator!() const noexcept { return pos() == 0; }
   explicit operator bool() const noexcept { return pos() != 0; }
+  bool operator==(const Allocation &rhs) const noexcept {
+    return pos() == rhs.pos() && size() == rhs.size() &&
+           address_space() == rhs.address_space();
+  }
 };
 #endif
