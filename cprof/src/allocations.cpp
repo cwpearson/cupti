@@ -22,7 +22,6 @@ Allocation Allocations::unsafe_find(uintptr_t pos, size_t size,
 
     // std::cerr << "(unsafe_find) looking for {" << as.str() << "}[" << pos
     //           << ", +" << size << ")\n";
-    // std::cerr << si.lower() << " " << si.upper() << "\n";
     // for (auto &e : allocations) {
     //   std::cerr << e.first.lower() << " " << e.first.upper() << "\n";
     // }
@@ -77,7 +76,13 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
   AllocationRecord ar(pos, size, as, am, al);
 
   // Get back an allocation
-  return insert(ar);
+  auto newAlloc = insert(ar);
+
+  // dump the value in this allocation
+  auto val = newAlloc.value(pos, size);
+  logging::debug() << "Emitting value during new allocation\n";
+  logging::atomic_out(val.json());
+  return newAlloc;
 }
 
 Value Allocations::find_value(const uintptr_t pos, const size_t size,
