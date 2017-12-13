@@ -56,6 +56,18 @@ TEST_F(AllocationsTest, find) {
   EXPECT_EQ(a1, a3);
 }
 
+TEST_F(AllocationsTest, nofind) {
+  cprof::Allocations as;
+
+  const auto AS = AddressSpace::Host();
+  const auto M = Memory::Pageable;
+  const auto L = Location::Host();
+
+  const auto a1 = as.new_allocation(100, 10, AS, M, L);
+  const auto a2 = as.find(10, 1, AS);
+  EXPECT_FALSE(a2);
+}
+
 TEST_F(AllocationsTest, free) {
   cprof::Allocations as;
 
