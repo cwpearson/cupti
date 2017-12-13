@@ -128,7 +128,8 @@ private:
       return end();
     }
 
-    if (gteI->first.second == 1 && ltI->first.second == -1) {
+    if (gteI->first < u && gteI->first.second == 1 && ltI->first.second == -1) {
+      std::cerr << "here\n";
       return iterator(gteI, ltI);
     } else {
       return end();
@@ -252,13 +253,13 @@ public:
 
   std::pair<iterator, bool> insert_split(const key_type &k) {
 
-    std::cerr << "(insert_split) current map:\n";
-    int cnt = 0;
-    for (const auto &i : map_) {
-      std::cerr << i.first.first << "(" << i.first.second << ") ";
-      if (cnt++ % 2)
-        std::cerr << "\n";
-    }
+    // std::cerr << "(insert_split) current map:\n";
+    // int cnt = 0;
+    // for (const auto &i : map_) {
+    //   std::cerr << i.first.first << "(" << i.first.second << ") ";
+    //   if (cnt++ % 2)
+    //     std::cerr << "\n";
+    // }
 
     const auto kUpperEnd = make_upper(k.upper());
     const auto kLowerEnd = make_lower(k.lower());
@@ -289,12 +290,12 @@ public:
         ptr_type newP = ptr_type(new key_type(*oldP));
         newP->set_upper(k.lower());
         inserted = true;
-        std::cerr << "patching " << smaller->second->lower() << " "
-                  << smaller->second->upper() << "\n";
+        // std::cerr << "patching " << smaller->second->lower() << " "
+        //           << smaller->second->upper() << "\n";
         smaller->second = newP;
         map_.insert(std::make_pair(make_upper(k.lower()), smaller->second));
-        std::cerr << "into " << smaller->second->lower() << " "
-                  << smaller->second->upper() << "\n";
+        // std::cerr << "into " << smaller->second->lower() << " "
+        //           << smaller->second->upper() << "\n";
       }
     }
 
