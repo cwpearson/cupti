@@ -47,9 +47,8 @@ install:
 - "./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT"
 - echo $HOME && ls $HOME
 - echo $CUDA_ROOT && ls $CUDA_ROOT
-- ls $CUDA_ROOT/lib64
-- ls $CUDA_ROOT/lib64/stubs
 - ln -s $CUDA_ROOT/lib64/stubs/libcuda.so $CUDA_ROOT/lib64/libcuda.so
+- export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$CUDA_ROOT/lib64"
 - rm -v $CUDASDK_PATH
 - wget $CUDNN_URL -O $CUDNN_PATH
 - tar -xvf $CUDNN_PATH
