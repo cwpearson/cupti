@@ -260,17 +260,11 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   // There may not be a source value, because it may have been initialized
   // on the host
   auto srcVal = allocations.find_value(src, srcCount, srcAlloc.address_space());
-  if (srcVal) {
-    profiler::err() << "memcpy: found src value srcId=" << srcVal.id()
-                    << std::endl;
-    profiler::err() << "WARN: Setting srcVal size by memcpy count" << std::endl;
-    srcVal.set_size(srcCount);
-  } else {
-
-    srcVal = srcAlloc.new_value(src, srcCount, true /*initialized*/);
-    profiler::err() << "WARN: created implicit src value " << srcVal.id()
-                    << " during memcpy" << std::endl;
-  }
+  assert(srcVal && "Value should have been created with allocation");
+  profiler::err() << "memcpy: found src value srcId=" << srcVal.id()
+                  << std::endl;
+  profiler::err() << "WARN: Setting srcVal size by memcpy count" << std::endl;
+  srcVal.set_size(srcCount);
 
   // always create a new dst value
   assert(srcVal);
@@ -472,9 +466,6 @@ static void handleCudaMallocManaged(Allocations &allocations,
 
     auto a = allocations.new_allocation(devPtr, size, AddressSpace::CudaUVA(),
                                         M, Location::Unknown());
-
-    // Create the new value
-    a.new_value(devPtr, size, false /*initialized*/);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -488,16 +479,11 @@ void record_mallochost(Allocations &allocations, const uintptr_t ptr,
   const int devId = profiler::driver().this_thread().current_device();
   auto AS = profiler::hardware().address_space(devId);
 
-  // Allocation alloc = allocations.find(ptr, size, AS);
-
-  // if (!alloc) {
   Allocation alloc =
       allocations.new_allocation(ptr, size, AS, AM, Location::Host());
   profiler::err() << "INFO: made new mallochost @ " << ptr << std::endl;
-  // }
-  assert(alloc);
 
-  alloc.new_value(ptr, size, false /*initialized*/);
+  assert(alloc);
 }
 
 static void handleCudaMallocHost(Allocations &allocations,
@@ -688,7 +674,6 @@ static void handleCudaMalloc(Allocations &allocations,
     profiler::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.id()
                     << " pos=" << a.pos() << std::endl;
 
-    a.new_value(devPtr, size, false /*initialized*/);
     // auto digest = hash_device(devPtr, size);
     // profiler::err() <<"uninitialized digest: %llu\n", digest);
   } else {
