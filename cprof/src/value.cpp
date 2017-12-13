@@ -33,14 +33,17 @@ std::string Value::json() const {
   pt.put("val.id", id_);
   pt.put("val.pos", pos_);
   pt.put("val.size", size_);
-  pt.put("val.as_", address_space_.json());
+  pt.put("val.allocation", allocation_);
+  pt.put("val.address_space", addressSpace_.json());
   pt.put("val.initialized", initialized_);
   std::stringstream buf;
   write_json(buf, pt, false);
   return buf.str();
 }
 
-AddressSpace Value::address_space() const { return address_space_; }
+const AddressSpace &Value::address_space() const noexcept {
+  return addressSpace_;
+}
 
 void Value::set_size(const size_t size) {
   logging::err() << "WARN: not updating size in Value";

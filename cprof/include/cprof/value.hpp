@@ -16,23 +16,25 @@ class Value : public Extent {
 private:
   friend class Allocations;
   friend class Allocation;
-  AddressSpace address_space_;
+  size_t allocation_;
+  AddressSpace addressSpace_;
   bool initialized_;
   size_t id_;
 
 public:
   Value(size_t id, const uintptr_t pos, const size_t size,
-        const AddressSpace &as, const bool initialized)
-      : Extent(pos, size), address_space_(as), initialized_(initialized),
-        id_(id) {}
-  Value() : Value(0, 0, 0, AddressSpace::Unknown(), false) {}
+        const size_t &allocation, const AddressSpace &addressSpace,
+        const bool initialized)
+      : Extent(pos, size), allocation_(allocation), addressSpace_(addressSpace),
+        initialized_(initialized), id_(id) {}
+  Value() : Value(0, 0, 0, 0, AddressSpace::Unknown(), false) {}
 
   void add_depends_on(const Value &V) const;
   std::string json() const;
 
   explicit operator bool() const noexcept { return id_ != 0; }
   size_t id() const { return id_; }
-  AddressSpace address_space() const;
+  const AddressSpace &address_space() const noexcept;
   void set_size(const size_t size);
   bool initialized() const { return initialized_; }
 };
