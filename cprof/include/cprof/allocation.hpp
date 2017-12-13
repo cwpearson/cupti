@@ -42,7 +42,7 @@ public:
   AllocationRecord(uintptr_t pos, size_t size, const AddressSpace &as,
                    const cprof::model::Memory &mem,
                    const cprof::model::Location &location)
-      : lower_(pos), upper_(pos + size), val_(0), val_initialized_(0),
+      : val_(next_val_++), val_initialized_(0), lower_(pos), upper_(pos + size),
         address_space_(as), memory_(mem), location_(location), freed_(false) {}
   AllocationRecord(const uintptr_t pos, const size_t size)
       : AllocationRecord(pos, size, AddressSpace::Host(),
@@ -52,16 +52,8 @@ public:
 
   std::string json() const;
 
-  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized) {
-    if (!val_) {
-      val_ = next_val_++;
-      val_initialized_ = initialized;
-    }
-    return value(pos, size);
-  }
-  cprof::Value value(const uintptr_t pos, const size_t size) const {
-    return cprof::Value(val_, pos, size, address_space_, val_initialized_);
-  }
+  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized);
+  cprof::Value value(const uintptr_t pos, const size_t size) const;
 
   pos_type pos() const noexcept { return lower_; }
   const AddressSpace &address_space() const { return address_space_; }

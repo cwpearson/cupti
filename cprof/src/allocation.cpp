@@ -23,6 +23,21 @@ std::string AllocationRecord::json() const {
   return buf.str();
 }
 
+cprof::Value AllocationRecord::new_value(uintptr_t pos, size_t size,
+                                         const bool initialized) {
+  val_ = next_val_++;
+  val_initialized_ = initialized;
+  cprof::Value newVal = value(pos, size);
+  logging::atomic_out(newVal.json());
+  return newVal;
+}
+
+cprof::Value AllocationRecord::value(const uintptr_t pos,
+                                     const size_t size) const {
+  return cprof::Value(val_, pos, size, uintptr_t(this), address_space_,
+                      val_initialized_);
+}
+
 uintptr_t Allocation::pos() const noexcept { return ar_->lower_; }
 size_t Allocation::size() const noexcept { return ar_->upper_ - ar_->lower_; }
 AddressSpace Allocation::address_space() const { return ar_->address_space_; }
