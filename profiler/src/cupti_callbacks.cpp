@@ -657,14 +657,18 @@ static void handleCudaMalloc(Allocations &allocations,
                              const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
-    uintptr_t devPtr = (uintptr_t)(*(params->devPtr));
-    const size_t size = params->size;
-    profiler::err() << "INFO: [cudaMalloc] " << devPtr << "[" << size << "]"
-                    << std::endl;
 
-    // FIXME: could be an existing allocation from an instrumented driver
-    // API
+    const auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
+    const uintptr_t devPtr = (uintptr_t)(*(params->devPtr));
+    const size_t size = params->size;
+    const cudaError_t res =
+        *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
+    profiler::err() << "INFO: " << res << " = cudaMalloc(" << devPtr << ", "
+                    << size << ")" << std::endl;
+    if (res != cudaSuccess) {
+      profiler::err() << "WARN: cudaMalloc had an error" << std::endl;
+      return;
+    }
 
     // Create the new allocation
     // FIXME: need to check which address space this is in
