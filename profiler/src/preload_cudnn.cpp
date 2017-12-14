@@ -121,7 +121,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   auto cVal = allocations.find_value((uintptr_t)C, 1, AS);
   assert(cVal && "C should be on device");
 
-  auto dstVal = allocations.duplicate_value(cVal);
+  auto dstVal = allocations.duplicate_value(cVal, true);
   dstVal.add_depends_on(aVal);
   dstVal.add_depends_on(cVal);
 
@@ -230,7 +230,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
          "Couldn't find cudnnConvolutionBackwardData dy value on device");
 
   // Create output value
-  auto outVal = allocations.duplicate_value(dxVal);
+  auto outVal = allocations.duplicate_value(dxVal, true);
   outVal.add_depends_on(wVal);
   outVal.add_depends_on(dyVal);
   outVal.add_depends_on(workSpaceVal);
@@ -341,7 +341,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
       "Couldn't find cudnnConvolutionBackwardFilter argument value on device");
 
   // See if there is an existing output value to take info from
-  auto outVal = allocations.duplicate_value(dwVal);
+  auto outVal = allocations.duplicate_value(dwVal, true);
   outVal.add_depends_on(xVal);
   outVal.add_depends_on(dyVal);
   outVal.add_depends_on(workSpaceVal);
@@ -406,7 +406,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
          "Couldn't find cudnnConvolutionForward argument value on device");
 
   // See if there is an existing output value to take info from
-  auto outVal = allocations.duplicate_value(yVal);
+  auto outVal = allocations.duplicate_value(yVal, true);
   outVal.add_depends_on(xVal);
   outVal.add_depends_on(wVal);
   outVal.add_depends_on(workSpaceVal);

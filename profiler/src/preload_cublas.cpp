@@ -84,7 +84,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   assert(aVal && bVal && cVal &&
          "Couldn't find Dgemm argument value on device");
 
-  auto newVal = allocations.duplicate_value(cVal);
+  auto newVal = allocations.duplicate_value(cVal, true);
   newVal.add_depends_on(aVal);
   newVal.add_depends_on(bVal);
   newVal.add_depends_on(cVal);
@@ -130,7 +130,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
   assert(xVal && "Couldn't find cublasSaxpy x value on device");
 
   // Create output value
-  auto outVal = allocations.duplicate_value(yVal);
+  auto outVal = allocations.duplicate_value(yVal, true);
   outVal.add_depends_on(xVal);
   outVal.add_depends_on(yVal);
 
@@ -182,7 +182,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   assert(aVal && bVal && cVal &&
          "Couldn't find Dgemm argument value on device");
 
-  auto newVal = allocations.duplicate_value(cVal);
+  auto newVal = allocations.duplicate_value(cVal, true);
   newVal.add_depends_on(aVal);
   newVal.add_depends_on(bVal);
   newVal.add_depends_on(cVal);
@@ -236,7 +236,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   profiler::err() << "WARN: not handling some values (A, alpha, beta)"
                   << std::endl;
 
-  auto newVal = allocations.duplicate_value(yVal);
+  auto newVal = allocations.duplicate_value(yVal, true);
   newVal.add_depends_on(xVal);
   newVal.add_depends_on(yVal);
 
@@ -291,7 +291,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   profiler::err() << "WARN: not handling some values (A, alpha, beta)"
                   << std::endl;
 
-  auto newVal = allocations.duplicate_value(yVal);
+  auto newVal = allocations.duplicate_value(yVal, true);
   newVal.add_depends_on(xVal);
   newVal.add_depends_on(yVal);
 
@@ -382,7 +382,7 @@ cublasSscal(cublasHandle_t handle, int n,
   assert(xVal && "Couldn't find cublasSscal x value on device");
 
   // Create output value
-  auto outVal = allocations.duplicate_value(xVal);
+  auto outVal = allocations.duplicate_value(xVal, true);
   outVal.add_depends_on(xVal);
 
   // track api
