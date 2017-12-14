@@ -20,5 +20,8 @@ examples/samples/UnifiedMemoryStreams/ums
 examples/caffe-master-10-22-2017/*
 examples/mxnet/*
 
+cprof/Makefile.config
+profiler/Makefile.config
+
 .DS_Store
 ._.DS_Store
