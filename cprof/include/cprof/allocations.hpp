@@ -69,11 +69,11 @@ public:
     return find_value(pos, 1, as);
   }
 
-  Value duplicate_value(const Value &v) {
+  Value duplicate_value(const Value &v, const bool initialized) {
     // ensure the existing value exists
     auto orig = find_value(v.pos(), v.size(), v.address_space());
     assert(orig);
-    return new_value(v.pos(), v.size(), v.address_space(), v.initialized());
+    return new_value(v.pos(), v.size(), v.address_space(), initialized);
   }
 
   Allocations() {}

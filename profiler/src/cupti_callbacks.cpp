@@ -120,7 +120,10 @@ static void handleCudaLaunch(Allocations &allocations,
       // }
       // no recorded hash, or hash does not match => new value
       // if (arg_hashes.count(argKey) == 0 || digest != arg_hashes[argKey]) {
-      auto newVal = allocations.duplicate_value(argValue);
+      auto newVal = allocations.duplicate_value(argValue, true /*initialized*/);
+      profiler::err()
+          << "WARN: assuming new values from kernel launch are initialized."
+          << std::endl;
       for (const auto &depVal : kernelArgIds) {
         profiler::err() << "INFO: launch: val id=" << newVal.id() << " deps on "
                         << depVal.id() << std::endl;
