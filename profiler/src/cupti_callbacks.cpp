@@ -112,6 +112,7 @@ static void handleCudaLaunch(Allocations &allocations,
     assert(cbInfo);
     assert(cbInfo->functionName);
     assert(symbolName);
+    assert(cbInfo->symbolName);
 
     auto api = std::make_shared<ApiRecord>(
         cbInfo->functionName, symbolName,
