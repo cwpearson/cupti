@@ -662,8 +662,8 @@ static void handleCudaFreeHost(Allocations &allocations,
     const int devId = profiler::driver().this_thread().current_device();
     auto AS = profiler::hardware().address_space(devId);
 
-    auto freeAlloc = allocations.free(ptr, AS);
-    assert(freeAlloc && "Freeing unallocated memory?");
+    auto numFreed = allocations.free(ptr, AS);
+    assert(numFreed && "Freeing unallocated memory?");
   } else {
     assert(0 && "How did we get here?");
   }
@@ -708,12 +708,12 @@ static void handleCudaMalloc(Allocations &allocations,
 static void handleCudaFree(Allocations &allocations,
                            const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
-                    << ") cudaFree entry" << std::endl;
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
     auto devPtr = (uintptr_t)params->devPtr;
     cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
-    profiler::err() << "INFO: [cudaFree] " << devPtr << std::endl;
+    profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
+                    << ") [cudaFree] " << devPtr << std::endl;
 
     assert(cudaSuccess == ret);
 
@@ -730,8 +730,6 @@ static void handleCudaFree(Allocations &allocations,
     profiler::err() << "Looking for " << devPtr << std::endl;
     auto freeAlloc = allocations.free(devPtr, AS);
     assert(freeAlloc && "Freeing unallocated memory?");
-
-  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
   } else {
     assert(0 && "How did we get here?");
   }

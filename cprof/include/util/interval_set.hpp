@@ -15,8 +15,8 @@
 
 typedef int Direction;
 
-// INTERVAL must have ::pos_type, type lower(), type upper(), bool operator<()
-// When intervals overlap, they are joined
+// INTERVAL must have ::pos_type, pos_type lower(), pos_type upper(), bool
+// operator<() When intervals overlap, they are joined
 template <typename INTERVAL> class IntervalSet {
   typedef INTERVAL key_type;
   typedef size_t size_type;
@@ -350,13 +350,13 @@ public:
 
   iterator find(const Endpoint &l, const Endpoint &u) {
 
-    std::cerr << "find(Endpoint, Endpoint) current map:\n";
-    int cnt = 0;
-    for (const auto &i : map_) {
-      std::cerr << i.first.first << "(" << i.first.second << ") ";
-      if (cnt++ % 2)
-        std::cerr << "\n";
-    }
+    // std::cerr << "find(Endpoint, Endpoint) current map:\n";
+    // int cnt = 0;
+    // for (const auto &i : map_) {
+    //   std::cerr << i.first.first << "(" << i.first.second << ") ";
+    //   if (cnt++ % 2)
+    //     std::cerr << "\n";
+    // }
 
     auto lowerInt = find(l); // interval containing lower end
     if (lowerInt != end()) {
@@ -378,9 +378,25 @@ public:
     return find(kLowerEnd, kUpperEnd);
   }
 
+  size_type erase(const typename INTERVAL::pos_type &pos) {
+    auto i = find(pos);
+    if (i != end() && i.lb_->first == make_lower(pos)) {
+      map_.erase(i.lb_);
+      map_.erase(i.ub_);
+      return 1;
+    }
+    return 0;
+  }
+
+  void erase(const iterator &i) {
+    assert(i != end());
+    map_.erase(i.lb_);
+    map_.erase(i.ub_);
+  }
+
   size_type erase(const key_type &k) {
     auto i = find(k);
-    if (i != end()) {
+    if (i != end() && i.lb_ == make_lower(k.lower())) {
       map_.erase(i.lb_);
       map_.erase(i.ub_);
       return 1;

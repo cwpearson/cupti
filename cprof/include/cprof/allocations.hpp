@@ -42,7 +42,7 @@ public:
     return tot;
   }
 
-  Allocation free(uintptr_t pos, const AddressSpace &as);
+  size_t free(uintptr_t pos, const AddressSpace &as);
 
   /*! \brief Lookup allocation that contains pos, size, and address space.
    */

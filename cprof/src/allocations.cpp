@@ -39,21 +39,17 @@ Allocation Allocations::unsafe_find(uintptr_t pos, size_t size,
   }
 }
 
-Allocation Allocations::free(uintptr_t pos, const AddressSpace &as) {
+size_t Allocations::free(uintptr_t pos, const AddressSpace &as) {
   assert(pos && "No allocations at null pointer");
   std::lock_guard<std::mutex> guard(access_mutex_);
   auto allocationsIter = addrSpaceAllocs_.find(as);
   if (allocationsIter != addrSpaceAllocs_.end()) {
     auto &allocations = allocationsIter->second;
-    auto ai = allocations.find(pos);
-    if (ai != allocations.end()) {
-      if (ai->second->pos() == pos) {
-        ai->second->free();
-        return Allocation(ai->second);
-      }
-    }
+    return allocations.erase(pos);
+  } else {
+    assert(0 && "Expected address space");
   }
-  return Allocation();
+  return 0;
 }
 
 Allocation Allocations::insert(const AllocationRecord &ar) {
