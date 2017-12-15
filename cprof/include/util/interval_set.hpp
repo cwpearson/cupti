@@ -177,10 +177,12 @@ public:
     std::cerr << "(insert_join) current map:\n";
     int cnt = 0;
     for (const auto &i : map_) {
-      std::cerr << "[" << i.first.first << ", " << i.first.second << "] ("
-                << i.first.second - i.first.first << ")";
-      if (cnt++ % 2)
-        std::cerr << "\n";
+      if (cnt % 2 == 0) {
+        std::cerr << "[" << i.first.first << ", ";
+      } else {
+        std::cerr << i.first.first << ")" << std::endl;
+      }
+      ++cnt;
     }
 
     const auto kUpperEnd = make_upper(k.upper());

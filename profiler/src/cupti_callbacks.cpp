@@ -678,7 +678,8 @@ static void handleCudaMalloc(Allocations &allocations,
 
     Allocation a = allocations.new_allocation(devPtr, size, AS, AM,
                                               Location::CudaDevice(devId));
-    profiler::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.id()
+    profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
+                    << ") [cudaMalloc] new alloc=" << (uintptr_t)a.id()
                     << " pos=" << a.pos() << std::endl;
 
     // auto digest = hash_device(devPtr, size);
@@ -691,7 +692,8 @@ static void handleCudaMalloc(Allocations &allocations,
 static void handleCudaFree(Allocations &allocations,
                            const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    profiler::err() << "INFO: callback: cudaFree entry" << std::endl;
+    profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
+                    << ") cudaFree entry" << std::endl;
     auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
     auto devPtr = (uintptr_t)params->devPtr;
     cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
