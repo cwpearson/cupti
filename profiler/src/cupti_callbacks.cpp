@@ -663,7 +663,7 @@ static void handleCudaMalloc(Allocations &allocations,
     const size_t size = params->size;
     const cudaError_t res =
         *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
-    profiler::err() << "INFO: " << res << " = cudaMalloc(" << devPtr << ", "
+    profiler::err() << "INFO: " << res << " = cudaMalloc: [" << devPtr << ", +"
                     << size << ")" << std::endl;
     if (res != cudaSuccess) {
       profiler::err() << "WARN: cudaMalloc had an error" << std::endl;

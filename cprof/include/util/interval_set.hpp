@@ -177,7 +177,8 @@ public:
     std::cerr << "(insert_join) current map:\n";
     int cnt = 0;
     for (const auto &i : map_) {
-      std::cerr << i.first.first << "(" << i.first.second << ") ";
+      std::cerr << "[" << i.first.first << ", " << i.first.second << "] ("
+                << i.first.second - i.first.first << ")";
       if (cnt++ % 2)
         std::cerr << "\n";
     }
@@ -346,6 +347,15 @@ public:
   }
 
   iterator find(const Endpoint &l, const Endpoint &u) {
+
+    std::cerr << "find(Endpoint, Endpoint) current map:\n";
+    int cnt = 0;
+    for (const auto &i : map_) {
+      std::cerr << i.first.first << "(" << i.first.second << ") ";
+      if (cnt++ % 2)
+        std::cerr << "\n";
+    }
+
     auto lowerInt = find(l); // interval containing lower end
     if (lowerInt != end()) {
       return lowerInt;
@@ -358,14 +368,6 @@ public:
   }
 
   iterator find(const key_type &k) {
-
-    std::cerr << "(find) current map:\n";
-    int cnt = 0;
-    for (const auto &i : map_) {
-      std::cerr << i.first.first << "(" << i.first.second << ") ";
-      if (cnt++ % 2)
-        std::cerr << "\n";
-    }
 
     // Convert to endpoints and defer
     assert(map_.size() % 2 == 0);
