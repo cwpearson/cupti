@@ -627,6 +627,22 @@ static void handleCuModuleGetGlobal_v2(const CUpti_CallbackData *cbInfo) {
   }
 }
 
+static void handleCuCtxSetCurrent(const CUpti_CallbackData *cbInfo) {
+
+  auto params = ((cuCtxSetCurrent_params *)(cbInfo->functionParams));
+  const CUcontext ctx = params->ctx;
+  const int pid = cprof::model::get_thread_id();
+
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    profiler::err() << "INFO: (tid=" << pid << ") setting ctx " << ctx
+                    << std::endl;
+    profiler::driver().this_thread().set_context(ctx);
+  } else {
+    assert(0 && "How did we get here?");
+  }
+}
+
 static void handleCudaFreeHost(Allocations &allocations,
                                const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
@@ -908,6 +924,9 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       break;
     case CUPTI_DRIVER_TRACE_CBID_cuModuleGetGlobal_v2:
       handleCuModuleGetGlobal_v2(cbInfo);
+      break;
+    case CUPTI_DRIVER_TRACE_CBID_cuCtxSetCurrent:
+      handleCuCtxSetCurrent(cbInfo);
       break;
     default:
       profiler::err() << "DEBU: skipping driver call " << cbInfo->functionName

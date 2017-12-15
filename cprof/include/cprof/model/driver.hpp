@@ -1,6 +1,7 @@
 #ifndef CPROF_MODEL_DRIVER_STATE_HPP
 #define CPROF_MODEL_DRIVER_STATE_HPP
 
+#include <cassert>
 #include <map>
 #include <mutex>
 #include <sstream>
@@ -25,6 +26,7 @@ class ThreadState {
 private:
   int currentDevice_;
   bool cuptiCallbacksEnabled_;
+  std::vector<CUcontext> contextStack_;
 
   ConfiguredCall configuredCall_;
   std::vector<ApiRecordRef> apiStack_;
@@ -46,6 +48,27 @@ public:
 
   void pause_cupti_callbacks();
   void resume_cupti_callbacks();
+
+  void push_context(const CUcontext c) { contextStack_.push_back(c); }
+  void pop_context() {
+    assert(!contextStack_.empty());
+    contextStack_.resize(contextStack_.size() - 1);
+  }
+  void set_context(const CUcontext c) {
+    if (c == 0) {
+      if (!contextStack_.empty()) {
+        pop_context();
+      }
+    } else if (!contextStack_.empty()) {
+      contextStack_[contextStack_.size() - 1] = c;
+    } else {
+      push_context(c); // FIXME: not clear if this is right from docs
+    }
+  }
+  CUcontext current_context() const {
+    assert(!contextStack_.empty());
+    return contextStack_.back();
+  }
 
   bool is_cupti_callbacks_enabled() const { return cuptiCallbacksEnabled_; }
 
