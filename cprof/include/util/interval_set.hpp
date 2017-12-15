@@ -396,7 +396,7 @@ public:
 
   size_type erase(const key_type &k) {
     auto i = find(k);
-    if (i != end() && i.lb_ == make_lower(k.lower())) {
+    if (i != end() && i.lb_->first == make_lower(k.lower())) {
       map_.erase(i.lb_);
       map_.erase(i.ub_);
       return 1;
