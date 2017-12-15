@@ -174,16 +174,16 @@ public:
 
   std::pair<iterator, bool> insert_join(const key_type &k) {
 
-    std::cerr << "(insert_join) current map:\n";
-    int cnt = 0;
-    for (const auto &i : map_) {
-      if (cnt % 2 == 0) {
-        std::cerr << "[" << i.first.first << ", ";
-      } else {
-        std::cerr << i.first.first << ")" << std::endl;
-      }
-      ++cnt;
-    }
+    // std::cerr << "(insert_join) current map:\n";
+    // int cnt = 0;
+    // for (const auto &i : map_) {
+    //   if (cnt % 2 == 0) {
+    //     std::cerr << "[" << i.first.first << ", ";
+    //   } else {
+    //     std::cerr << i.first.first << ")" << std::endl;
+    //   }
+    //   ++cnt;
+    // }
 
     const auto kUpperEnd = make_upper(k.upper());
     const auto kLowerEnd = make_lower(k.lower());
