@@ -43,7 +43,13 @@ static void handleCudaLaunch(Allocations &allocations,
   // Get the current stream
   // const cudaStream_t stream =
   // profiler::driver().this_thread().configured_call().stream;
-  const char *symbolName = cbInfo->symbolName;
+  const char * symbolName;
+  if (!cbInfo->symbolName) {
+    profiler::err() << "WARN: empty symbol name" << std::endl;
+    symbolName = "[unknown symbol name]";
+  } else {
+    symbolName = cbInfo->symbolName;
+  }
   profiler::err() << "launching " << symbolName << std::endl;
 
   // Find all values that are used by arguments
@@ -103,8 +109,12 @@ static void handleCudaLaunch(Allocations &allocations,
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     kernelTimer.kernel_end_time(cbInfo);
 
+    assert(cbInfo);
+    assert(cbInfo->functionName);
+    assert(symbolName);
+
     auto api = std::make_shared<ApiRecord>(
-        cbInfo->functionName, cbInfo->symbolName,
+        cbInfo->functionName, symbolName,
         profiler::driver().this_thread().current_device());
 
     // The kernel could have modified any argument values.
@@ -904,7 +914,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCudaLaunchKernel(profiler::allocations(), cbInfo);
       break;
     default:
-      profiler::err() << "DEBU: skipping runtime call " << cbInfo->functionName
+      profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id() << " ) skipping runtime call " << cbInfo->functionName
                       << std::endl;
       break;
     }
@@ -927,7 +937,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCuCtxSetCurrent(cbInfo);
       break;
     default:
-      profiler::err() << "DEBU: skipping driver call " << cbInfo->functionName
+      profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id() << " ) skipping driver call " << cbInfo->functionName
                       << std::endl;
       break;
     }
