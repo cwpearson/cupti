@@ -45,7 +45,7 @@ export LD_LIBRARY_PATH="$CPROF_ROOT/cprof/lib:$LD_LIBRARY_PATH"
 ## Control some profiling parameters.
 
 # default output file
-export CPROF_OUT="$NOW\_output.cprof"
+export CPROF_OUT="$NOW"_output.cprof
 #export CPROF_ERR="err.cprof"
 
 
