@@ -1,6 +1,9 @@
 #! /bin/bash
 set -eou pipefail
 
+# the time of the profile
+NOW=`date +%Y%m%d-%H%M%S`
+
 ## Adjust these variables to match your installation
 # CUPTI should be in the LD_LIBRARY_PATH
 
@@ -11,7 +14,7 @@ if [ -z "${ZIPKIN_LIB+xxx}" ]; then
   export ZIPKIN_LIB="$HOME/software/zipkin-cpp-opentracing/lib";
 fi
 
-# where to look for prof.so
+# where to look for cprof/profiler
 if [ -z "${CPROF_ROOT+xxx}" ]; then 
   export CPROF_ROOT="$HOME/repos/cupti"; # not set at all
 fi
@@ -33,8 +36,6 @@ if [ ! -f "$LIBPROFILER" ]; then
 fi
 
 
-
-
 ## Add the libraries libprofiler.so depends on to the load library path
 export LD_LIBRARY_PATH="/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH"
 export LD_LIBRARY_PATH="$OPENTRACING_LIB:$LD_LIBRARY_PATH"
@@ -44,7 +45,7 @@ export LD_LIBRARY_PATH="$CPROF_ROOT/cprof/lib:$LD_LIBRARY_PATH"
 ## Control some profiling parameters.
 
 # default output file
-export CPROF_OUT="output.cprof"
+export CPROF_OUT="$NOW_output.cprof"
 #export CPROF_ERR="err.cprof"
 
 
