@@ -111,4 +111,24 @@ Modify `env.sh` so that the final line calls `gdb` before the arguments, like so
 
 ## pycprof for looking at results
 
-[pycprof github](https://github.com/cwpearson/pycprof)
+Install [cwpearson/pygraphml](https://github.com/cwpearson/pygraphml)
+
+```bash
+    # Remove existing pygraphml
+    pip uninstall pygraphml
+    git clone git@github.com:cwpearson/pygraphml.git
+    cd pygraphml
+    pip install --user -e .
+    cd ..
+```
+
+Install [cwpearson/pycprof](https://github.com/cwpearson/pycprof)
+
+```bash
+    # Remove existing pygraphml
+    git clone git@github.com:cwpearson/pycprof.git
+    cd pycprof
+    pip install --user -e .
+    cd ..
+```
+
