@@ -71,7 +71,6 @@ script:
 - make docker_docs
 - cd $TRAVIS_BUILD_DIR/profiler
 - make
-- make docker_docks
 after_success:
 - export DEPLOY=dist/amd64
 - export LATEST=$DEPLOY/latest
