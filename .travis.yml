@@ -70,9 +70,6 @@ script:
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
 - echo OPENTRACING_ROOT=$OPENTRACING_ROOT >> Makefile.config
 - echo ZIPKIN_OPENTRACING_ROOT=$ZIPKIN_ROOT/lib >> Makefile.config
-
-# Debug or Release
-BUILD_TYPE ?= Debug
 - make
 after_success:
 - export DEPLOY=dist/amd64
