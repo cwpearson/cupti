@@ -62,13 +62,13 @@ void Profiler::init() {
   }
 
   err() << "INFO: Profiler::init()" << std::endl;
-  useCuptiCallback_ =
+  const bool useCuptiCallback =
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_CALLBACK", true).get();
-  err() << "INFO: useCuptiCallback: " << useCuptiCallback_ << std::endl;
+  err() << "INFO: useCuptiCallback: " << useCuptiCallback << std::endl;
 
-  useCuptiActivity_ =
+  const bool useCuptiActivity =
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_ACTIVITY", true).get();
-  err() << "INFO: useCuptiActivity: " << useCuptiActivity_ << std::endl;
+  err() << "INFO: useCuptiActivity: " << useCuptiActivity << std::endl;
 
   const bool enableZipkin =
       EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
@@ -85,9 +85,9 @@ void Profiler::init() {
   hardware_.get_device_properties();
   err() << "INFO: done" << std::endl;
 
-  manager_ = new CuptiSubscriber((CUpti_CallbackFunc)callback, enableZipkin);
+  manager_ = new CuptiSubscriber((CUpti_CallbackFunc)callback, useCuptiActivity,
+                                 useCuptiCallback, enableZipkin);
   manager_->init();
-
   isInitialized_ = true;
 }
 

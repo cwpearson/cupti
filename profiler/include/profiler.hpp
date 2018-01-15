@@ -50,8 +50,6 @@ private:
   cprof::Allocations allocations_;
   Profiler();
 
-  bool useCuptiCallback_;
-  bool useCuptiActivity_;
   std::string zipkinHost_;
   uint32_t zipkinPort_;
 

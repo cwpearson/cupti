@@ -31,8 +31,11 @@ static void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
 }
 
 CuptiSubscriber::CuptiSubscriber(CUpti_CallbackFunc callback,
+                                 const bool enableActivityAPI,
+                                 const bool enableCallbackAPI,
                                  const bool enableZipkin)
-    : callback_(callback), enableZipkin_(enableZipkin) {}
+    : callback_(callback), enableActivityAPI_(enableActivityAPI),
+      enableCallbackAPI_(enableCallbackAPI), enableZipkin_(enableZipkin) {}
 
 void CuptiSubscriber::init() {
   assert(callback_);
@@ -42,52 +45,69 @@ void CuptiSubscriber::init() {
          attrValueSize = sizeof(size_t), attrValuePoolSize = BUFFER_SIZE;
 
   if (enableZipkin_) {
+    profiler::err() << "INFO: CuptiSubscriber enable zipkin" << std::endl;
     // Create tracers here so that they are not destroyed
     // when clearing buffer during destruction
     options.service_name = "Parent";
-    memcpy_tracer_options.service_name = "Memory Copy";
-    launch_tracer_options.service_name = "Kernel Launch";
     options.collector_host = Profiler::instance().zipkin_host();
-    memcpy_tracer_options.collector_host = Profiler::instance().zipkin_host();
-    launch_tracer_options.collector_host = Profiler::instance().zipkin_host();
     options.collector_port = Profiler::instance().zipkin_port();
-    memcpy_tracer_options.collector_port = Profiler::instance().zipkin_port();
-    launch_tracer_options.collector_port = Profiler::instance().zipkin_port();
-    memcpy_tracer = makeZipkinOtTracer(memcpy_tracer_options);
     tracer = makeZipkinOtTracer(options);
+
+    memcpy_tracer_options.service_name = "Memory Copy";
+    memcpy_tracer_options.collector_host = Profiler::instance().zipkin_host();
+    memcpy_tracer_options.collector_port = Profiler::instance().zipkin_port();
+    memcpy_tracer = makeZipkinOtTracer(memcpy_tracer_options);
+
+    launch_tracer_options.service_name = "Kernel Launch";
+    launch_tracer_options.collector_host = Profiler::instance().zipkin_host();
+    launch_tracer_options.collector_port = Profiler::instance().zipkin_port();
     launch_tracer = makeZipkinOtTracer(launch_tracer_options);
+
     parent_span = tracer->StartSpan("Parent");
   }
 
-  cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
-                            &attrValueSize, &attrValueBufferSize);
-  cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
-                            &attrValueSize, &attrValuePoolSize);
-  cuptiActivityEnable(CUPTI_ACTIVITY_KIND_KERNEL);
-  cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY);
-  cuptiActivityRegisterCallbacks(bufferRequested, bufferCompleted);
+  if (enableActivityAPI_) {
+    profiler::err() << "INFO: CuptiSubscriber enabling activity API"
+                    << std::endl;
+    cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
+                              &attrValueSize, &attrValueBufferSize);
+    cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
+                              &attrValueSize, &attrValuePoolSize);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_KERNEL);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY);
+    cuptiActivityRegisterCallbacks(bufferRequested, bufferCompleted);
+    profiler::err() << "INFO: done registering activity callbacks" << std::endl;
+  }
 
-  profiler::err() << "INFO: activating callbacks" << std::endl;
-  CUPTI_CHECK(cuptiSubscribe(&subscriber_, callback_, nullptr),
-              profiler::err());
-  CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API),
-              profiler::err());
-  CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API),
-              profiler::err());
-  profiler::err() << "INFO: done activating callbacks" << std::endl;
+  if (enableCallbackAPI_) {
+    profiler::err() << "INFO: CuptiSubscriber enabling callback API"
+                    << std::endl;
+    CUPTI_CHECK(cuptiSubscribe(&subscriber_, callback_, nullptr),
+                profiler::err());
+    CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API),
+                profiler::err());
+    CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API),
+                profiler::err());
+    profiler::err() << "INFO: done enabling callback API domains" << std::endl;
+  }
 }
 
 CuptiSubscriber::~CuptiSubscriber() {
   profiler::err() << "INFO: CuptiSubscriber dtor" << std::endl;
-  cuptiActivityFlushAll(0);
-  profiler::err() << "INFO: done cuptiActivityFlushAll" << std::endl;
+  if (enableActivityAPI_) {
+    cuptiActivityFlushAll(0);
+    profiler::err() << "INFO: done cuptiActivityFlushAll" << std::endl;
+  }
   if (enableZipkin_) {
     parent_span->Finish();
   }
   auto kernelTimer = KernelCallTime::instance();
   kernelTimer.flush_tracers();
-  profiler::err() << "Deactivating callbacks!" << std::endl;
-  CUPTI_CHECK(cuptiUnsubscribe(subscriber_), profiler::err());
-  profiler::err() << "INFO: done deactivating callbacks!" << std::endl;
+
+  if (enableCallbackAPI_) {
+    profiler::err() << "Deactivating callbacks!" << std::endl;
+    CUPTI_CHECK(cuptiUnsubscribe(subscriber_), profiler::err());
+    profiler::err() << "INFO: done deactivating callbacks!" << std::endl;
+  }
   profiler::err() << "INFO: done CuptiSubscriber dtor" << std::endl;
 }

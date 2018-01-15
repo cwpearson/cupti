@@ -13,7 +13,9 @@ class CuptiSubscriber {
 private:
   CUpti_SubscriberHandle subscriber_;
   CUpti_CallbackFunc callback_;
-  bool enableZipkin_; ///< send traces to zipkin
+  bool enableActivityAPI_; ///< gather info through the CUPTI activity API
+  bool enableCallbackAPI_; ///< gather info from the CUPTI callback API
+  bool enableZipkin_;      ///< send traces to zipkin
 
 public:
   zipkin::ZipkinOtTracerOptions options;
@@ -25,7 +27,8 @@ public:
   std::shared_ptr<opentracing::Tracer> launch_tracer;
   span_t parent_span;
 
-  CuptiSubscriber(CUpti_CallbackFunc callback, const bool enableZipkin);
+  CuptiSubscriber(CUpti_CallbackFunc callback, const bool enableActivityAPI,
+                  const bool enableCallbackAPI, const bool enableZipkin);
   void init();
   ~CuptiSubscriber();
 
