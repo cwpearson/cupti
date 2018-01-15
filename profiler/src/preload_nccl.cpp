@@ -8,7 +8,6 @@
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
 
-#include "cupti_callbacks.hpp"
 #include "profiler.hpp"
 
 using cprof::Value;

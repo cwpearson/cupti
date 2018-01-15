@@ -8,7 +8,6 @@
 #include <iostream>
 #include <mutex>
 
-#include "cupti_callbacks.hpp"
 #include "cupti_subscriber.hpp"
 #include "kernel_time.hpp"
 #include "profiler.hpp"
@@ -328,11 +327,4 @@ void KernelCallTime::save_configured_call(uint32_t cid,
                                           std::vector<uintptr_t> configCall) {
   this->cid_to_call.insert(
       std::pair<uint32_t, std::vector<uintptr_t>>(cid, configCall));
-}
-
-void KernelCallTime::flush_tracers() {
-  if (Profiler::instance().manager_->enable_zipkin()) {
-    Profiler::instance().manager_->memcpy_tracer->Close();
-    Profiler::instance().manager_->launch_tracer->Close();
-  }
 }

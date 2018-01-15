@@ -21,7 +21,7 @@
 #include "cprof/value.hpp"
 #include "util/backtrace.hpp"
 
-#include "activity_callbacks.hpp"
+#include "cupti_subscriber.hpp"
 #include "kernel_time.hpp"
 #include "profiler.hpp"
 
@@ -43,7 +43,7 @@ static void handleCudaLaunch(Allocations &allocations,
   // Get the current stream
   // const cudaStream_t stream =
   // profiler::driver().this_thread().configured_call().stream;
-  const char * symbolName;
+  const char *symbolName;
   if (!cbInfo->symbolName) {
     profiler::err() << "WARN: empty symbol name" << std::endl;
     symbolName = "[unknown symbol name]";
@@ -842,9 +842,9 @@ static void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
   }
 }
 
-void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
-                       CUpti_CallbackId cbid,
-                       const CUpti_CallbackData *cbInfo) {
+void CUPTIAPI CuptiSubscriber::cuptiCallbackFunction(
+    void *userdata, CUpti_CallbackDomain domain, CUpti_CallbackId cbid,
+    const CUpti_CallbackData *cbInfo) {
   (void)userdata;
 
   if (!profiler::driver().this_thread().is_cupti_callbacks_enabled()) {
@@ -915,7 +915,8 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCudaLaunchKernel(profiler::allocations(), cbInfo);
       break;
     default:
-      profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id() << " ) skipping runtime call " << cbInfo->functionName
+      profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id()
+                      << " ) skipping runtime call " << cbInfo->functionName
                       << std::endl;
       break;
     }
@@ -938,7 +939,8 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
       handleCuCtxSetCurrent(cbInfo);
       break;
     default:
-      profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id() << " ) skipping driver call " << cbInfo->functionName
+      profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id()
+                      << " ) skipping driver call " << cbInfo->functionName
                       << std::endl;
       break;
     }

@@ -6,7 +6,6 @@
 #include "cprof/model/thread.hpp"
 #include "util/environment_variable.hpp"
 
-#include "cupti_callbacks.hpp"
 #include "profiler.hpp"
 
 namespace profiler {
@@ -85,8 +84,8 @@ void Profiler::init() {
   hardware_.get_device_properties();
   err() << "INFO: done" << std::endl;
 
-  manager_ = new CuptiSubscriber((CUpti_CallbackFunc)callback, useCuptiActivity,
-                                 useCuptiCallback, enableZipkin);
+  manager_ =
+      new CuptiSubscriber(useCuptiActivity, useCuptiCallback, enableZipkin);
   manager_->init();
   isInitialized_ = true;
 }

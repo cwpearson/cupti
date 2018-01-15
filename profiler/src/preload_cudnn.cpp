@@ -7,7 +7,6 @@
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
 
-#include "cupti_callbacks.hpp"
 #include "profiler.hpp"
 
 #define CUDNN_DLSYM_BOILERPLATE(name)                                          \

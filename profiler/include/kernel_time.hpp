@@ -11,7 +11,6 @@
 #include "cprof/model/thread.hpp"
 #include "util/optional.hpp"
 
-#include "cupti_callbacks.hpp"
 #include "text_map_carrier.hpp"
 
 typedef struct {
@@ -38,8 +37,6 @@ public:
                              CUpti_ActivityKernel3 *launchRecord);
   void memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord);
   void save_configured_call(uint32_t cid, std::vector<uintptr_t> configCall);
-  void close_parent();
-  void flush_tracers();
 
   static KernelCallTime &instance();
 

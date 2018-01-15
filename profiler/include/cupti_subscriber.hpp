@@ -4,15 +4,13 @@
 #include <iostream>
 
 #include "cprof/util_cupti.hpp"
-
-#include "activity_callbacks.hpp"
-#include "cupti_callbacks.hpp"
 #include "kernel_time.hpp"
+
+#define BUFFER_SIZE 100000
 
 class CuptiSubscriber {
 private:
   CUpti_SubscriberHandle subscriber_;
-  CUpti_CallbackFunc callback_;
   bool enableActivityAPI_; ///< gather info through the CUPTI activity API
   bool enableCallbackAPI_; ///< gather info from the CUPTI callback API
   bool enableZipkin_;      ///< send traces to zipkin
@@ -27,12 +25,26 @@ public:
   std::shared_ptr<opentracing::Tracer> launch_tracer;
   span_t parent_span;
 
-  CuptiSubscriber(CUpti_CallbackFunc callback, const bool enableActivityAPI,
-                  const bool enableCallbackAPI, const bool enableZipkin);
+  CuptiSubscriber(const bool enableActivityAPI, const bool enableCallbackAPI,
+                  const bool enableZipkin);
   void init();
   ~CuptiSubscriber();
 
   bool enable_zipkin() const { return enableZipkin_; }
+  static void CUPTIAPI cuptiCallbackFunction(void *userdata,
+                                             CUpti_CallbackDomain domain,
+                                             CUpti_CallbackId cbid,
+                                             const CUpti_CallbackData *cbInfo);
+
+  static void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx,
+                                                    uint32_t streamId,
+                                                    uint8_t *buffer,
+                                                    size_t size,
+                                                    size_t validSize);
+  static void CUPTIAPI cuptiActivityBufferRequested(uint8_t **buffer,
+                                                    size_t *size,
+                                                    size_t *maxNumRecords);
+  static CuptiSubscriber *singleton;
 };
 
 #endif
