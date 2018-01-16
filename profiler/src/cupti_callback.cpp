@@ -682,12 +682,14 @@ static void handleCudaFreeHost(Allocations &allocations,
 
 static void handleCudaMalloc(Allocations &allocations,
                              const CUpti_CallbackData *cbInfo) {
+  const auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
+  const uintptr_t devPtr = (uintptr_t)(*(params->devPtr));
+  const size_t size = params->size;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    profiler::err() << "INFO: cudaMalloc: [" << devPtr << ", +" << size
+                    << ") entry" << std::endl;
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
 
-    const auto params = ((cudaMalloc_v3020_params *)(cbInfo->functionParams));
-    const uintptr_t devPtr = (uintptr_t)(*(params->devPtr));
-    const size_t size = params->size;
     const cudaError_t res =
         *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
     profiler::err() << "INFO: " << res << " = cudaMalloc: [" << devPtr << ", +"
@@ -761,8 +763,8 @@ static void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
 
 static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-    profiler::err() << "INFO: callback: cudaConfigureCall entry (tid="
-                    << cprof::model::get_thread_id() << ")" std::endl;
+    profiler::err() << "INFO: ( tid=" << cprof::model::get_thread_id()
+                    << " ) callback: cudaConfigureCall entry" << std::endl;
 
     assert(!profiler::driver().this_thread().configured_call().valid_ &&
            "call is already configured?\n");
