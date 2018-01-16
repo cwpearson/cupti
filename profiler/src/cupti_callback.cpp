@@ -33,10 +33,10 @@ using cprof::model::Memory;
 // Function that is called when a Kernel is called
 // Record timing in this
 static void handleCudaLaunch(Allocations &allocations,
+                             KernelCallTime &kernelTimer,
                              const CUpti_CallbackData *cbInfo) {
   profiler::err() << "INFO: callback: cudaLaunch preamble (tid="
                   << cprof::model::get_thread_id() << ")" << std::endl;
-  auto kernelTimer = KernelCallTime::instance();
 
   // print_backtrace();
 
@@ -157,10 +157,10 @@ static void handleCudaLaunch(Allocations &allocations,
 }
 
 static void handleCudaLaunchKernel(Allocations &allocations,
+                                   KernelCallTime &kernelTimer,
                                    const CUpti_CallbackData *cbInfo) {
   profiler::err() << "INFO: callback: cudaLaunchKernel preamble (tid="
                   << cprof::model::get_thread_id() << ")" << std::endl;
-  auto kernelTimer = KernelCallTime::instance();
 
   auto params = ((cudaLaunchKernel_v7000_params *)(cbInfo->functionParams));
   const void *func = params->func;
@@ -296,9 +296,9 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 }
 
 static void handleCudaMemcpy(Allocations &allocations,
+                             KernelCallTime &kernelTimer,
                              const CUpti_CallbackData *cbInfo) {
 
-  auto kernelTimer = KernelCallTime::instance();
   // extract API call parameters
   auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
   const uintptr_t dst = (uintptr_t)params->dst;
@@ -842,9 +842,9 @@ static void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
   }
 }
 
-void CUPTIAPI CuptiSubscriber::cuptiCallbackFunction(
-    void *userdata, CUpti_CallbackDomain domain, CUpti_CallbackId cbid,
-    const CUpti_CallbackData *cbInfo) {
+void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
+                                    CUpti_CallbackId cbid,
+                                    const CUpti_CallbackData *cbInfo) {
   (void)userdata;
 
   if (!profiler::driver().this_thread().is_cupti_callbacks_enabled()) {
@@ -864,7 +864,8 @@ void CUPTIAPI CuptiSubscriber::cuptiCallbackFunction(
   case CUPTI_CB_DOMAIN_RUNTIME_API: {
     switch (cbid) {
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-      handleCudaMemcpy(profiler::allocations(), cbInfo);
+      handleCudaMemcpy(profiler::allocations(), profiler::kernelCallTime(),
+                       cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020:
       handleCudaMemcpyAsync(profiler::allocations(), cbInfo);
@@ -894,7 +895,8 @@ void CUPTIAPI CuptiSubscriber::cuptiCallbackFunction(
       handleCudaSetupArgument(cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
-      handleCudaLaunch(profiler::allocations(), cbInfo);
+      handleCudaLaunch(profiler::allocations(), profiler::kernelCallTime(),
+                       cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020:
       handleCudaSetDevice(cbInfo);
@@ -912,7 +914,8 @@ void CUPTIAPI CuptiSubscriber::cuptiCallbackFunction(
       handleCudaMemcpy2DAsync(profiler::allocations(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000:
-      handleCudaLaunchKernel(profiler::allocations(), cbInfo);
+      handleCudaLaunchKernel(profiler::allocations(),
+                             profiler::kernelCallTime(), cbInfo);
       break;
     default:
       profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id()

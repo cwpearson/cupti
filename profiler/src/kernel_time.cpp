@@ -16,32 +16,11 @@ using namespace std::chrono;
 using namespace zipkin;
 using namespace opentracing;
 
-std::map<uint32_t, time_points_t> KernelCallTime::tid_to_time;
-std::map<uint32_t, const char *> KernelCallTime::correlation_to_function;
-std::map<uint32_t, const char *> KernelCallTime::correlation_to_symbol;
-std::map<uint32_t, std::chrono::time_point<std::chrono::system_clock>>
-    KernelCallTime::correlation_to_start;
-std::map<uint32_t, memcpy_info_t> KernelCallTime::correlation_id_to_info;
-std::map<uint32_t, uintptr_t> KernelCallTime::correlation_to_dest;
-std::map<uintptr_t, TextMapCarrier> KernelCallTime::ptr_to_span;
-std::unordered_map<std::string, std::string> KernelCallTime::text_map;
-std::map<uint32_t, std::vector<uintptr_t>> KernelCallTime::cid_to_call;
-std::map<uint32_t, uint32_t> KernelCallTime::cid_to_tid;
-
 static std::unordered_map<std::string, std::string> text_map;
 static TextMapCarrier carrier(text_map);
 
-std::mutex kctMutex_;
-
-KernelCallTime &KernelCallTime::instance() {
-  static KernelCallTime a;
-  return a;
-}
-
-KernelCallTime::KernelCallTime() {}
-
 void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
-  std::lock_guard<std::mutex> guard(kctMutex_);
+  std::lock_guard<std::mutex> guard(accessMutex_);
   uint64_t startTimeStamp;
   cuptiDeviceGetTimestamp(cbInfo->context, &startTimeStamp);
   const char *cudaMem = "cudaMemcpy";

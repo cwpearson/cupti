@@ -2,11 +2,11 @@
 
 #include "cprof/util_cupti.hpp"
 
+#include "cupti_activity.hpp"
+#include "cupti_callback.hpp"
 #include "cupti_subscriber.hpp"
 #include "kernel_time.hpp"
 #include "profiler.hpp"
-
-CuptiSubscriber *CuptiSubscriber::singleton;
 
 typedef void (*BufReqFun)(uint8_t **buffer, size_t *size,
                           size_t *maxNumRecords);
@@ -15,13 +15,10 @@ CuptiSubscriber::CuptiSubscriber(const bool enableActivityAPI,
                                  const bool enableCallbackAPI,
                                  const bool enableZipkin)
     : enableActivityAPI_(enableActivityAPI),
-      enableCallbackAPI_(enableCallbackAPI), enableZipkin_(enableZipkin) {
-  singleton = nullptr;
-}
+      enableCallbackAPI_(enableCallbackAPI), enableZipkin_(enableZipkin) {}
 
 void CuptiSubscriber::init() {
   profiler::err() << "INFO: CuptiSubscriber init" << std::endl;
-  singleton = this;
 
   size_t attrValueBufferSize = BUFFER_SIZE * 1024,
          attrValueSize = sizeof(size_t), attrValuePoolSize = BUFFER_SIZE;
@@ -100,6 +97,5 @@ CuptiSubscriber::~CuptiSubscriber() {
     launch_tracer->Close();
   }
 
-  singleton = nullptr;
   profiler::err() << "INFO: done CuptiSubscriber dtor" << std::endl;
 }

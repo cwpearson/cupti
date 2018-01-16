@@ -15,6 +15,8 @@ private:
   bool enableCallbackAPI_; ///< gather info from the CUPTI callback API
   bool enableZipkin_;      ///< send traces to zipkin
 
+  KernelCallTime kernelCallTime_;
+
 public:
   zipkin::ZipkinOtTracerOptions options;
   zipkin::ZipkinOtTracerOptions memcpy_tracer_options;
@@ -31,20 +33,6 @@ public:
   ~CuptiSubscriber();
 
   bool enable_zipkin() const { return enableZipkin_; }
-  static void CUPTIAPI cuptiCallbackFunction(void *userdata,
-                                             CUpti_CallbackDomain domain,
-                                             CUpti_CallbackId cbid,
-                                             const CUpti_CallbackData *cbInfo);
-
-  static void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx,
-                                                    uint32_t streamId,
-                                                    uint8_t *buffer,
-                                                    size_t size,
-                                                    size_t validSize);
-  static void CUPTIAPI cuptiActivityBufferRequested(uint8_t **buffer,
-                                                    size_t *size,
-                                                    size_t *maxNumRecords);
-  static CuptiSubscriber *singleton;
 };
 
 #endif

@@ -14,10 +14,8 @@ using profiler::err;
        ? ((buffer) + (align) - ((uintptr_t)(buffer) & ((align)-1)))            \
        : (buffer))
 
-void CUPTIAPI CuptiSubscriber::cuptiActivityBufferRequested(
-    uint8_t **buffer, size_t *size, size_t *maxNumRecords) {
-
-  singleton->parent_span;
+void CUPTIAPI cuptiActivityBufferRequested(uint8_t **buffer, size_t *size,
+                                           size_t *maxNumRecords) {
 
   uint8_t *rawBuffer;
 
@@ -35,23 +33,19 @@ void CUPTIAPI CuptiSubscriber::cuptiActivityBufferRequested(
 
 static void handleCuptiKindKernel(CUpti_Activity *record) {
   err() << "INFO: handleCuptiKindKernel" << std::endl;
-  auto kernelTimer = KernelCallTime::instance();
   auto kernel = (CUpti_ActivityKernel3 *)record;
-  kernelTimer.kernel_activity_times(kernel->correlationId, kernel->start,
-                                    kernel->end, kernel);
+  profiler::kernelCallTime().kernel_activity_times(
+      kernel->correlationId, kernel->start, kernel->end, kernel);
 }
 
 static void handleCuptiKindMemcpy(CUpti_Activity *record) {
-  auto kernelTimer = KernelCallTime::instance();
   auto memcpyRecord = (CUpti_ActivityMemcpy *)record;
-  kernelTimer.memcpy_activity_times(memcpyRecord);
+  profiler::kernelCallTime().memcpy_activity_times(memcpyRecord);
 }
 
-void CUPTIAPI CuptiSubscriber::cuptiActivityBufferCompleted(CUcontext ctx,
-                                                            uint32_t streamId,
-                                                            uint8_t *buffer,
-                                                            size_t size,
-                                                            size_t validSize) {
+void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
+                                           uint8_t *buffer, size_t size,
+                                           size_t validSize) {
   CUpti_Activity *record = NULL;
 
   std::cerr << "Empty buffer" << std::endl;

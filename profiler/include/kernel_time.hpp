@@ -4,14 +4,14 @@
 #include <cstdint>
 #include <cupti.h>
 #include <map>
+#include <mutex>
 #include <string>
 
 #include <zipkin/opentracing.h>
 
 #include "cprof/model/thread.hpp"
-#include "util/optional.hpp"
-
 #include "text_map_carrier.hpp"
+#include "util/optional.hpp"
 
 typedef struct {
   uint64_t start_time;
@@ -27,8 +27,9 @@ typedef std::unique_ptr<opentracing::v1::Span> span_t;
 // typedef std::unique_ptr<zipkin::Span> span_t;
 
 class KernelCallTime {
+
 private:
-  KernelCallTime();
+  std::mutex accessMutex_;
 
 public:
   void kernel_start_time(const CUpti_CallbackData *cbInfo);
@@ -38,19 +39,17 @@ public:
   void memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord);
   void save_configured_call(uint32_t cid, std::vector<uintptr_t> configCall);
 
-  static KernelCallTime &instance();
-
-  static std::map<uint32_t, time_points_t> tid_to_time;
-  static std::map<uint32_t, const char *> correlation_to_function;
-  static std::map<uint32_t, const char *> correlation_to_symbol;
-  static std::map<uint32_t, std::chrono::time_point<std::chrono::system_clock>>
+  std::map<uint32_t, time_points_t> tid_to_time;
+  std::map<uint32_t, const char *> correlation_to_function;
+  std::map<uint32_t, const char *> correlation_to_symbol;
+  std::map<uint32_t, std::chrono::time_point<std::chrono::system_clock>>
       correlation_to_start;
-  static std::map<uint32_t, memcpy_info_t> correlation_id_to_info;
-  static std::map<uint32_t, uintptr_t> correlation_to_dest;
-  static std::map<uintptr_t, TextMapCarrier> ptr_to_span;
-  static std::unordered_map<std::string, std::string> text_map;
-  static std::map<uint32_t, std::vector<uintptr_t>> cid_to_call;
-  static std::map<uint32_t, uint32_t> cid_to_tid;
+  std::map<uint32_t, memcpy_info_t> correlation_id_to_info;
+  std::map<uint32_t, uintptr_t> correlation_to_dest;
+  std::map<uintptr_t, TextMapCarrier> ptr_to_span;
+  std::unordered_map<std::string, std::string> text_map;
+  std::map<uint32_t, std::vector<uintptr_t>> cid_to_call;
+  std::map<uint32_t, uint32_t> cid_to_tid;
 
 private:
   const char *memcpy_type_to_string(uint8_t kind);
@@ -63,8 +62,6 @@ public:
   const char *symbolName;
   std::chrono::time_point<std::chrono::system_clock> start_point;
   memcpy_info_t memcpyInfo;
-
-private:
 };
 
 #endif

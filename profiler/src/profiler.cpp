@@ -12,6 +12,9 @@ namespace profiler {
 cprof::model::Driver &driver() { return Profiler::instance().driver_; }
 cprof::model::Hardware &hardware() { return Profiler::instance().hardware_; }
 cprof::Allocations &allocations() { return Profiler::instance().allocations_; }
+KernelCallTime &kernelCallTime() {
+  return Profiler::instance().kernelCallTime_;
+}
 
 std::ostream &out() { return Profiler::instance().out(); }
 void atomic_out(const std::string &s) { Profiler::instance().atomic_out(s); }

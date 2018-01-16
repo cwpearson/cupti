@@ -15,6 +15,7 @@ namespace profiler {
 cprof::model::Driver &driver();
 cprof::model::Hardware &hardware();
 cprof::Allocations &allocations();
+KernelCallTime &kernelCallTime();
 
 std::ostream &out();
 void atomic_out(const std::string &s);
@@ -25,6 +26,7 @@ class Profiler {
   friend cprof::model::Driver &profiler::driver();
   friend cprof::model::Hardware &profiler::hardware();
   friend cprof::Allocations &profiler::allocations();
+  friend KernelCallTime &profiler::kernelCallTime();
 
 public:
   ~Profiler();
@@ -45,10 +47,12 @@ public:
   CuptiSubscriber *manager_; // FIXME: make this private and add an accessor
 
 private:
+  Profiler();
+
   cprof::model::Hardware hardware_;
   cprof::model::Driver driver_;
   cprof::Allocations allocations_;
-  Profiler();
+  KernelCallTime kernelCallTime_;
 
   std::string zipkinHost_;
   uint32_t zipkinPort_;
