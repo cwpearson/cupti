@@ -762,7 +762,7 @@ static void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
 static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "INFO: callback: cudaConfigureCall entry (tid="
-                    << cprof::model::get_thread_id() << std::endl;
+                    << cprof::model::get_thread_id() << ")" std::endl;
 
     assert(!profiler::driver().this_thread().configured_call().valid_ &&
            "call is already configured?\n");
@@ -785,7 +785,7 @@ static void handleCudaConfigureCall(const CUpti_CallbackData *cbInfo) {
 static void handleCudaSetupArgument(const CUpti_CallbackData *cbInfo) {
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "callback: cudaSetupArgument entry (tid="
-                    << cprof::model::get_thread_id() << ")\n";
+                    << cprof::model::get_thread_id() << ")" << std::endl;
     const auto params =
         ((cudaSetupArgument_v3020_params *)(cbInfo->functionParams));
     const uintptr_t arg =
@@ -918,7 +918,7 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
                              profiler::kernelCallTime(), cbInfo);
       break;
     default:
-      profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id()
+      profiler::err() << "DEBU: ( tid= " << cprof::model::get_thread_id()
                       << " ) skipping runtime call " << cbInfo->functionName
                       << std::endl;
       break;
@@ -942,7 +942,7 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
       handleCuCtxSetCurrent(cbInfo);
       break;
     default:
-      profiler::err() << "DEBU: (tid= " << cprof::model::get_thread_id()
+      profiler::err() << "DEBU: ( tid= " << cprof::model::get_thread_id()
                       << " ) skipping driver call " << cbInfo->functionName
                       << std::endl;
       break;
