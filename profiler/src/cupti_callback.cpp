@@ -15,6 +15,7 @@
 #include "cprof/allocations.hpp"
 #include "cprof/hash.hpp"
 #include "cprof/memorycopykind.hpp"
+#include "cprof/model/cuda/kernel_record.hpp"
 #include "cprof/numa.hpp"
 #include "cprof/util_cuda.hpp"
 #include "cprof/util_cupti.hpp"
@@ -29,6 +30,7 @@ using cprof::Allocations;
 using cprof::Value;
 using cprof::model::Location;
 using cprof::model::Memory;
+using cprof::model::cuda::KernelRecord;
 
 // Function that is called when a Kernel is called
 // Record timing in this
@@ -88,6 +90,11 @@ static void handleCudaLaunch(Allocations &allocations,
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "callback: cudaLaunch entry" << std::endl;
+
+    KernelRecord kernelRecord(symbolName);
+
+    profiler::kernels().insert(kernelRecord);
+
     kernelTimer.kernel_start_time(cbInfo);
     // const auto params = ((cudaLaunch_v3020_params
     // *)(cbInfo->functionParams));
@@ -847,7 +854,7 @@ static void handleCudaStreamSynchronize(const CUpti_CallbackData *cbInfo) {
 void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
                                     CUpti_CallbackId cbid,
                                     const CUpti_CallbackData *cbInfo) {
-  (void)userdata;
+  (void)userdata; // data supplied at subscription
 
   if (!profiler::driver().this_thread().is_cupti_callbacks_enabled()) {
     return;

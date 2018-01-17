@@ -4,6 +4,7 @@
 #include <ostream>
 
 #include "cprof/allocations.hpp"
+#include "cprof/kernels.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/hardware.hpp"
 #include "util/environment_variable.hpp"
@@ -15,6 +16,7 @@ namespace profiler {
 cprof::model::Driver &driver();
 cprof::model::Hardware &hardware();
 cprof::Allocations &allocations();
+cprof::Kernels &kernels();
 KernelCallTime &kernelCallTime();
 
 std::ostream &out();
@@ -26,6 +28,7 @@ class Profiler {
   friend cprof::model::Driver &profiler::driver();
   friend cprof::model::Hardware &profiler::hardware();
   friend cprof::Allocations &profiler::allocations();
+  friend cprof::Kernels &profiler::kernels();
   friend KernelCallTime &profiler::kernelCallTime();
 
 public:
@@ -49,6 +52,7 @@ public:
 private:
   Profiler();
 
+  cprof::Kernels kernels_;
   cprof::model::Hardware hardware_;
   cprof::model::Driver driver_;
   cprof::Allocations allocations_;
