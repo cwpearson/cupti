@@ -12,7 +12,6 @@ namespace profiler {
 cprof::model::Driver &driver() { return Profiler::instance().driver_; }
 cprof::model::Hardware &hardware() { return Profiler::instance().hardware_; }
 cprof::Allocations &allocations() { return Profiler::instance().allocations_; }
-cprof::Kernels &kernels() { return Profiler::instance().kernels_; }
 KernelCallTime &kernelCallTime() {
   return Profiler::instance().kernelCallTime_;
 }
