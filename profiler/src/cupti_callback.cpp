@@ -22,7 +22,7 @@
 #include "util/backtrace.hpp"
 
 #include "cupti_subscriber.hpp"
-#include "kernel_time.hpp"
+// #include "kernel_time.hpp"
 #include "profiler.hpp"
 
 using cprof::Allocations;
@@ -301,6 +301,27 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   api->add_kv("srcCount", srcCount);
   api->add_kv("dstCount", dstCount);
   profiler::atomic_out(api->json());
+
+  auto b = std::chrono::time_point_cast<std::chrono::nanoseconds>(api->start_)
+               .time_since_epoch();
+
+  auto span = Profiler::instance().memcpyTracer_->StartSpan(
+      std::to_string(cbInfo->correlationId),
+      {ChildOf(&Profiler::instance().rootSpan_->context()),
+       opentracing::StartTimestamp(b)});
+
+  // span->SetTag("Transfer size", memcpyRecord->bytes);
+  // span->SetTag("Transfer type",
+  // memcpy_type_to_string(memcpyRecord->copyKind)); span->SetTag("Host Thread",
+  // std::to_string(threadId));
+
+  // auto timeElapsed = memcpyRecord->end - memcpyRecord->start;
+  // span->SetTag("CUPTI Duration", std::to_string(timeElapsed));
+  // auto err = tracer->Inject(current_span->context(), carrier);
+  auto e = std::chrono::time_point_cast<std::chrono::nanoseconds>(api->end_)
+               .time_since_epoch();
+
+  span->Finish({opentracing::FinishTimestamp(e)});
 }
 
 static void handleCudaMemcpy(Allocations &allocations,
@@ -315,7 +336,6 @@ static void handleCudaMemcpy(Allocations &allocations,
   const size_t count = params->count;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "INFO: callback: cudaMemcpy enter" << std::endl;
-    uint64_t start;
 
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
