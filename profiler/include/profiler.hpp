@@ -58,6 +58,11 @@ private:
   uint32_t zipkinPort_;
 
   bool isInitialized_;
+
+  std::shared_ptr<opentracing::Tracer> rootTracer_;
+  std::shared_ptr<opentracing::Tracer> memcpyTracer_;
+  std::shared_ptr<opentracing::Tracer> launchTracer_;
+  span_t rootSpan_;
 };
 
 /* \brief Runs Profiler::init() at load time

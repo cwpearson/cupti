@@ -90,6 +90,32 @@ void Profiler::init() {
   manager_ =
       new CuptiSubscriber(useCuptiActivity, useCuptiCallback, enableZipkin);
   manager_->init();
+
+  if (enableZipkin) {
+    profiler::err() << "INFO: Profiler enable zipkin" << std::endl;
+    // Create tracers here so that they are not destroyed
+    // when clearing buffer during destruction
+    zipkin::ZipkinOtTracerOptions options;
+    options.service_name = "profiler";
+    options.collector_host = Profiler::instance().zipkin_host();
+    options.collector_port = Profiler::instance().zipkin_port();
+    rootTracer_ = makeZipkinOtTracer(options);
+
+    zipkin::ZipkinOtTracerOptions memcpyTracerOpts;
+    memcpyTracerOpts.service_name = "memcpy tracer";
+    memcpyTracerOpts.collector_host = Profiler::instance().zipkin_host();
+    memcpyTracerOpts.collector_port = Profiler::instance().zipkin_port();
+    memcpyTracer_ = makeZipkinOtTracer(memcpyTracerOpts);
+
+    zipkin::ZipkinOtTracerOptions launchTracerOpts;
+    launchTracerOpts.service_name = "kernel tracer";
+    launchTracerOpts.collector_host = Profiler::instance().zipkin_host();
+    launchTracerOpts.collector_port = Profiler::instance().zipkin_port();
+    launchTracer_ = makeZipkinOtTracer(launchTracerOpts);
+
+    rootSpan_ = rootTracer_->StartSpan("Root");
+  }
+
   isInitialized_ = true;
 }
 

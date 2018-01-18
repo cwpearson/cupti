@@ -948,8 +948,6 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {
     if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-      // profiler::err() <<"tid=%d about maketo reduce api stack\n",
-      // get_thread_id());
       profiler::driver().this_thread().api_exit(domain, cbid, cbInfo);
     }
   }

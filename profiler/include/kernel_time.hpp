@@ -7,8 +7,6 @@
 #include <mutex>
 #include <string>
 
-#include <zipkin/opentracing.h>
-
 #include "cprof/model/thread.hpp"
 #include "text_map_carrier.hpp"
 #include "util/optional.hpp"
@@ -23,7 +21,6 @@ typedef struct {
   size_t memcpySize;
 } memcpy_info_t;
 
-typedef std::unique_ptr<opentracing::v1::Span> span_t;
 // typedef std::unique_ptr<zipkin::Span> span_t;
 
 class KernelCallTime {
