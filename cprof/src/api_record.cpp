@@ -47,8 +47,8 @@ std::string ApiRecord::json() const {
   pt.put("api.symbolname", kernelName_);
   pt.add_child("api.inputs", to_json(inputs_));
   pt.add_child("api.outputs", to_json(outputs_));
-  pt.put("api.start", start_);
-  pt.put("api.end", end_);
+  pt.put("api.start", nanos(start_));
+  pt.put("api.end", nanos(end_));
   for (const auto &p : kv_) {
     const std::string &key = p.first;
     const std::string &val = p.second;

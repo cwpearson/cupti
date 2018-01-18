@@ -86,24 +86,20 @@ static void handleCudaLaunch(Allocations &allocations,
   }
   // static std::map<Value::id_type, hash_t> arg_hashes;
 
+  auto api = profiler::driver().this_thread().current_api();
+
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "callback: cudaLaunch entry" << std::endl;
 
     assert(cbInfo);
-    assert(cbInfo->functionName);
-    assert(symbolName);
-    assert(cbInfo->symbolName);
+    // assert(cbInfo->functionName);
+    // assert(symbolName);
+    // assert(cbInfo->symbolName);
+    // assert(cbInfo->context);
 
-    auto api = std::make_shared<ApiRecord>(
-        cbInfo->functionName, symbolName,
-        profiler::driver().this_thread().current_device());
-
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &api->start_),
-                profiler::err());
-
-    // store api pointer into correlation data
-    assert(sizeof(uint64_t) >= sizeof(uintptr_t));
-    *cbInfo->correlationData = reinterpret_cast<uintptr_t>(&api);
+    // uint64_t start;
+    // CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), std::cerr);
+    api->start_ = std::chrono::high_resolution_clock::now();
 
     kernelTimer.kernel_start_time(cbInfo);
     // const auto params = ((cudaLaunch_v3020_params*)(cbInfo->functionParams));
@@ -125,10 +121,7 @@ static void handleCudaLaunch(Allocations &allocations,
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     kernelTimer.kernel_end_time(cbInfo);
 
-    // recover api pointer from correlation data
-    auto api = *reinterpret_cast<ApiRecordRef *>(*cbInfo->correlationData);
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &api->end_),
-                profiler::err());
+    api->end_ = std::chrono::high_resolution_clock::now();
 
     // The kernel could have modified any argument values.
     // Hash each value and compare to the one recorded at kernel launch
@@ -323,12 +316,11 @@ static void handleCudaMemcpy(Allocations &allocations,
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "INFO: callback: cudaMemcpy enter" << std::endl;
     uint64_t start;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start),
-                profiler::err());
+
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
-    api->start_ = start;
+    api->start_ = std::chrono::high_resolution_clock::now();
 
     kernelTimer.kernel_start_time(cbInfo);
 
@@ -338,13 +330,11 @@ static void handleCudaMemcpy(Allocations &allocations,
     // profiler::err() << "The end timestamp is " << endTimeStamp <<
     // std::endl; std::cout << "The end time is " << cbInfo->end_time;
     kernelTimer.kernel_end_time(cbInfo);
-    uint64_t end;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end),
-                profiler::err());
+
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
-    api->end_ = end;
+    api->end_ = std::chrono::high_resolution_clock::now();
 
     record_memcpy(cbInfo, allocations, api, dst, src, MemoryCopyKind(kind),
                   count, count, 0 /*unused*/, 0 /*unused */);
@@ -367,22 +357,16 @@ static void handleCudaMemcpyAsync(Allocations &allocations,
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "callback: cudaMemcpyAsync entry" << std::endl;
 
-    uint64_t start;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start),
-                profiler::err());
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
-    api->start_ = start;
+    api->start_ = std::chrono::high_resolution_clock::now();
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    uint64_t end;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end),
-                profiler::err());
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
-    api->end_ = end;
+    api->end_ = std::chrono::high_resolution_clock::now();
 
     record_memcpy(cbInfo, allocations, api, dst, src, MemoryCopyKind(kind),
                   count, count, 0 /*unused*/, 0 /*unused */);
@@ -406,22 +390,17 @@ static void handleCudaMemcpy2DAsync(Allocations &allocations,
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "callback: cudaMemcpy2DAsync entry" << std::endl;
 
-    uint64_t start;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start),
-                profiler::err());
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
-    api->start_ = start;
+    api->start_ = std::chrono::high_resolution_clock::now();
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    uint64_t end;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end),
-                profiler::err());
+
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
-    api->end_ = end;
+    api->end_ = std::chrono::high_resolution_clock::now();
 
     const size_t srcCount = height * spitch;
     const size_t dstCount = height * dpitch;
@@ -444,21 +423,17 @@ static void handleCudaMemcpyPeerAsync(Allocations &allocations,
   // const cudaStream_t stream = params->stream;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "callback: cudaMemcpyPeerAsync entry" << std::endl;
-    uint64_t start;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start),
-                profiler::err());
+
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
-    api->start_ = start;
+    api->start_ = std::chrono::high_resolution_clock::now();
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    uint64_t end;
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end),
-                profiler::err());
+
     auto api = profiler::driver().this_thread().current_api();
     assert(api->cb_info() == cbInfo);
     assert(api->domain() == CUPTI_CB_DOMAIN_RUNTIME_API);
-    api->end_ = end;
+    api->end_ = std::chrono::high_resolution_clock::now();
 
     record_memcpy(cbInfo, allocations, api, dst, src,
                   MemoryCopyKind::CudaPeer(), count, count, srcDevice,

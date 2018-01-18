@@ -4,6 +4,7 @@
 #include <cupti.h>
 #include <vector>
 
+#include "cprof/time.hpp"
 #include "cprof/value.hpp"
 
 class ApiRecord {
@@ -26,7 +27,8 @@ private:
 public:
   ApiRecord(const std::string &name, const int device)
       : apiName_(name), device_(device), domain_(CUPTI_CB_DOMAIN_INVALID),
-        cbid_(-1), cbInfo_(nullptr), start_(0), end_(0) {}
+        cbid_(-1), cbInfo_(nullptr), start_(std::chrono::nanoseconds(0)),
+        end_(std::chrono::nanoseconds(0)) {}
   ApiRecord(const std::string &apiName, const std::string &kernelName,
             const int device)
       : ApiRecord(apiName, device) {
@@ -34,8 +36,9 @@ public:
   }
   ApiRecord(const int device, const CUpti_CallbackDomain domain,
             const CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo)
-      : apiName_(cbInfo->functionName), device_(device), start_(0), end_(0),
-        domain_(domain), cbid_(cbid), cbInfo_(cbInfo) {}
+      : apiName_(cbInfo->functionName), device_(device), domain_(domain),
+        cbid_(cbid), cbInfo_(cbInfo), start_(std::chrono::nanoseconds(0)),
+        end_(std::chrono::nanoseconds(0)) {}
 
   void add_input(const cprof::Value &v);
   void add_output(const cprof::Value &v);
@@ -53,8 +56,8 @@ public:
   CUpti_CallbackId cbid() const { return cbid_; }
   const CUpti_CallbackData *cb_info() const { return cbInfo_; }
 
-  uint64_t start_;
-  uint64_t end_;
+  time_point_t start_;
+  time_point_t end_;
 };
 
 typedef std::shared_ptr<ApiRecord> ApiRecordRef;
