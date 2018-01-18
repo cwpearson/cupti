@@ -2,6 +2,7 @@
 #define CPROF_MODEL_CUDA_KERNEL_RECORD_HPP
 
 #include <chrono>
+#include <memory>
 #include <string>
 
 namespace cprof {
@@ -22,6 +23,8 @@ private:
   std::string name_;
   uint32_t cuptiCorrelationId_;
 };
+
+typedef std::shared_ptr<KernelRecord> KernelRecord_t;
 
 } // namespace cuda
 } // namespace model

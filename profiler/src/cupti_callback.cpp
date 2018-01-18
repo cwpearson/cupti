@@ -91,8 +91,9 @@ static void handleCudaLaunch(Allocations &allocations,
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "callback: cudaLaunch entry" << std::endl;
 
-    KernelRecord kernelRecord(symbolName, cbInfo->correlationId);
-    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &kernelRecord.start_),
+    auto kernelRecord =
+        std::make_shared<KernelRecord>(symbolName, cbInfo->correlationId);
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &kernelRecord->start_),
                 profiler::err());
 
     auto kernelRecordId = profiler::kernels().insert(kernelRecord).first->first;
@@ -118,6 +119,11 @@ static void handleCudaLaunch(Allocations &allocations,
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
     kernelTimer.kernel_end_time(cbInfo);
+
+    auto kernelRecordId = *cbInfo->correlationData;
+    auto kernelRecord = profiler::kernels().at(kernelRecordId);
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &kernelRecord->end_),
+                profiler::err());
 
     assert(cbInfo);
     assert(cbInfo->functionName);
@@ -608,7 +614,7 @@ static void handleCuModuleGetFunction(const CUpti_CallbackData *cbInfo) {
 
   auto params = ((cuModuleGetFunction_params *)(cbInfo->functionParams));
   const CUfunction hfunc = *(params->hfunc);
-  const CUmodule hmod = params->hmod;
+  // const CUmodule hmod = params->hmod;
   const char *name = params->name;
 
   profiler::err() << "INFO: cuModuleGetFunction for " << name << " @ " << hfunc
@@ -625,13 +631,13 @@ static void handleCuModuleGetFunction(const CUpti_CallbackData *cbInfo) {
 
 static void handleCuModuleGetGlobal_v2(const CUpti_CallbackData *cbInfo) {
 
-  auto params = ((cuModuleGetGlobal_v2_params *)(cbInfo->functionParams));
+  // auto params = ((cuModuleGetGlobal_v2_params *)(cbInfo->functionParams));
 
-  const CUdeviceptr dptr = *(params->dptr);
+  // const CUdeviceptr dptr = *(params->dptr);
   // assert(params->bytes);
   // const size_t bytes = *(params->bytes);
-  const CUmodule hmod = params->hmod;
-  const char *name = params->name;
+  // const CUmodule hmod = params->hmod;
+  // const char *name = params->name;
 
   // profiler::err() << "INFO: cuModuleGetGlobal_v2 for " << name << " @ " <<
   // dptr
