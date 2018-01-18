@@ -77,8 +77,8 @@ TEST_F(AllocationsTest, free) {
   auto a1 = as.new_allocation(1, 1, AS, M, L);
   EXPECT_TRUE(a1);
 
-  a1 = as.free(a1.pos(), AS);
-  EXPECT_EQ(true, a1.freed());
+  auto count = as.free(a1.pos(), AS);
+  EXPECT_EQ(true, count);
 }
 
 TEST_F(AllocationsTest, merge) {

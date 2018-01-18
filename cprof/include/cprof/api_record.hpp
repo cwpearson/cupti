@@ -17,8 +17,6 @@ private:
   std::string apiName_;
   std::string kernelName_;
   int device_;
-  uint64_t start_;
-  uint64_t end_;
   std::map<std::string, std::string> kv_;
 
   CUpti_CallbackDomain domain_;
@@ -27,8 +25,8 @@ private:
 
 public:
   ApiRecord(const std::string &name, const int device)
-      : apiName_(name), device_(device), start_(0), end_(0),
-        domain_(CUPTI_CB_DOMAIN_INVALID), cbid_(-1), cbInfo_(nullptr) {}
+      : apiName_(name), device_(device), domain_(CUPTI_CB_DOMAIN_INVALID),
+        cbid_(-1), cbInfo_(nullptr), start_(0), end_(0) {}
   ApiRecord(const std::string &apiName, const std::string &kernelName,
             const int device)
       : ApiRecord(apiName, device) {
@@ -44,9 +42,6 @@ public:
   void add_kv(const std::string &key, const std::string &val);
   void add_kv(const std::string &key, const size_t &val);
 
-  void record_start_time(const uint64_t start);
-  void record_end_time(const uint64_t end);
-
   int device() const { return device_; }
   id_type Id() const { return reinterpret_cast<id_type>(this); }
   const std::string &name() const { return apiName_; }
@@ -57,6 +52,9 @@ public:
   CUpti_CallbackDomain domain() const { return domain_; }
   CUpti_CallbackId cbid() const { return cbid_; }
   const CUpti_CallbackData *cb_info() const { return cbInfo_; }
+
+  uint64_t start_;
+  uint64_t end_;
 };
 
 typedef std::shared_ptr<ApiRecord> ApiRecordRef;

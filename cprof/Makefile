@@ -1,3 +1,4 @@
+include ../Makefile.config
 include Makefile.config
 
 # Where to place outputs
@@ -46,8 +47,6 @@ LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
 
 # libnuma
 LIB += -lnuma
-
-CXX = g++
 LD = ld
 
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC

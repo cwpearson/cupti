@@ -2,11 +2,10 @@ addons:
   apt:
     packages:
     - libboost-dev
-    - cppcheck
     - libnuma-dev
     - libcurl4-openssl-dev
-    - cmake
     - git
+    - cmake
 sudo: required
 services: docker
 env:

@@ -29,9 +29,6 @@ void ApiRecord::add_kv(const std::string &k, const size_t &v) {
   add_kv(k, std::to_string(v));
 }
 
-void ApiRecord::record_start_time(const uint64_t start) { start_ = start; }
-void ApiRecord::record_end_time(const uint64_t end) { end_ = end; }
-
 static ptree to_json(const std::vector<Value> &v) {
   ptree array;
   for (const auto &e : v) {

@@ -22,6 +22,11 @@ examples/mxnet/*
 
 cprof/Makefile.config
 profiler/Makefile.config
+Makefile.config
+
+cprof/tests/test1
+cprof/external/googletest/lib
+
 
 .DS_Store
 ._.DS_Store
