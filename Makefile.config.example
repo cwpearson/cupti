@@ -1,0 +1,6 @@
+# Set the compiler
+#CXX = g++
+#LD = ld
+
+# Set the build type
+BUILD_TYPE ?= Debug
