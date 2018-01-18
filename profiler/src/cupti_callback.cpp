@@ -590,10 +590,9 @@ static void handleCuLaunchKernel(Allocations &allocations,
 
   auto &ts = profiler::driver().this_thread();
   if (ts.in_child_api() && ts.parent_api()->is_runtime() &&
-          ts.parent_api()->cbid() ==
-              CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020 ||
-      ts.parent_api()->cbid() ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000) {
+      (ts.parent_api()->cbid() == CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020 ||
+       ts.parent_api()->cbid() ==
+           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000)) {
     profiler::err() << "WARN: skipping cuLaunchKernel inside cudaLaunch or "
                        "cudaLaunchKernel"
                     << std::endl;
