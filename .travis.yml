@@ -32,6 +32,7 @@ matrix:
     - env: BUILD_TYPE=Debug
 
 install:
+- g++ --version
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
 - cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
