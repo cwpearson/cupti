@@ -9,16 +9,17 @@ namespace model {
 namespace cuda {
 
 class KernelRecord {
-  typedef std::chrono::high_resolution_clock::time_point time_point_t;
 
 public:
-  KernelRecord(const std::string &name) : name_(name) {}
+  KernelRecord(const std::string &name, uint32_t cuptiCorrelationId)
+      : start_(0), end_(0), name_(name),
+        cuptiCorrelationId_(cuptiCorrelationId) {}
   const std::string name() const noexcept { return name_; }
+  uint64_t start_;
+  uint64_t end_;
 
 private:
   std::string name_;
-  time_point_t start_;
-  time_point_t end_;
   uint32_t cuptiCorrelationId_;
 };
 

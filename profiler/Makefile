@@ -1,3 +1,4 @@
+include ../Makefile.config
 include Makefile.config
 
 # Where to place outputs
@@ -63,9 +64,6 @@ LIB += -ldl \
        -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lnccl \
 	   -lnuma -lopentracing -lzipkin -lzipkin_opentracing
 
-
-CXX = g++
-LD = ld
 
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC
 NVCCFLAGS += -std=c++11 -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC

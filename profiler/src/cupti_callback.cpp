@@ -91,9 +91,12 @@ static void handleCudaLaunch(Allocations &allocations,
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     profiler::err() << "callback: cudaLaunch entry" << std::endl;
 
-    KernelRecord kernelRecord(symbolName);
+    KernelRecord kernelRecord(symbolName, cbInfo->correlationId);
+    CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &kernelRecord.start_),
+                profiler::err());
 
-    profiler::kernels().insert(kernelRecord);
+    auto kernelRecordId = profiler::kernels().insert(kernelRecord).first->first;
+    *cbInfo->correlationData = kernelRecordId;
 
     kernelTimer.kernel_start_time(cbInfo);
     // const auto params = ((cudaLaunch_v3020_params
