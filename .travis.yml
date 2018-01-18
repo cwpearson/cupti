@@ -5,6 +5,7 @@ addons:
     - libnuma-dev
     - libcurl4-openssl-dev
     - git
+    - cmake
 sudo: required
 services: docker
 env:
