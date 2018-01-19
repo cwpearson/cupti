@@ -2,15 +2,15 @@ addons:
   apt:
     packages:
     - libboost-dev
-    - cppcheck
     - libnuma-dev
     - libcurl4-openssl-dev
-    - cmake
     - git
+    - cmake
 sudo: required
 services: docker
 env:
   global:
+  - TMP=/tmp
   - CUDNN_URL="https://storage.googleapis.com/cwpearson-cudnn/cudnn-8.0-linux-x64-v6.0.tgz"
   - CUDNN_PATH=cudnn.tar.gz
   - CUDA_ROOT=$HOME/cuda
@@ -23,7 +23,7 @@ env:
   - ZIPKIN_ROOT=$HOME/zipkin
   - ZIPKIN_INCLUDE=$ZIPKIN_ROOT/include
   - NCCL_SRC=$HOME/nccl
-  - NCCL_PREFIX=$TMP/nccl
+  - NCCL_PREFIX=$HOME/nccl
   
 matrix:
   include:
@@ -31,6 +31,7 @@ matrix:
     - env: BUILD_TYPE=Debug
 
 install:
+- g++ --version
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
 - cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
@@ -46,9 +47,8 @@ install:
 - "./$CUDASDK_PATH --silent --toolkit --toolkitpath=$CUDA_ROOT"
 - echo $HOME && ls $HOME
 - echo $CUDA_ROOT && ls $CUDA_ROOT
-- ls $CUDA_ROOT/lib64
-- ls $CUDA_ROOT/lib64/stubs
 - ln -s $CUDA_ROOT/lib64/stubs/libcuda.so $CUDA_ROOT/lib64/libcuda.so
+- export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$CUDA_ROOT/lib64"
 - rm -v $CUDASDK_PATH
 - wget $CUDNN_URL -O $CUDNN_PATH
 - tar -xvf $CUDNN_PATH
@@ -60,13 +60,19 @@ install:
 - mv -v $NCCL_PREFIX/lib/* $CUDA_ROOT/lib64/.
 script:
 - cd $TRAVIS_BUILD_DIR
+- touch Makefile.config
+- cd $TRAVIS_BUILD_DIR/cprof
+- echo CPROF_ROOT=. >> Makefile.config
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
-- echo OPENTRACING_INCLUDE = $OPENTRACING_INCLUDE >> Makefile.config
-- echo OPENTRACING_LIB = $OPENTRACING_ROOT/lib >> Makefile.config
-- echo ZIPKIN_OPENTRACING_INCLUDE = $ZIPKIN_INCLUDE >> Makefile.config
-- echo ZIPKIN_OPENTRACING_LIB = $ZIPKIN_ROOT/lib >> Makefile.config
 - make
+- make tests
 - make docker_docs
+- cd $TRAVIS_BUILD_DIR/profiler
+- echo CPROF_ROOT=../cprof >> Makefile.config
+- echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
+- echo OPENTRACING_ROOT=$OPENTRACING_ROOT >> Makefile.config
+- echo ZIPKIN_OPENTRACING_ROOT=$ZIPKIN_ROOT >> Makefile.config
+- make
 after_success:
 - export DEPLOY=dist/amd64
 - export LATEST=$DEPLOY/latest

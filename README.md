@@ -50,11 +50,36 @@ location you can use the DCMAKE_INSTALL_PREFIX flag to change the installation l
 -DCMAKE_INSTALL_PREFIX=/custom/installation/path
 ```
 
-Create a `Makfile.config`
+## Configuring
 
-    cp Makefile.config.example Makefile.config
+Create a `Makefile.config` in the top level that matches your environment.
+This file contains `make` variables that are common across `cprof` and `profiler`.
+You can redefine any of these variables in the `Makefile.config` for `cprof` or `profiler` respectively.
 
-Edit that makefile to match your system setup.
+See `Makefile.config.example` as a starting point.
+
+### Building cprof
+
+The cprof library contains functionality to model the system and CUDA driver state.
+
+Create a `Makefile.config` in `cprof` that matches your environment.
+
+    cp cprof/Makefile.config.example cprof/Makefile.config
+
+### COnfiguring profiler
+
+The profiler uses cprof to model the system state, and uses CUPTI and LD\_PRELOAD to observe the system.
+
+Create a `Makefile.config` in `profiler` that matches your environment.
+
+    cp profiler/Makefile.config.example profiler/Makefile.config
+
+## Building
+
+    make
+    cd cprof && make tests
+
+## Using the profiler
 
 Make sure the CUPTI library is in your `LD_LIBRARY_PATH`. For example:
 
@@ -63,10 +88,6 @@ Make sure the CUPTI library is in your `LD_LIBRARY_PATH`. For example:
 Modify `env.sh` to point `CPROF_ROOT` to wherever you checked out cupti. For example
 
     export CPROF_ROOT="/home/pearson/cupti"
-
-Build the profiling library (`prof.so`).
-
-    make
 
 ## Run on a CUDA application
 
@@ -95,4 +116,24 @@ Modify `env.sh` so that the final line calls `gdb` before the arguments, like so
 
 ## pycprof for looking at results
 
-[pycprof github](https://github.com/cwpearson/pycprof)
+Install [cwpearson/pygraphml](https://github.com/cwpearson/pygraphml)
+
+```bash
+    # Remove existing pygraphml
+    pip uninstall pygraphml
+    git clone git@github.com:cwpearson/pygraphml.git
+    cd pygraphml
+    pip install --user -e .
+    cd ..
+```
+
+Install [cwpearson/pycprof](https://github.com/cwpearson/pycprof)
+
+```bash
+    # Remove existing pygraphml
+    git clone git@github.com:cwpearson/pycprof.git
+    cd pycprof
+    pip install --user -e .
+    cd ..
+```
+

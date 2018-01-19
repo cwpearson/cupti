@@ -1,12 +1,6 @@
-BOOST_ROOT=$(HOME)/software/boost_1_65_1
+# Set the compiler
+#CXX = g++
+#LD = ld
 
-ZIPKIN_OPENTRACING_INCLUDE ?= $(HOME)/lib/include
-OPENTRACING_INCLUDE ?= $(HOME)/lib/include
-
-ZIPKIN_OPENTRACING_LIB ?= $(HOME)/lib/lib
-OPENTRACING_LIB ?= $(HOME)/lib/lib
-
-CUDA_ROOT ?= /usr/local/cuda
-
-# Debug or Release
+# Set the build type
 BUILD_TYPE ?= Debug
