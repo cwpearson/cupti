@@ -12,6 +12,7 @@
 #include "cprof/cupti_subscriber.hpp"
 #include "cprof/kernel_time.hpp"
 #include "cprof/profiler.hpp"
+#include "cprof/dependencies.hpp"
 
 using namespace std::chrono;
 using namespace zipkin;
@@ -221,6 +222,9 @@ void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
     auto end_time_point =
         std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
 
+    auto dependency_tracking = DependencyTracking::instance();
+    dependency_tracking.annotate_times(correlationId, start_time_point, end_time_point);
+
     current_span = Profiler::instance().manager_->memcpy_tracer->StartSpan(
         std::to_string(correlationId),
         {ChildOf(&Profiler::instance().manager_->parent_span->context()),
@@ -265,6 +269,9 @@ void KernelCallTime::kernel_activity_times(
         std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
     auto end_time_point =
         std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
+
+    auto dependency_tracking = DependencyTracking::instance();
+    dependency_tracking.annotate_times(correlationId, start_time_point, end_time_point);
 
     auto configCallIter = this->cid_to_call.find(correlationId);
     // if (cid_to_call.end() != configCallIter){

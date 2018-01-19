@@ -5,10 +5,10 @@ set -eou pipefail
 # CUPTI should be in the LD_LIBRARY_PATH
 
 if [ -z "${OPENTRACING_LIB+xxx}" ]; then 
-  export OPENTRACING_LIB="$HOME/software/opentracing-cpp/lib";
+  export OPENTRACING_LIB="$HOME/lib/lib";
 fi
 if [ -z "${ZIPKIN_LIB+xxx}" ]; then 
-  export ZIPKIN_LIB="$HOME/software/zipkin-cpp-opentracing/lib";
+  export ZIPKIN_LIB="$HOME/lib/lib";
 fi
 
 export LD_LIBRARY_PATH="/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH"
@@ -17,7 +17,7 @@ export LD_LIBRARY_PATH="$ZIPKIN_LIB:$LD_LIBRARY_PATH"
 
 # where to look for prof.so
 if [ -z "${CPROF_ROOT+xxx}" ]; then 
-  export CPROF_ROOT="$HOME/repos/cupti"; # not set at all
+  export CPROF_ROOT="$HOME/benchmarks/cupti"; # not set at all
 fi
 
 ## Control some profiling parameters.
@@ -28,9 +28,9 @@ export CPROF_OUT="output.cprof"
 
 
 # endpoint for tracing
-export CPROF_ENABLE_ZIPKIN=0
+export CPROF_ENABLE_ZIPKIN=1
 export CPROF_ZIPKIN_HOST=34.215.126.137
-export CPROF_ZIPKIN_PORT=16686
+export CPROF_ZIPKIN_PORT=9411
 
 ## Run the provided program. For example
 #   ./env.sh examples/samples/vectorAdd/vec

@@ -75,6 +75,7 @@ void CuptiSubscriber::init() {
   CUPTI_CHECK(cuptiEnableDomain(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API),
               cprof::err());
   cprof::err() << "INFO: done activating callbacks" << std::endl;
+
 }
 
 CuptiSubscriber::~CuptiSubscriber() {

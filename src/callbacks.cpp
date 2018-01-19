@@ -6,6 +6,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <typeinfo>
+#include <cxxabi.h>
+#define quote(x) #x
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <cuda_runtime_api.h>
@@ -24,6 +27,7 @@
 #include "cprof/util_cupti.hpp"
 #include "cprof/value.hpp"
 #include "cprof/values.hpp"
+#include "cprof/dependencies.hpp"
 #include "util/backtrace.hpp"
 
 using cprof::model::Location;
@@ -65,6 +69,11 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
           << "found val " << val << " for kernel arg="
           << cprof::driver().this_thread().configured_call().args_[argIdx]
           << std::endl;
+
+          //@TODO add an action for the pointer here.
+          auto dependency_tracker = DependencyTracking::instance();
+          dependency_tracker.action_on_ptr(cbInfo, cprof::driver().this_thread().configured_call().args_[argIdx]);
+
     }
   }
 
@@ -91,6 +100,17 @@ static void handleCudaLaunch(Values &values, const CUpti_CallbackData *cbInfo) {
     // auto digest = hash_device(argValue->pos(), argValue->size());
     // cprof::err() <<"digest: %llu\n", digest);
     // arg_hashes[argKey] = digest;
+    // }
+
+    // for (const auto &argKey : kernelArgIds) {
+    //   // const auto &argValue = values[argKey];
+    //   int status;
+    //   char * demangled = abi::__cxa_demangle(typeid(argKey).name(),0,0,&status);
+    //   std::cout<<"Demangled value: " << demangled<<"\t"<< quote(argKey) <<"\n";
+    //   // std::cout << typeof(argKey) << std::endl;
+    //   // if (std::is_pointer<>::value) {
+    //     // std::cout << "No" << std::endl;
+    //   // }
     // }
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
@@ -659,6 +679,10 @@ static void handleCudaMalloc(Allocations &allocations, Values &values,
                                               Location::CudaDevice(devId));
     cprof::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.get()
                  << " pos=" << a->pos() << std::endl;
+    
+    //Create new database allocation record
+    auto dependency_tracking = DependencyTracking::instance();
+    dependency_tracking.memory_ptr_create(a->pos());
 
     values.new_value(devPtr, size, a, false /*initialized*/);
     // auto digest = hash_device(devPtr, size);
