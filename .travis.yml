@@ -33,7 +33,7 @@ matrix:
 before_install:
 - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 - sudo apt-get -qq update
-- sudo apt-get install --no-recommends -y g++-4.9
+- sudo apt-get install --no-install-recommends -y g++-4.9
 install:
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
