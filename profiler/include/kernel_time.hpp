@@ -21,8 +21,6 @@ typedef struct {
   size_t memcpySize;
 } memcpy_info_t;
 
-// typedef std::unique_ptr<zipkin::Span> span_t;
-
 class KernelCallTime {
 
 private:
@@ -47,6 +45,15 @@ public:
   std::unordered_map<std::string, std::string> text_map;
   std::map<uint32_t, std::vector<uintptr_t>> cid_to_call;
   std::map<uint32_t, uint32_t> cid_to_tid;
+
+   //First bool corresponds to CALLBACKS completion, second corresponds to ACTIVITY completion
+   static std::map<uint32_t, std::tuple<bool, bool>> cid_to_completion;
+   static std::map<uint32_t, std::map<std::string, std::string>> cid_to_values;
+ 
+   void callback_add_annotations(uint32_t cid, std::map<std::string, std::string> callback_values);
+   void activity_add_annotations(uint32_t cid, std::map<std::string, std::string> activity_values);
+   void check_completion(uint32_t cid);
+ 
 
 private:
   const char *memcpy_type_to_string(uint8_t kind);
