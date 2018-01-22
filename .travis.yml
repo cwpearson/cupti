@@ -30,11 +30,11 @@ matrix:
     - env: BUILD_TYPE=Release
     - env: BUILD_TYPE=Debug
 
+before_install:
+- sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+- sudo apt-get -qq update
+- sudo apt-get install --no-recommends -y g++-4.9
 install:
-- add-apt-repository ppa:ubuntu-toolchain-r/test
-- apt-get update
-- apt-get install --no-recommends -y g++-4.9
-- g++ --version
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
 - cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
