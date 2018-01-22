@@ -46,6 +46,11 @@ public:
 
   CuptiSubscriber *manager_; // FIXME: make this private and add an accessor
 
+  std::shared_ptr<opentracing::Tracer> rootTracer_;
+  std::shared_ptr<opentracing::Tracer> memcpyTracer_;
+  std::shared_ptr<opentracing::Tracer> launchTracer_;
+  span_t rootSpan_;
+
 private:
   Profiler();
 
@@ -54,10 +59,12 @@ private:
   cprof::Allocations allocations_;
   KernelCallTime kernelCallTime_;
 
+  bool enableZipkin_;
   std::string zipkinHost_;
   uint32_t zipkinPort_;
 
   bool isInitialized_;
+
 };
 
 /* \brief Runs Profiler::init() at load time

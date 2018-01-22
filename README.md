@@ -50,25 +50,34 @@ location you can use the DCMAKE_INSTALL_PREFIX flag to change the installation l
 -DCMAKE_INSTALL_PREFIX=/custom/installation/path
 ```
 
-## Building cprof
+## Configuring
 
-The cprof library contains functionality to model the system and cuda driver state.
+Create a `Makefile.config` in the top level that matches your environment.
+This file contains `make` variables that are common across `cprof` and `profiler`.
+You can redefine any of these variables in the `Makefile.config` for `cprof` or `profiler` respectively.
+
+See `Makefile.config.example` as a starting point.
+
+### Building cprof
+
+The cprof library contains functionality to model the system and CUDA driver state.
 
 Create a `Makefile.config` in `cprof` that matches your environment.
 
-    cd cprof
-    cp Makefile.config.example Makefile.config
-    make tests
+    cp cprof/Makefile.config.example cprof/Makefile.config
 
-## Building profiler
+### COnfiguring profiler
 
 The profiler uses cprof to model the system state, and uses CUPTI and LD\_PRELOAD to observe the system.
 
 Create a `Makefile.config` in `profiler` that matches your environment.
 
-    cd profiler
-    cp Makefile.config.example Makefile.config
+    cp profiler/Makefile.config.example profiler/Makefile.config
+
+## Building
+
     make
+    cd cprof && make tests
 
 ## Using the profiler
 
@@ -79,10 +88,6 @@ Make sure the CUPTI library is in your `LD_LIBRARY_PATH`. For example:
 Modify `env.sh` to point `CPROF_ROOT` to wherever you checked out cupti. For example
 
     export CPROF_ROOT="/home/pearson/cupti"
-
-Build the profiling library (`prof.so`).
-
-    make
 
 ## Run on a CUDA application
 

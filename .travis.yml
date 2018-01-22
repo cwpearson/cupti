@@ -2,11 +2,10 @@ addons:
   apt:
     packages:
     - libboost-dev
-    - cppcheck
     - libnuma-dev
     - libcurl4-openssl-dev
-    - cmake
     - git
+    - cmake
 sudo: required
 services: docker
 env:
@@ -32,9 +31,13 @@ matrix:
     - env: BUILD_TYPE=Debug
 
 install:
+<<<<<<< HEAD
 - add-apt-repository ppa:ubuntu-toolchain-r/test
 - apt-get update
 - apt-get install --no-recommends -y g++-4.9
+=======
+- g++ --version
+>>>>>>> 133e1e38559159faaba942722798567187035512
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
 - cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
@@ -62,7 +65,7 @@ install:
 - mv -v $NCCL_PREFIX/include/* $CUDA_ROOT/include/.
 - mv -v $NCCL_PREFIX/lib/* $CUDA_ROOT/lib64/.
 script:
-- cd $TRAVIS_BUILD
+- cd $TRAVIS_BUILD_DIR
 - echo CXX=g++-4.9 >> Makefile.config
 - cd $TRAVIS_BUILD_DIR/cprof
 - echo CPROF_ROOT=. >> Makefile.config

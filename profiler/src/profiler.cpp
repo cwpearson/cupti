@@ -30,6 +30,15 @@ Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {}
 Profiler::~Profiler() {
   logging::err() << "Profiler dtor\n";
   delete manager_;
+
+  if (enableZipkin_) {
+    profiler::err() << "INFO: Profiler finalizing Zipkin" << std::endl;
+    memcpyTracer_->Close(); // FIXME: right order?
+    launchTracer_->Close();
+    rootSpan_->Finish();
+    rootTracer_->Close();
+  }
+
   isInitialized_ = false;
   logging::err() << "Profiler dtor almost done...\n";
 }
@@ -72,9 +81,8 @@ void Profiler::init() {
       EnvironmentVariable<bool>("CPROF_USE_CUPTI_ACTIVITY", true).get();
   err() << "INFO: useCuptiActivity: " << useCuptiActivity << std::endl;
 
-  const bool enableZipkin =
-      EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
-  err() << "INFO: enableZipkin: " << enableZipkin << std::endl;
+  enableZipkin_ = EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
+  err() << "INFO: enableZipkin: " << enableZipkin_ << std::endl;
 
   zipkinHost_ =
       EnvironmentVariable<std::string>("CPROF_ZIPKIN_HOST", "localhost").get();
@@ -88,8 +96,34 @@ void Profiler::init() {
   err() << "INFO: done" << std::endl;
 
   manager_ =
-      new CuptiSubscriber(useCuptiActivity, useCuptiCallback, enableZipkin);
+      new CuptiSubscriber(useCuptiActivity, useCuptiCallback, enableZipkin_);
   manager_->init();
+
+  if (enableZipkin_) {
+    profiler::err() << "INFO: Profiler enable zipkin" << std::endl;
+    // Create tracers here so that they are not destroyed
+    // when clearing buffer during destruction
+    zipkin::ZipkinOtTracerOptions options;
+    options.service_name = "profiler";
+    options.collector_host = Profiler::instance().zipkin_host();
+    options.collector_port = Profiler::instance().zipkin_port();
+    rootTracer_ = makeZipkinOtTracer(options);
+
+    zipkin::ZipkinOtTracerOptions memcpyTracerOpts;
+    memcpyTracerOpts.service_name = "memcpy tracer";
+    memcpyTracerOpts.collector_host = Profiler::instance().zipkin_host();
+    memcpyTracerOpts.collector_port = Profiler::instance().zipkin_port();
+    memcpyTracer_ = makeZipkinOtTracer(memcpyTracerOpts);
+
+    zipkin::ZipkinOtTracerOptions launchTracerOpts;
+    launchTracerOpts.service_name = "kernel tracer";
+    launchTracerOpts.collector_host = Profiler::instance().zipkin_host();
+    launchTracerOpts.collector_port = Profiler::instance().zipkin_port();
+    launchTracer_ = makeZipkinOtTracer(launchTracerOpts);
+
+    rootSpan_ = rootTracer_->StartSpan("Root");
+  }
+
   isInitialized_ = true;
 }
 

@@ -19,42 +19,45 @@ using namespace opentracing;
 static std::unordered_map<std::string, std::string> text_map;
 static TextMapCarrier carrier(text_map);
 
+std::map<uint32_t, std::tuple<bool, bool>> KernelCallTime::cid_to_completion;
+std::map<uint32_t, std::map<std::string, std::string>> KernelCallTime::cid_to_values;
+
 void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
-  std::lock_guard<std::mutex> guard(accessMutex_);
-  uint64_t startTimeStamp;
-  cuptiDeviceGetTimestamp(cbInfo->context, &startTimeStamp);
-  const char *cudaMem = "cudaMemcpy";
-  auto correlationId = cbInfo->correlationId;
-  time_points_t time_point;
-  time_point.start_time = startTimeStamp;
-  const char *memcpy = "cudaMemcpy";
+  // std::lock_guard<std::mutex> guard(accessMutex_);
+  // uint64_t startTimeStamp;
+  // cuptiDeviceGetTimestamp(cbInfo->context, &startTimeStamp);
+  // const char *cudaMem = "cudaMemcpy";
+  // auto correlationId = cbInfo->correlationId;
+  // time_points_t time_point;
+  // time_point.start_time = startTimeStamp;
+  // const char *memcpy = "cudaMemcpy";
 
-  if (strcmp(cbInfo->functionName, memcpy) == 0) {
-    auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
-    memcpy_info_t memInfo;
+  // if (strcmp(cbInfo->functionName, memcpy) == 0) {
+  //   auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
+  //   memcpy_info_t memInfo;
 
-    this->correlation_to_dest.insert(
-        std::pair<uint32_t, uintptr_t>(correlationId, (uintptr_t)params->dst));
+  //   this->correlation_to_dest.insert(
+  //       std::pair<uint32_t, uintptr_t>(correlationId, (uintptr_t)params->dst));
 
-    memInfo.memcpyType = params->kind;
-    memInfo.memcpySize = params->count;
-    this->correlation_id_to_info.insert(
-        std::pair<uint32_t, memcpy_info_t>(correlationId, memInfo));
-  }
+  //   memInfo.memcpyType = params->kind;
+  //   memInfo.memcpySize = params->count;
+  //   this->correlation_id_to_info.insert(
+  //       std::pair<uint32_t, memcpy_info_t>(correlationId, memInfo));
+  // }
 
-  auto t1 = SystemClock::now();
-  this->correlation_to_start.insert(
-      std::pair<uint32_t, std::chrono::time_point<std::chrono::system_clock>>(
-          correlationId, t1));
+  // auto t1 = SystemClock::now();
+  // this->correlation_to_start.insert(
+  //     std::pair<uint32_t, std::chrono::time_point<std::chrono::system_clock>>(
+  //         correlationId, t1));
 
-  // this->tid_to_time.insert(
-  // std::pair<uint32_t, time_points_t>(cbInfo->correlationId, time_point));
-  this->correlation_to_function.insert(std::pair<uint32_t, const char *>(
-      cbInfo->correlationId, cbInfo->functionName));
-  this->correlation_to_symbol.insert(std::pair<uint32_t, const char *>(
-      cbInfo->correlationId, cbInfo->symbolName));
-  this->cid_to_tid.insert(std::pair<uint32_t, uint32_t>(
-      correlationId, cprof::model::get_thread_id()));
+  // // this->tid_to_time.insert(
+  // // std::pair<uint32_t, time_points_t>(cbInfo->correlationId, time_point));
+  // this->correlation_to_function.insert(std::pair<uint32_t, const char *>(
+  //     cbInfo->correlationId, cbInfo->functionName));
+  // this->correlation_to_symbol.insert(std::pair<uint32_t, const char *>(
+  //     cbInfo->correlationId, cbInfo->symbolName));
+  // this->cid_to_tid.insert(std::pair<uint32_t, uint32_t>(
+  //     correlationId, cprof::model::get_thread_id()));
 }
 
 void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
@@ -198,6 +201,9 @@ void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
     auto end_time_point =
         std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
 
+    // auto dependency_tracking = DependencyTracking::instance();
+    // dependency_tracking.annotate_times(correlationId, start_time_point, end_time_point);
+
     current_span = Profiler::instance().manager_->memcpy_tracer->StartSpan(
         std::to_string(correlationId),
         {ChildOf(&Profiler::instance().manager_->parent_span->context()),
@@ -242,6 +248,9 @@ void KernelCallTime::kernel_activity_times(
         std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
     auto end_time_point =
         std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
+
+    // auto dependency_tracking = DependencyTracking::instance();
+    // dependency_tracking.annotate_times(correlationId, start_time_point, end_time_point);
 
     auto configCallIter = this->cid_to_call.find(correlationId);
     // if (cid_to_call.end() != configCallIter){
@@ -306,4 +315,36 @@ void KernelCallTime::save_configured_call(uint32_t cid,
                                           std::vector<uintptr_t> configCall) {
   this->cid_to_call.insert(
       std::pair<uint32_t, std::vector<uintptr_t>>(cid, configCall));
+}
+
+void KernelCallTime::callback_add_annotations(uint32_t cid, std::map<std::string, std::string> callback_values){
+  auto completionStatus = this->cid_to_completion.find(cid);
+  std::get<0>(completionStatus->second) = true;
+
+  auto dataValues = this->cid_to_values.find(cid);
+  
+  for (auto value : callback_values){
+    dataValues->second.insert(value);
+  }
+  check_completion(cid);  
+}
+
+void KernelCallTime::activity_add_annotations(uint32_t cid, std::map<std::string, std::string> activity_values){
+  auto completionStatus = this->cid_to_completion.find(cid);
+  std::get<1>(completionStatus->second) = true;
+
+  auto dataValues = this->cid_to_values.find(cid);
+  
+  for (auto value : activity_values){
+    dataValues->second.insert(value);
+  }
+  check_completion(cid);
+}
+
+void KernelCallTime::check_completion(uint32_t cid){
+  auto completionStatus = this->cid_to_completion.find(cid);  
+  if (std::get<0>(completionStatus->second) == true && std::get<1>(completionStatus->second)==true ){
+    //Need to decide whether to batch results or not.
+    //They should be de-facto batched due to the nature of the activity API
+  }
 }

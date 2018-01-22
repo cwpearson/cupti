@@ -8,15 +8,15 @@ NOW=`date +%Y%m%d-%H%M%S`
 # CUPTI should be in the LD_LIBRARY_PATH
 
 if [ -z "${OPENTRACING_LIB+xxx}" ]; then 
-  export OPENTRACING_LIB="$HOME/software/opentracing-cpp/lib";
+  export OPENTRACING_LIB="$HOME/lib/lib";
 fi
 if [ -z "${ZIPKIN_LIB+xxx}" ]; then 
-  export ZIPKIN_LIB="$HOME/software/zipkin-cpp-opentracing/lib";
+  export ZIPKIN_LIB="$HOME/lib/lib";
 fi
 
 # where to look for cprof/profiler
 if [ -z "${CPROF_ROOT+xxx}" ]; then 
-  export CPROF_ROOT="$HOME/repos/cupti"; # not set at all
+  export CPROF_ROOT="$HOME/benchmarks/cupti"; # not set at all
 fi
 
 # Check that libcprof.so exists

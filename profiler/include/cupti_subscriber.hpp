@@ -4,7 +4,9 @@
 #include <iostream>
 
 #include "cprof/util_cupti.hpp"
+
 #include "kernel_time.hpp"
+#include "zipkin.hpp"
 
 #define BUFFER_SIZE 100000
 
