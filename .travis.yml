@@ -37,7 +37,7 @@ before_install:
 install:
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
-- cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
+- cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT -DCMAKE_CXX_COMPILER=g++-4.9
 - make && make install
 - git clone https://github.com/rnburn/zipkin-cpp-opentracing.git $ZIPKIN_SRC
 - cd $ZIPKIN_SRC && mkdir .build && cd .build
