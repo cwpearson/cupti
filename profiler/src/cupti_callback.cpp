@@ -730,17 +730,19 @@ static void handleCudaMalloc(Allocations &allocations,
       return;
     }
 
+   
     // Create the new allocation
     // FIXME: need to check which address space this is in
     const int devId = profiler::driver().this_thread().current_device();
     auto AS = profiler::hardware().address_space(devId);
     auto AM = cprof::model::Memory::Pageable;
 
-    // Allocation a = allocations.new_allocation(devPtr, size, AS, AM,
-                                              // Location::CudaDevice(devId));
-    // cprof::err() << "INFO: [cudaMalloc] new alloc=" << (uintptr_t)a.get()
-                //  << " pos=" << a->pos() << std::endl;
-    
+    Allocation a = allocations.new_allocation(devPtr, size, AS, AM,
+                                              Location::CudaDevice(devId));
+    profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
+                    << ") [cudaMalloc] new alloc=" << (uintptr_t)a.id()
+<< " pos=" << a.pos() << std::endl;
+ 
     //Create new database allocation record
     // auto dependency_tracking = DependencyTracking::instance();
     // dependency_tracking.memory_ptr_create(a->pos());
@@ -754,32 +756,32 @@ static void handleCudaMalloc(Allocations &allocations,
 
 static void handleCudaFree(Allocations &allocations,
                            const CUpti_CallbackData *cbInfo) {
-  // if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-  // } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-  //   auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
-  //   auto devPtr = (uintptr_t)params->devPtr;
-  //   cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
-  //   profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
-  //                   << ") [cudaFree] " << devPtr << std::endl;
+   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+     auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
+     auto devPtr = (uintptr_t)params->devPtr;
+     cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
+     profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
+                     << ") [cudaFree] " << devPtr << std::endl;
 
-  //   assert(cudaSuccess == ret);
+     assert(cudaSuccess == ret);
 
-  //   if (!devPtr) { // does nothing if passed 0
-  //     profiler::err() << "WARN: cudaFree called on 0? Does nothing."
-  //                     << std::endl;
-  //     return;
-  //   }
+     if (!devPtr) { // does nothing if passed 0
+       profiler::err() << "WARN: cudaFree called on 0? Does nothing."
+                       << std::endl;
+       return;
+     }
 
-  //   const int devId = profiler::driver().this_thread().current_device();
-  //   auto AS = profiler::hardware().address_space(devId);
+     const int devId = profiler::driver().this_thread().current_device();
+     auto AS = profiler::hardware().address_space(devId);
 
-  //   // Find the live matching allocation
-  //   profiler::err() << "Looking for " << devPtr << std::endl;
-  //   auto freeAlloc = allocations.free(devPtr, AS);
-  //   assert(freeAlloc && "Freeing unallocated memory?");
-  // } else {
-  //   assert(0 && "How did we get here?");
-  // }
+     // Find the live matching allocation
+     profiler::err() << "Looking for " << devPtr << std::endl;
+     auto freeAlloc = allocations.free(devPtr, AS);
+     assert(freeAlloc && "Freeing unallocated memory?");
+   } else {
+     assert(0 && "How did we get here?");
+   }
 }
 
 static void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
