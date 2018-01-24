@@ -16,7 +16,7 @@ fi
 
 # where to look for cprof/profiler
 if [ -z "${CPROF_ROOT+xxx}" ]; then 
-  export CPROF_ROOT="$HOME/benchmarks/cupti"; # not set at all
+  export CPROF_ROOT="$HOME/repos/cupti"; # not set at all
 fi
 
 # Check that libcprof.so exists

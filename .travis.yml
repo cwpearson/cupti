@@ -30,11 +30,14 @@ matrix:
     - env: BUILD_TYPE=Release
     - env: BUILD_TYPE=Debug
 
+before_install:
+- sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+- sudo apt-get -qq update
+- sudo apt-get install --no-install-suggests --no-install-recommends -y g++-4.9
 install:
-- g++ --version
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
-- cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT
+- cmake .. -DCMAKE_INSTALL_PREFIX=$OPENTRACING_ROOT -DCMAKE_CXX_COMPILER=g++-4.9
 - make && make install
 - git clone https://github.com/rnburn/zipkin-cpp-opentracing.git $ZIPKIN_SRC
 - cd $ZIPKIN_SRC && mkdir .build && cd .build
@@ -60,7 +63,7 @@ install:
 - mv -v $NCCL_PREFIX/lib/* $CUDA_ROOT/lib64/.
 script:
 - cd $TRAVIS_BUILD_DIR
-- touch Makefile.config
+- echo CXX=g++-4.9 >> Makefile.config
 - cd $TRAVIS_BUILD_DIR/cprof
 - echo CPROF_ROOT=. >> Makefile.config
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config

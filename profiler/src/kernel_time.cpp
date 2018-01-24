@@ -341,6 +341,7 @@ void KernelCallTime::activity_add_annotations(uint32_t cid, std::map<std::string
   std::get<1>(completionStatus->second) = true;
 
   auto dataValues = this->cid_to_values.find(cid);
+  assert(dataValues != this->cid_to_values.end());
   
   if (dataValues == this->cid_to_values.end()){
     /*
