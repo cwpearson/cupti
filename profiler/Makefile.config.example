@@ -8,6 +8,3 @@ CUDA_ROOT ?= /usr/local/cuda
 
 OPENTRACING_ROOT ?= $(HOME)/software/opentracing-cpp
 ZIPKIN_OPENTRACING_ROOT ?= $(HOME)/software/zipkin-cpp-opentracing
-
-# Debug or Release
-BUILD_TYPE ?= Debug

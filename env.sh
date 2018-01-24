@@ -4,16 +4,6 @@ set -eou pipefail
 # the time of the profile
 NOW=`date +%Y%m%d-%H%M%S`
 
-## Adjust these variables to match your installation
-# CUPTI should be in the LD_LIBRARY_PATH
-
-if [ -z "${OPENTRACING_LIB+xxx}" ]; then 
-  export OPENTRACING_LIB="$HOME/lib/lib";
-fi
-if [ -z "${ZIPKIN_LIB+xxx}" ]; then 
-  export ZIPKIN_LIB="$HOME/lib/lib";
-fi
-
 # where to look for cprof/profiler
 if [ -z "${CPROF_ROOT+xxx}" ]; then 
   export CPROF_ROOT="$HOME/repos/cupti"; # not set at all
@@ -35,12 +25,6 @@ if [ ! -f "$LIBPROFILER" ]; then
     exit -1
 fi
 
-
-## Add the libraries libprofiler.so depends on to the load library path
-export LD_LIBRARY_PATH="/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH="$OPENTRACING_LIB:$LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH="$ZIPKIN_LIB:$LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH="$CPROF_ROOT/cprof/lib:$LD_LIBRARY_PATH"
 
 ## Control some profiling parameters.
 

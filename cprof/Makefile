@@ -35,14 +35,15 @@ ifdef BOOST_ROOT
   LIB += -L$(BOOST_LIB) 
 endif
 
-
 # Set CUDA-related variables
-ifndef CUDA_ROOT
+ifdef CUDA_ROOT
+  CUDA_CUPTI_LIB = $(CUDA_ROOT)/extras/CUPTI/lib64
+else
   $(error set CUDA_ROOT in Makefile.config)
 endif
 NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
-LIB += -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
+LIB += -L$(CUDA_CUPTI_LIB) -lcupti -Wl,-rpath=$(CUDA_CUPTI_LIB) \
        -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt
 
 # libnuma
