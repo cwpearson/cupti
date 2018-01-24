@@ -1,3 +1,5 @@
+export CPROF_ROOT = $(shell readlink -f cprof)
+
 all: libcprof.so libprofiler.so
 
 .PHONY: libcprof.so
@@ -7,6 +9,10 @@ libcprof.so:
 .PHONY: libprofiler.so
 libprofiler.so: libcprof.so
 	+make -C profiler
+
+.PHONY: tests
+tests:
+	+make -C cprof tests
 
 .PHONY: clean
 clean:

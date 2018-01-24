@@ -44,14 +44,9 @@ ifdef ZIPKIN_OPENTRACING_ROOT
   LIB += -L$(ZIPKIN_OPENTRACING_LIB) -Wl,-rpath=$(ZIPKIN_OPENTRACING_LIB)
 endif
 
-ifdef CPROF_ROOT
-  CPROF_LIB=$(CPROF_ROOT)/lib
-  INC += -isystem$(CPROF_ROOT)/include
-  LIB += -L$(CPROF_LIB) -lcprof -Wl,-rpath=$(CPROF_LIB)
-else
-  $(error set CPROF_ROOT in Makefile.config)
-endif
-
+CPROF_LIB=$(CPROF_ROOT)/lib
+INC += -isystem$(CPROF_ROOT)/include
+LIB += -L$(CPROF_LIB) -lcprof -Wl,-rpath=$(CPROF_LIB)
 
 # Set CUDA-related variables
 ifndef CUDA_ROOT

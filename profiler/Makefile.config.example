@@ -1,10 +1,5 @@
-# BOOST_ROOT=
-
-# Where cprof is
-CPROF_ROOT ?= ../cprof
-
-# Where CUDA is
-CUDA_ROOT ?= /usr/local/cuda
-
+# If opentracing is in an unusual place
 OPENTRACING_ROOT ?= $(HOME)/software/opentracing-cpp
+
+# If zipkin-cpp-opentracing is in an unusual place
 ZIPKIN_OPENTRACING_ROOT ?= $(HOME)/software/zipkin-cpp-opentracing

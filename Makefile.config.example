@@ -1,6 +1,20 @@
-# Set the compiler
-#CXX = g++
-#LD = ld
+####
+# Set the following
+####
 
 # Set the build type
 BUILD_TYPE ?= Debug
+
+# Where CUDA is
+CUDA_ROOT = /usr/local/cuda
+
+####
+# Optional Configuration
+####
+
+# Set the compiler and linker
+#CXX = g++
+#LD = ld
+
+# If boost is in an usual place
+#BOOST_ROOT = 

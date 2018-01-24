@@ -12,7 +12,7 @@ BUILDDIR = build
 DEPSDIR = deps
 
 # How to build tests
-TEST_DIR = $(CPROF_ROOT)/tests
+TEST_DIR = tests
 include $(TEST_DIR)/Makefile
 
 # Targets to build
