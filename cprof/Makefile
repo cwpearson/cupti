@@ -32,7 +32,7 @@ ifdef BOOST_ROOT
   BOOST_INC=$(BOOST_ROOT)/include
   BOOST_LIB=$(BOOST_ROOT)/lib
   INC += -isystem$(BOOST_INC) 
-  LIB += -L$(BOOST_LIB) 
+  LIB += -L$(BOOST_LIB) -Wl,-rpath=$(BOOST_LIB)
 endif
 
 # Set CUDA-related variables
