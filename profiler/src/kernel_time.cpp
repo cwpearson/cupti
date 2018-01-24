@@ -322,6 +322,13 @@ void KernelCallTime::callback_add_annotations(uint32_t cid, std::map<std::string
   std::get<0>(completionStatus->second) = true;
 
   auto dataValues = this->cid_to_values.find(cid);
+  if (dataValues == this->cid_to_values.end()){
+    /*
+    Sanity Check -- However, should never occur
+    If it is need to find code causing issue.
+    */
+    return;
+  }
   
   for (auto value : callback_values){
     dataValues->second.insert(value);
@@ -335,6 +342,14 @@ void KernelCallTime::activity_add_annotations(uint32_t cid, std::map<std::string
 
   auto dataValues = this->cid_to_values.find(cid);
   
+  if (dataValues == this->cid_to_values.end()){
+    /*
+    Sanity Check -- However, should never occur
+    If it is need to find code causing issue.
+    */
+    return;
+  }
+
   for (auto value : activity_values){
     dataValues->second.insert(value);
   }
