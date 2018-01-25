@@ -34,6 +34,7 @@ export CPROF_OUT="$NOW"_output.cprof
 
 
 # endpoint for tracing
+export CPROF_USE_CUPTI_ACTIVITY=0
 export CPROF_ENABLE_ZIPKIN=1
 export CPROF_ZIPKIN_HOST=34.215.126.137
 export CPROF_ZIPKIN_PORT=9411

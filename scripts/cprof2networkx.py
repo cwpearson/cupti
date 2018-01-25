@@ -49,12 +49,13 @@ def api_handler(api):
     for i in api.inputs:
         srcNodeId = get_value_node_id(i)
         weight = g.node[srcNodeId][NODE_WEIGHT]
-        g.add_edge(srcNodeId, apiNodeId, Weight=weight)
+        # api node deps on src node
+        g.add_edge(apiNodeId, srcNodeId, Weight=weight)
 
     for o in api.outputs:
         dstNodeId = get_value_node_id(o)
         weight = g.node[dstNodeId][NODE_WEIGHT]
-        g.add_edge(apiNodeId, dstNodeId, Weight=weight)
+        g.add_edge(dstNodeId, apiNodeId, Weight=weight)
 
 
 def dep_handler(dep):
@@ -77,6 +78,15 @@ pycprof.run_handler(dep_handler, path=sys.argv[1])
 # create nodes for storage
 # pycprof.run_handler(dep_handler, path=sys.argv[1])
 
+print "cycles"
+cycles = nx.find_cycle(g)
+print cycles
+print "done"
+
+
+print "shortest path:"
+longestPath = nx.dag_longest_path(g)
+print "done"
 
 print "writing graph...",
 nx.write_graphml(g, "cprof.graphml")

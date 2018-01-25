@@ -29,17 +29,19 @@ private:
   id_type new_id() { return next_id_++; }
 
 public:
+  ApiRecord(const std::string &apiName, const int device,
+            const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
+            const CUpti_CallbackData *cbInfo)
+      : apiName_(apiName), device_(device), domain_(domain), cbid_(cbid),
+        cbInfo_(cbInfo), id_(new_id()), start_(std::chrono::nanoseconds(0)),
+        end_(std::chrono::nanoseconds(0)) {}
   ApiRecord(const int device, const CUpti_CallbackDomain domain,
             const CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo)
-      : apiName_(cbInfo->functionName), device_(device), domain_(domain),
-        cbid_(cbid), cbInfo_(cbInfo), id_(new_id()),
-        start_(std::chrono::nanoseconds(0)), end_(std::chrono::nanoseconds(0)) {
-  }
+      : ApiRecord(cbInfo->functionName, device, domain, cbid, cbInfo) {}
   // Not all ApiRecords come from CUPTI
   ApiRecord(const std::string &apiName, const std::string &kernelName,
             const int device)
-      : ApiRecord(device, CUPTI_CB_DOMAIN_INVALID, -1, nullptr) {
-    apiName_ = apiName;
+      : ApiRecord(apiName, device, CUPTI_CB_DOMAIN_INVALID, -1, nullptr) {
     kernelName_ = kernelName;
   }
   ApiRecord(const std::string &name, const int device)
