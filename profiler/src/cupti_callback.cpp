@@ -379,7 +379,6 @@ static void handleCudaMemcpy(Allocations &allocations,
 
     std::map<std::string, std::string> sampleMap;
     //Sample for KernelTimer
-    profiler::kernelCallTime().callback_add_annotations(cbInfo->correlationId, sampleMap);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -884,6 +883,8 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
                                     CUpti_CallbackId cbid,
                                     const CUpti_CallbackData *cbInfo) {
   (void)userdata; // data supplied at subscription
+  profiler::kernelCallTime().callback_add_annotations(cbInfo);
+  
 
   if (!profiler::driver().this_thread().is_cupti_callbacks_enabled()) {
     return;

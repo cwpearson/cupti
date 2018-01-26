@@ -6,6 +6,8 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <boost/lexical_cast.hpp>
+#include <boost/any.hpp>
 
 #include "cprof/model/thread.hpp"
 #include "text_map_carrier.hpp"
@@ -50,8 +52,8 @@ public:
    static std::map<uint32_t, std::tuple<bool, bool>> cid_to_completion;
    static std::map<uint32_t, std::map<std::string, std::string>> cid_to_values;
  
-   void callback_add_annotations(uint32_t cid, std::map<std::string, std::string> callback_values);
-   void activity_add_annotations(uint32_t cid, std::map<std::string, std::string> activity_values);
+   void callback_add_annotations(const CUpti_CallbackData *cbInfo);
+   void activity_add_annotations(CUpti_Activity * activity_data);
    void check_completion(uint32_t cid);
  
 

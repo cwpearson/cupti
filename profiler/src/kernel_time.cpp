@@ -318,12 +318,12 @@ void KernelCallTime::save_configured_call(uint32_t cid,
       std::pair<uint32_t, std::vector<uintptr_t>>(cid, configCall));
 }
 
-void KernelCallTime::callback_add_annotations(uint32_t cid, std::map<std::string, std::string> callback_values){
-  for (auto value : callback_values){
-    std::cout << "Callback add annotations" << std::endl;
-    //Create associated span for the callback
-    // dataValues->second.insert(value);
-  }
+void KernelCallTime::callback_add_annotations(const CUpti_CallbackData *cbInfo){
+  uint64_t start;
+  CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), std::cerr);
+
+  span_t current_span;
+  //To fill in with various data
 }
 
 
