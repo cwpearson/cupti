@@ -778,7 +778,7 @@ static void handleCudaFree(Allocations &allocations,
      // Find the live matching allocation
      profiler::err() << "Looking for " << devPtr << std::endl;
      auto freeAlloc = allocations.free(devPtr, AS);
-     assert(freeAlloc && "Freeing unallocated memory?");
+    //  assert(freeAlloc && "Freeing unallocated memory?");
    } else {
      assert(0 && "How did we get here?");
    }

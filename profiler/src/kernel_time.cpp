@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <iostream>
 #include <mutex>
+#include <thread>
 
 #include "cupti_subscriber.hpp"
 #include "kernel_time.hpp"
@@ -318,49 +319,100 @@ void KernelCallTime::save_configured_call(uint32_t cid,
 }
 
 void KernelCallTime::callback_add_annotations(uint32_t cid, std::map<std::string, std::string> callback_values){
-  auto completionStatus = this->cid_to_completion.find(cid);
-  std::get<0>(completionStatus->second) = true;
-
-  auto dataValues = this->cid_to_values.find(cid);
-  if (dataValues == this->cid_to_values.end()){
-    /*
-    Sanity Check -- However, should never occur
-    If it is need to find code causing issue.
-    */
-    return;
-  }
-  
   for (auto value : callback_values){
-    dataValues->second.insert(value);
+    std::cout << "Callback add annotations" << std::endl;
+    //Create associated span for the callback
+    // dataValues->second.insert(value);
   }
-  check_completion(cid);  
 }
 
-void KernelCallTime::activity_add_annotations(uint32_t cid, std::map<std::string, std::string> activity_values){
-  auto completionStatus = this->cid_to_completion.find(cid);
-  std::get<1>(completionStatus->second) = true;
 
-  auto dataValues = this->cid_to_values.find(cid);
-  assert(dataValues != this->cid_to_values.end());
-  
-  if (dataValues == this->cid_to_values.end()){
-    /*
-    Sanity Check -- However, should never occur
-    If it is need to find code causing issue.
-    */
-    return;
-  }
+/*CUDA8*/
+void addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity){
 
-  for (auto value : activity_values){
-    dataValues->second.insert(value);
-  }
-  check_completion(cid);
+  CUpti_ActivityKernel3 local_Kernel_Activity = *kernel_Activity;
+
+  /*Get start and end times for kernel*/
+  std::chrono::nanoseconds start_dur(local_Kernel_Activity.start);
+  auto start_time_point =
+      std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
+  std::chrono::nanoseconds end_dur(local_Kernel_Activity.end);
+  auto end_time_stamp =
+    std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
+
+  span_t current_span;  
+  current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
+    std::to_string(local_Kernel_Activity.correlationId),
+    {
+      FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
+      StartTimestamp(start_time_point)
+    }
+  );
+  //Extract useful information from local_Kernel_Activity and add it to trace
+  current_span->SetTag("blockX", std::to_string(local_Kernel_Activity.blockX));
+  current_span->SetTag("blockY", std::to_string(local_Kernel_Activity.blockY));
+  current_span->SetTag("blockZ", std::to_string(local_Kernel_Activity.blockZ));
+  current_span->SetTag("completed", std::to_string(local_Kernel_Activity.completed));
+  current_span->SetTag("deviceId", std::to_string(local_Kernel_Activity.deviceId));
+  current_span->SetTag("dynamicSharedMemory", std::to_string(local_Kernel_Activity.dynamicSharedMemory));
+  current_span->SetTag("gridId", std::to_string(local_Kernel_Activity.gridId));
+  current_span->SetTag("gridX", std::to_string(local_Kernel_Activity.gridX));
+  current_span->SetTag("gridY", std::to_string(local_Kernel_Activity.gridY));
+  current_span->SetTag("gridZ", std::to_string(local_Kernel_Activity.gridZ));
+  current_span->SetTag("localMemoryPerThread", std::to_string(local_Kernel_Activity.localMemoryPerThread));
+  current_span->SetTag("localMemoryTotal", std::to_string(local_Kernel_Activity.localMemoryTotal));
+  current_span->SetTag("registersPerThread", std::to_string(local_Kernel_Activity.registersPerThread));
+  current_span->SetTag("sharedMemoryConfig", std::to_string(local_Kernel_Activity.sharedMemoryConfig));
+  current_span->SetTag("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
+  current_span->SetTag("streamId", std::to_string(local_Kernel_Activity.streamId));
+  current_span->SetTag("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
+  current_span->Finish({FinishTimestamp(end_time_stamp)});
 }
 
-void KernelCallTime::check_completion(uint32_t cid){
-  auto completionStatus = this->cid_to_completion.find(cid);  
-  if (std::get<0>(completionStatus->second) == true && std::get<1>(completionStatus->second)==true ){
-    //Need to decide whether to batch results or not.
-    //They should be de-facto batched due to the nature of the activity API
-  }
+void addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
+  CUpti_ActivityMemcpy local_Memcpy_Activity = *memcpy_Activity;
+
+  /*Get start and end times for kernel*/
+  std::chrono::nanoseconds start_dur(local_Memcpy_Activity.start);
+  auto start_time_point =
+      std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
+  std::chrono::nanoseconds end_dur(local_Memcpy_Activity.end);
+  auto end_time_stamp =
+    std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
+
+  span_t current_span;  
+  current_span = Profiler::instance().manager_->memcpy_tracer->StartSpan(
+    std::to_string(local_Memcpy_Activity.correlationId),
+    {
+      FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
+      StartTimestamp(start_time_point)
+    }
+  );
+  current_span->SetTag("bytes", std::to_string(local_Memcpy_Activity.bytes));
+  current_span->SetTag("contextId", std::to_string(local_Memcpy_Activity.contextId));
+  current_span->SetTag("copyKind", std::to_string(local_Memcpy_Activity.copyKind));
+  current_span->SetTag("deviceId", std::to_string(local_Memcpy_Activity.deviceId));
+  current_span->SetTag("dstKind", std::to_string(local_Memcpy_Activity.dstKind));
+  current_span->SetTag("flags", std::to_string(local_Memcpy_Activity.flags));
+  current_span->SetTag("runtimeCorrelationId", std::to_string(local_Memcpy_Activity.runtimeCorrelationId));
+  current_span->SetTag("srcKind", std::to_string(local_Memcpy_Activity.srcKind));
+  current_span->SetTag("streamId", std::to_string(local_Memcpy_Activity.streamId));  
+}
+
+void KernelCallTime::activity_add_annotations(CUpti_Activity * activity_data){
+  switch(activity_data->kind) {
+    case CUPTI_ACTIVITY_KIND_KERNEL: {
+      auto activity_cast = (CUpti_ActivityKernel3 *)activity_data;
+      addKernelActivityAnnotations(activity_cast);
+      break;
+    }
+    case CUPTI_ACTIVITY_KIND_MEMCPY: {
+      auto activity_cast = (CUpti_ActivityMemcpy *)activity_data;
+      addMemcpyActivityAnnotations(activity_cast);
+    } 
+    default: {
+      // assert(0 && "This shouldn't be happening...");
+      auto activity_cast = activity_data;
+    }
+  };
 }
