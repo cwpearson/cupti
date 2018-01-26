@@ -64,15 +64,12 @@ install:
 script:
 - cd $TRAVIS_BUILD_DIR
 - echo CXX=g++-4.9 >> Makefile.config
-- cd $TRAVIS_BUILD_DIR/cprof
-- echo CPROF_ROOT=. >> Makefile.config
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
+- cd $TRAVIS_BUILD_DIR/cprof
 - make
 - make tests
 - make docker_docs
 - cd $TRAVIS_BUILD_DIR/profiler
-- echo CPROF_ROOT=../cprof >> Makefile.config
-- echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
 - echo OPENTRACING_ROOT=$OPENTRACING_ROOT >> Makefile.config
 - echo ZIPKIN_OPENTRACING_ROOT=$ZIPKIN_ROOT >> Makefile.config
 - make

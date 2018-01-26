@@ -28,30 +28,25 @@ ifdef BOOST_ROOT
   BOOST_INC=$(BOOST_ROOT)/include
   BOOST_LIB=$(BOOST_ROOT)/lib
   INC += -isystem$(BOOST_INC) 
-  LIB += -L$(BOOST_LIB) 
+  LIB += -L$(BOOST_LIB) -Wl,-rpath=$(BOOST_LIB)
 endif
 
 ifdef OPENTRACING_ROOT 
-  INC += -isystem$(OPENTRACING_ROOT)/include
-  LIB += -L$(OPENTRACING_ROOT)/lib
-else
-  $(error set OPENTRACING_ROOT in Makefile.config)
+  OPENTRACING_LIB=$(OPENTRACING_ROOT)/lib
+  OPENTRACING_INC=$(OPENTRACING_ROOT)/include
+  INC += -isystem$(OPENTRACING_INC)
+  LIB += -L$(OPENTRACING_LIB) -Wl,-rpath=$(OPENTRACING_LIB)
 endif
 
 ifdef ZIPKIN_OPENTRACING_ROOT
+  ZIPKIN_OPENTRACING_LIB = $(ZIPKIN_OPENTRACING_ROOT)/lib
   INC += -isystem$(ZIPKIN_OPENTRACING_ROOT)/include
-  LIB += -L$(ZIPKIN_OPENTRACING_ROOT)/lib
-else
-  $(error set ZIPKIN_OPENTRACING_ROOT in Makefile.config)
+  LIB += -L$(ZIPKIN_OPENTRACING_LIB) -Wl,-rpath=$(ZIPKIN_OPENTRACING_LIB)
 endif
 
-ifdef CPROF_ROOT
-  INC += -isystem$(CPROF_ROOT)/include
-  LIB += -L$(CPROF_ROOT)/lib -lcprof
-else
-  $(error set CPROF_ROOT in Makefile.config)
-endif
-
+CPROF_LIB=$(CPROF_ROOT)/lib
+INC += -isystem$(CPROF_ROOT)/include
+LIB += -L$(CPROF_LIB) -lcprof -Wl,-rpath=$(CPROF_LIB)
 
 # Set CUDA-related variables
 ifndef CUDA_ROOT
@@ -60,10 +55,9 @@ endif
 NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
 LIB += -ldl \
-       -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti \
+       -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti -Wl,-rpath=$(CUDA_ROOT)/extras/CUPTI/lib64 \
        -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lnccl \
-	   -lnuma -lopentracing -lzipkin -lzipkin_opentracing
-
+	     -lnuma -lopentracing -lzipkin -lzipkin_opentracing
 
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC
 NVCCFLAGS += -std=c++11 -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC

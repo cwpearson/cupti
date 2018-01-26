@@ -1,6 +1,7 @@
 #ifndef API_RECORD_HPP
 #define API_RECORD_HPP
 
+#include <atomic>
 #include <cupti.h>
 #include <vector>
 
@@ -9,8 +10,7 @@
 
 class ApiRecord {
 public:
-  typedef uintptr_t id_type;
-  static const id_type noid;
+  typedef uint64_t id_type;
 
 private:
   std::vector<cprof::Value> inputs_;
@@ -24,21 +24,28 @@ private:
   CUpti_CallbackId cbid_;
   const CUpti_CallbackData *cbInfo_;
 
+  static std::atomic<id_type> next_id_;
+  id_type id_;
+  id_type new_id() { return next_id_++; }
+
 public:
-  ApiRecord(const std::string &name, const int device)
-      : apiName_(name), device_(device), domain_(CUPTI_CB_DOMAIN_INVALID),
-        cbid_(-1), cbInfo_(nullptr), start_(std::chrono::nanoseconds(0)),
+  ApiRecord(const std::string &apiName, const int device,
+            const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
+            const CUpti_CallbackData *cbInfo)
+      : apiName_(apiName), device_(device), domain_(domain), cbid_(cbid),
+        cbInfo_(cbInfo), id_(new_id()), start_(std::chrono::nanoseconds(0)),
         end_(std::chrono::nanoseconds(0)) {}
-  ApiRecord(const std::string &apiName, const std::string &kernelName,
-            const int device)
-      : ApiRecord(apiName, device) {
-    kernelName_ = kernelName;
-  }
   ApiRecord(const int device, const CUpti_CallbackDomain domain,
             const CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo)
-      : apiName_(cbInfo->functionName), device_(device), domain_(domain),
-        cbid_(cbid), cbInfo_(cbInfo), start_(std::chrono::nanoseconds(0)),
-        end_(std::chrono::nanoseconds(0)) {}
+      : ApiRecord(cbInfo->functionName, device, domain, cbid, cbInfo) {}
+  // Not all ApiRecords come from CUPTI
+  ApiRecord(const std::string &apiName, const std::string &kernelName,
+            const int device)
+      : ApiRecord(apiName, device, CUPTI_CB_DOMAIN_INVALID, -1, nullptr) {
+    kernelName_ = kernelName;
+  }
+  ApiRecord(const std::string &name, const int device)
+      : ApiRecord(name, "", device) {}
 
   void add_input(const cprof::Value &v);
   void add_output(const cprof::Value &v);
@@ -46,7 +53,7 @@ public:
   void add_kv(const std::string &key, const size_t &val);
 
   int device() const { return device_; }
-  id_type Id() const { return reinterpret_cast<id_type>(this); }
+  id_type Id() const { return id_; }
   const std::string &name() const { return apiName_; }
 
   std::string json() const;

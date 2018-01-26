@@ -9,8 +9,7 @@ using boost::property_tree::ptree;
 using boost::property_tree::write_json;
 using cprof::Value;
 
-const ApiRecord::id_type ApiRecord::noid =
-    reinterpret_cast<ApiRecord::id_type>(nullptr);
+std::atomic<ApiRecord::id_type> ApiRecord::next_id_(0);
 
 void ApiRecord::add_input(const Value &v) {
   assert(v);
