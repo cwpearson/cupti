@@ -72,20 +72,31 @@ pycprof.run_handler(value_handler, path=sys.argv[1])
 pycprof.run_handler(api_handler, path=sys.argv[1])
 pycprof.run_handler(dep_handler, path=sys.argv[1])
 
-# create nodes for compute
-# pycprof.run_handler(api_handler)
-
-# create nodes for storage
-# pycprof.run_handler(dep_handler, path=sys.argv[1])
-
-print "cycles"
-cycles = nx.find_cycle(g)
-print cycles
-print "done"
+# print "cycles"
+# cycles = nx.find_cycle(g)
+# print cycles
+# print "done"
 
 
-print "shortest path:"
+print "longest path:"
 longestPath = nx.dag_longest_path(g)
+cost = 0
+for i in range(len(longestPath) - 1):
+    srcIdx = i
+    dstIdx = i + 1
+    srcNodeId = longestPath[srcIdx]
+    dstNodeId = longestPath[dstIdx]
+
+    print g.edges[srcNodeId][dstNodeId]
+
+    # nodeId in longestPath:
+    # node = g.node[nodeId]
+    # weight = node[NODE_WEIGHT]
+    # if weight:
+    #     cost += weight
+    # print nodeId, node
+
+print len(longestPath)
 print "done"
 
 print "writing graph...",
