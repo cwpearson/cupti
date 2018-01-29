@@ -17,7 +17,6 @@ inline void cudnnAssert(cudnnStatus_t code, const char *file, int line,
   }
 }
 
-size_t cudnnDataTypeSize(const cudnnDataType_t type);
-size_t cudnnTensor4dSize(const cudnnTensorDescriptor_t tensorDesc);
+size_t tensorSize(const cudnnTensorDescriptor_t tensorDesc);
 
 #endif

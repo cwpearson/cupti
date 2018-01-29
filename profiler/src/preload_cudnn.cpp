@@ -78,7 +78,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   assert(yAlloc && "y alloc should be on device");
   auto api = std::make_shared<ApiRecord>("cudnnActivationForward", devId);
 
-  auto yVal = yAlloc.new_value((uintptr_t)y, yAlloc.size() /*FIXME*/, true);
+  auto yVal = yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true);
   yVal.add_depends_on(xVal, api->id());
 
   api->add_output(yVal);
@@ -110,7 +110,6 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   CUDNN_DLSYM_BOILERPLATE(cudnnAddTensor);
 
   // FIXME - alpha and beta
-
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
   auto &allocations = profiler::allocations();
@@ -176,14 +175,12 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
       "cudnnActivationBackward",
       profiler::driver().device_from_cudnn_handle(handle));
 
-  // FIXME - this size is wrong
-  auto dxVal = dxAlloc.new_value((uintptr_t)dx, dxAlloc.size() /*FIXME*/, true);
+  auto dxVal = dxAlloc.new_value((uintptr_t)dx, tensorSize(dxDesc), true);
   dxVal.add_depends_on(xVal, api->id());
   dxVal.add_depends_on(yVal, api->id());
   dxVal.add_depends_on(dyVal, api->id());
 
   // FIXME: also depends on alpha, beta
-
   api->add_output(dxVal);
   api->add_input(xVal);
   api->add_input(yVal);
@@ -289,7 +286,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionBackwardBias",
       profiler::driver().device_from_cudnn_handle(handle));
-  auto dbVal = dbAlloc.new_value((uintptr_t)db, dbAlloc.size() /*FIXME*/,
+  auto dbVal = dbAlloc.new_value((uintptr_t)db, tensorSize(dbDesc),
                                  true /*initialized*/);
   dbVal.add_depends_on(dyVal, api->id());
 
@@ -465,8 +462,8 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   auto yAlloc = allocations.find((uintptr_t)y, 1, AS);
   assert(yAlloc && "y allocation should be on device");
 
-  auto yVal = yAlloc.new_value((uintptr_t)y, yAlloc.size() /*FIXME */,
-                               true /*initialized*/);
+  auto yVal =
+      yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true /*initialized*/);
   yVal.add_depends_on(xVal, api->id());
 
   // track api
@@ -487,7 +484,6 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   return ret;
 }
 
-// FIXME: do something useful here
 typedef cudnnStatus_t (*cudnnPoolingForwardFunc)(
     cudnnHandle_t handle, const cudnnPoolingDescriptor_t poolingDesc,
     const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,
