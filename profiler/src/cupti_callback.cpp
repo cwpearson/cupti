@@ -162,7 +162,7 @@ static void handleCudaLaunch(void *userdata, Allocations &allocations,
       for (const auto &depVal : kernelArgIds) {
         profiler::err() << "INFO: launch: val id=" << newVal.id() << " deps on "
                         << depVal.id() << std::endl;
-        newVal.add_depends_on(depVal);
+        newVal.add_depends_on(depVal, api->id());
       }
       api->add_output(newVal);
     }
@@ -310,7 +310,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   assert(srcVal);
   auto dstVal = dstAlloc.new_value(dst, dstCount, srcVal.initialized());
   assert(dstVal);
-  dstVal.add_depends_on(srcVal);
+  dstVal.add_depends_on(srcVal, api->id());
   // dstVal->record_meta_append(cbInfo->functionName); // FIXME
 
   api->add_input(srcVal);
@@ -379,7 +379,7 @@ static void handleCudaMemcpy(Allocations &allocations,
     profiler::err() << "INFO: callback: cudaMemcpy exit" << std::endl;
 
     std::map<std::string, std::string> sampleMap;
-    //Sample for KernelTimer
+    // Sample for KernelTimer
   } else {
     assert(0 && "How did we get here?");
   }
@@ -884,7 +884,6 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
                                     const CUpti_CallbackData *cbInfo) {
   (void)userdata; // data supplied at subscription
   // profiler::kernelCallTime().callback_add_annotations(cbInfo);
-  
 
   if (!profiler::driver().this_thread().is_cupti_callbacks_enabled()) {
     return;

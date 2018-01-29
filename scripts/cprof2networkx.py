@@ -49,18 +49,20 @@ def value_handler(val):
 def api_handler(api):
     if type(api) != pycprof.API:
         return
-    apiNodeId = get_node_id(api)
-    g.add_node(apiNodeId, node=api)
-    for i in api.inputs:
-        srcNodeId = get_value_node_id(i)
-        weight = g.node[srcNodeId]['node'].size
-        # api node deps on src node
-        g.add_edge(apiNodeId, srcNodeId, Weight=weight)
 
-    for o in api.outputs:
-        dstNodeId = get_value_node_id(o)
-        weight = g.node[dstNodeId]['node'].size
-        g.add_edge(dstNodeId, apiNodeId, Weight=weight)
+    if "cudaLaunch" in api.name:
+        apiNodeId = get_node_id(api)
+        g.add_node(apiNodeId, node=api)
+        for i in api.inputs:
+            srcNodeId = get_value_node_id(i)
+            weight = g.node[srcNodeId]['node'].size
+            # api node deps on src node
+            g.add_edge(apiNodeId, srcNodeId, Weight=weight)
+
+        for o in api.outputs:
+            dstNodeId = get_value_node_id(o)
+            weight = g.node[dstNodeId]['node'].size
+            g.add_edge(dstNodeId, apiNodeId, Weight=weight)
 
 
 def dep_handler(dep):

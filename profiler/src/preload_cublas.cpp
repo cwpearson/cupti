@@ -82,18 +82,18 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
 
   assert(aVal && bVal && cVal &&
          "Couldn't find Dgemm argument value on device");
+  auto api = std::make_shared<ApiRecord>(
+      "cublasDgemm", driver().device_from_cublas_handle(handle));
 
   auto newVal = allocations.duplicate_value(cVal, true);
-  newVal.add_depends_on(aVal);
-  newVal.add_depends_on(bVal);
-  newVal.add_depends_on(cVal);
+  newVal.add_depends_on(aVal, api->id());
+  newVal.add_depends_on(bVal, api->id());
+  newVal.add_depends_on(cVal, api->id());
 
   driver().this_thread().pause_cupti_callbacks();
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasDgemm call"
                   << std::endl;
 
-  auto api = std::make_shared<ApiRecord>(
-      "cublasDgemm", driver().device_from_cublas_handle(handle));
   api->add_output(newVal);
   api->add_input(aVal);
   api->add_input(bVal);
@@ -127,15 +127,16 @@ cublasSaxpy(cublasHandle_t handle, int n,
   auto yVal = allocations.find_value((uintptr_t)y, AS);
 
   assert(xVal && "Couldn't find cublasSaxpy x value on device");
+  auto api = std::make_shared<ApiRecord>(
+      "cublasSaxpy", driver().device_from_cublas_handle(handle));
 
   // Create output value
   auto outVal = allocations.duplicate_value(yVal, true);
-  outVal.add_depends_on(xVal);
-  outVal.add_depends_on(yVal);
+  outVal.add_depends_on(xVal, api->id());
+  outVal.add_depends_on(yVal, api->id());
 
   // track api
-  auto api = std::make_shared<ApiRecord>(
-      "cublasSaxpy", driver().device_from_cublas_handle(handle));
+
   api->add_output(outVal);
   api->add_input(xVal);
   api->add_input(yVal);
@@ -180,11 +181,13 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   auto cVal = allocations.find_value((uintptr_t)C, AS);
   assert(aVal && bVal && cVal &&
          "Couldn't find Dgemm argument value on device");
+  auto api = std::make_shared<ApiRecord>(
+      "cublasSgemm", driver().device_from_cublas_handle(handle));
 
   auto newVal = allocations.duplicate_value(cVal, true);
-  newVal.add_depends_on(aVal);
-  newVal.add_depends_on(bVal);
-  newVal.add_depends_on(cVal);
+  newVal.add_depends_on(aVal, api->id());
+  newVal.add_depends_on(bVal, api->id());
+  newVal.add_depends_on(cVal, api->id());
 
   driver().this_thread().pause_cupti_callbacks();
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasSgemm "
@@ -194,8 +197,6 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
       handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
   driver().this_thread().resume_cupti_callbacks();
 
-  auto api = std::make_shared<ApiRecord>(
-      "cublasSgemm", driver().device_from_cublas_handle(handle));
   api->add_output(newVal);
   api->add_input(aVal);
   api->add_input(bVal);
@@ -230,14 +231,16 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
 
   assert(aVal && xVal && yVal &&
          "Couldn't find Dgemv argument value on device");
+  auto api = std::make_shared<ApiRecord>(
+      "cublasDgemv", driver().device_from_cublas_handle(handle));
 
   // FIXME: could use these to do better on dependences
   profiler::err() << "WARN: not handling some values (A, alpha, beta)"
                   << std::endl;
 
   auto newVal = allocations.duplicate_value(yVal, true);
-  newVal.add_depends_on(xVal);
-  newVal.add_depends_on(yVal);
+  newVal.add_depends_on(xVal, api->id());
+  newVal.add_depends_on(yVal, api->id());
 
   driver().this_thread().pause_cupti_callbacks();
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasDgemv "
@@ -247,8 +250,6 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
                                               lda, x, incx, beta, y, incy);
   driver().this_thread().resume_cupti_callbacks();
 
-  auto api = std::make_shared<ApiRecord>(
-      "cublasDgemv", driver().device_from_cublas_handle(handle));
   api->add_output(newVal);
   api->add_input(aVal);
   api->add_input(xVal);
@@ -285,14 +286,16 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
 
   assert(aVal && xVal && yVal &&
          "Couldn't find cublasSgemv argument value on device");
+  auto api = std::make_shared<ApiRecord>(
+      "cublasSgemv", driver().device_from_cublas_handle(handle));
 
   // FIXME: could use these to do better on dependences
   profiler::err() << "WARN: not handling some values (A, alpha, beta)"
                   << std::endl;
 
   auto newVal = allocations.duplicate_value(yVal, true);
-  newVal.add_depends_on(xVal);
-  newVal.add_depends_on(yVal);
+  newVal.add_depends_on(xVal, api->id());
+  newVal.add_depends_on(yVal, api->id());
 
   driver().this_thread().pause_cupti_callbacks();
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasSgemv "
@@ -302,8 +305,6 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
                                               lda, x, incx, beta, y, incy);
   driver().this_thread().resume_cupti_callbacks();
 
-  auto api = std::make_shared<ApiRecord>(
-      "cublasSgemv", driver().device_from_cublas_handle(handle));
   api->add_output(newVal);
   api->add_input(aVal);
   api->add_input(xVal);
@@ -342,13 +343,13 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
                     << " for result=" << uintptr_t(result) << std::endl;
   }
   assert(rAlloc && "If there is no allocation, we need to make one");
+  auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
 
   // Make a new value
   auto rVal =
       rAlloc.new_value((uintptr_t)result, sizeof(float), true /*initialized*/);
-  rVal.add_depends_on(xVal);
+  rVal.add_depends_on(xVal, api->id());
 
-  auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
   api->add_output(rVal);
   api->add_input(xVal);
   profiler::atomic_out(api->json());
@@ -379,13 +380,14 @@ cublasSscal(cublasHandle_t handle, int n,
   // Find input values
   auto xVal = allocations.find_value((uintptr_t)x, AS);
   assert(xVal && "Couldn't find cublasSscal x value on device");
+  auto api = std::make_shared<ApiRecord>("cublasSscal", devId);
 
   // Create output value
   auto outVal = allocations.duplicate_value(xVal, true);
-  outVal.add_depends_on(xVal);
+  outVal.add_depends_on(xVal, api->id());
 
   // track api
-  auto api = std::make_shared<ApiRecord>("cublasSscal", devId);
+
   api->add_output(outVal);
   api->add_input(xVal);
   profiler::atomic_out(api->json());
@@ -438,14 +440,15 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
     assert(rAlloc);
   }
   profiler::err() << "result allocId=" << uintptr_t(rAlloc.id()) << std::endl;
+  auto api = std::make_shared<ApiRecord>(
+      "cublasSdot", driver().device_from_cublas_handle(handle));
+
   // Make a new value
   auto rVal =
       rAlloc.new_value((uintptr_t)result, sizeof(float), true /*initialized*/);
-  rVal.add_depends_on(xVal);
-  rVal.add_depends_on(yVal);
+  rVal.add_depends_on(xVal, api->id());
+  rVal.add_depends_on(yVal, api->id());
 
-  auto api = std::make_shared<ApiRecord>(
-      "cublasSdot", driver().device_from_cublas_handle(handle));
   api->add_output(rVal);
   api->add_input(xVal);
   api->add_input(yVal);
