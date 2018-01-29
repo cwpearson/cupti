@@ -350,7 +350,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
                   << " " << dwVal << std::endl;
 
   auto api = std::make_shared<ApiRecord>(
-      "cudnnConvolutionForward",
+      "cudnnConvolutionBackwardFilter",
       profiler::driver().device_from_cudnn_handle(handle));
   api->add_output(outVal);
   api->add_input(xVal);
