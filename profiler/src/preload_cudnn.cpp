@@ -77,7 +77,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   assert(yAlloc && "y alloc should be on device");
   auto api = std::make_shared<ApiRecord>("cudnnActivationForward", devId);
 
-  auto yVal = yAlloc.new_value((uintptr_t)y, 0 /*FIXME*/, true);
+  auto yVal = yAlloc.new_value((uintptr_t)y, yAlloc.size() /*FIXME*/, true);
   yVal.add_depends_on(xVal, api->id());
 
   api->add_output(yVal);
@@ -176,7 +176,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
       profiler::driver().device_from_cudnn_handle(handle));
 
   // FIXME - this size is wrong
-  auto dxVal = dxAlloc.new_value((uintptr_t)dx, 0, true);
+  auto dxVal = dxAlloc.new_value((uintptr_t)dx, dxAlloc.size() /*FIXME*/, true);
   dxVal.add_depends_on(xVal, api->id());
   dxVal.add_depends_on(yVal, api->id());
   dxVal.add_depends_on(dyVal, api->id());
@@ -288,8 +288,8 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionBackwardBias",
       profiler::driver().device_from_cudnn_handle(handle));
-  auto dbVal =
-      dbAlloc.new_value((uintptr_t)db, 0 /*FIXME*/, true /*initialized*/);
+  auto dbVal = dbAlloc.new_value((uintptr_t)db, dbAlloc.size() /*FIXME*/,
+                                 true /*initialized*/);
   dbVal.add_depends_on(dyVal, api->id());
 
   api->add_output(dbVal);
@@ -463,7 +463,9 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   // Create output value
   auto yAlloc = allocations.find((uintptr_t)y, 1, AS);
   assert(yAlloc && "y allocation should be on device");
-  auto yVal = yAlloc.new_value((uintptr_t)y, 0, true /*initialized*/);
+
+  auto yVal = yAlloc.new_value((uintptr_t)y, yAlloc.size() /*FIXME */,
+                               true /*initialized*/);
   yVal.add_depends_on(xVal, api->id());
 
   // track api

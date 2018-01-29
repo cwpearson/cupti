@@ -436,7 +436,8 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
         << "WARN: creating implicit allocation for cublasSdot result"
         << std::endl;
     rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float), AS,
-                                        Memory::Unknown, Location::Unknown());
+                                        Memory::Unknown,
+                                        Location::Unknown() /*FIXME */);
     assert(rAlloc);
   }
   profiler::err() << "result allocId=" << uintptr_t(rAlloc.id()) << std::endl;
