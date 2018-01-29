@@ -56,7 +56,7 @@ NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
 LIB += -ldl \
        -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti -Wl,-rpath=$(CUDA_ROOT)/extras/CUPTI/lib64 \
-       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lnccl \
+       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lnccl -lcudnn \
 	     -lnuma -lopentracing -lzipkin -lzipkin_opentracing
 
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC
