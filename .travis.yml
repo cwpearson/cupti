@@ -66,6 +66,7 @@ script:
 - echo CXX=g++-4.9 >> Makefile.config
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
 - cd $TRAVIS_BUILD_DIR/cprof
+- touch Makefile.config
 - make
 - make tests
 - make docker_docs
