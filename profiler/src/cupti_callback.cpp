@@ -883,7 +883,7 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
                                     CUpti_CallbackId cbid,
                                     const CUpti_CallbackData *cbInfo) {
   (void)userdata; // data supplied at subscription
-  profiler::kernelCallTime().callback_add_annotations(cbInfo);
+  // profiler::kernelCallTime().callback_add_annotations(cbInfo);
   
 
   if (!profiler::driver().this_thread().is_cupti_callbacks_enabled()) {
