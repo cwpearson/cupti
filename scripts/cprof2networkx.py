@@ -50,8 +50,9 @@ def api_handler(api):
     if type(api) != pycprof.API:
         return
 
-    if "cudaLaunch" in api.name:
-        apiNodeId = get_node_id(api)
+    apiNodeId = get_node_id(api)
+
+    if "cudaLaunch" in api.functionName:
         g.add_node(apiNodeId, node=api)
         for i in api.inputs:
             srcNodeId = get_value_node_id(i)
@@ -63,9 +64,16 @@ def api_handler(api):
             dstNodeId = get_value_node_id(o)
             weight = g.node[dstNodeId]['node'].size
             g.add_edge(dstNodeId, apiNodeId, Weight=weight)
+    elif "cudaMemcpy" == api.functionName:
+        assert len(api.inputs) == 1
+        assert len(api.outputs) == 1
+        srcNodeId = get_value_node_id(api.inputs[0])
+        dstNodeId = get_value_node_id(api.outputs[0])
+        g.add_edge(dstNodeId, srcNodeId, Weight=api.dstCount)
 
 
 def dep_handler(dep):
+    return
     if type(dep) != pycprof.Dependence:
         return
     src = dep.src
