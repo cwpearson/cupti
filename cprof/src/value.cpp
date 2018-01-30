@@ -23,7 +23,7 @@ void Value::add_depends_on(const Value &v, const uint64_t apiId) const {
   pt.put("dep.dst_id", v.id());
   pt.put("dep.src_id", id());
   pt.put("dep.tid", cprof::model::get_thread_id());
-  pt.put("pt.api_cause", apiId);
+  pt.put("dep.api_cause", apiId);
   std::stringstream buf;
   write_json(buf, pt, false);
   logging::atomic_out(buf.str());
