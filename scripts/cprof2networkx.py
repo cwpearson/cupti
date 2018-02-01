@@ -9,6 +9,8 @@ import numpy as np
 import pycprof
 
 g = nx.DiGraph()
+ALLOCS = {}
+APIS = {}
 
 
 def estTimeMemcpyH2d(txSize):
@@ -37,19 +39,17 @@ def get_node_id(n):
         assert False
 
 
+def alloc_handler(alloc):
+    ALLOCS[alloc.id_] = alloc
+
+
 def value_handler(val):
-    if type(val) != pycprof.Value:
-        return
     valNodeId = get_node_id(val)
     g.add_node(valNodeId, node=val)
 
-# Add a node for each api. Connect values to apis and vis versa
-
 
 def api_handler(api):
-    if type(api) != pycprof.API:
-        return
-
+    APIS[api.id_] = api
     apiNodeId = get_node_id(api)
 
     if "cudaLaunch" in api.functionName:
@@ -72,20 +72,40 @@ def api_handler(api):
         g.add_edge(dstNodeId, srcNodeId, Weight=api.dstCount)
 
 
+def api_handler2(api):
+    APIS[api.id_] = api
+
+
 def dep_handler(dep):
-    return
-    if type(dep) != pycprof.Dependence:
-        return
     src = dep.src
     dst = dep.dst
+    cause = dep.api_cause
     srcValId = get_value_node_id(src)
     dstValId = get_value_node_id(dst)
-    # g.add_edge(srcNode, dstNode, directed=True)
+    srcNode = g.node[srcValId]['node']
+    dstNode = g.node[dstValId]['node']
+    srcAllocId = srcNode.allocation_id
+    dstAllocId = dstNode.allocation_id
+    srcAlloc = ALLOCS[srcAllocId]
+    dstAlloc = ALLOCS[dstAllocId]
+    srcLoc = srcAlloc.loc
+    dstLoc = dstAlloc.loc
+    if srcLoc != dstLoc:
+        # print srcLoc, srcNode.size, dstLoc, dstNode.size, APIS[apiCauseId].functionName
+        cost = dstNode.size
+    else:
+        cost = 0
+
+    g.add_edge(srcValId, dstValId, Weight=dstNode.size,
+               Cause=cause, Cost=cost)
 
 
-pycprof.run_handler(value_handler, path=sys.argv[1])
-pycprof.run_handler(api_handler, path=sys.argv[1])
-pycprof.run_handler(dep_handler, path=sys.argv[1])
+pass1 = {pycprof.Allocation: alloc_handler,
+         pycprof.Value: value_handler,
+         pycprof.API: api_handler2}
+pass2 = {pycprof.Dependence: dep_handler}
+pycprof.run_pass(pass1, path=sys.argv[1])
+pycprof.run_pass(pass2, path=sys.argv[1])
 
 # print "cycles"
 # cycles = nx.find_cycle(g)
@@ -93,10 +113,57 @@ pycprof.run_handler(dep_handler, path=sys.argv[1])
 # print "done"
 
 
+sources = [n for n, d in g.in_degree() if d == 0]
+sinks = [n for n, d in g.out_degree() if d == 0]
+print len(sources), "sources"
+print len(sinks), "sinks"
+
+
+def cost(g, path):
+    weight = 0.0
+    cost = 0.0
+    for i in range(len(path) - 1):
+        srcNodeId = path[i]
+        dstNodeId = path[i + 1]
+        weight += g[srcNodeId][dstNodeId]['Weight']
+
+        srcNode = g.node[srcNodeId]['node']
+        dstNode = g.node[dstNodeId]['node']
+        apiCauseId = g[srcNodeId][dstNodeId]["Cause"]
+
+        if isinstance(srcNode, pycprof.Value):
+            if isinstance(dstNode, pycprof.Value):
+                srcAllocId = srcNode.allocation_id
+                dstAllocId = dstNode.allocation_id
+                srcAlloc = ALLOCS[srcAllocId]
+                dstAlloc = ALLOCS[dstAllocId]
+                srcLoc = srcAlloc.loc
+                dstLoc = dstAlloc.loc
+                if srcLoc != dstLoc:
+                    # print srcLoc, srcNode.size, dstLoc, dstNode.size, APIS[apiCauseId].functionName
+                    cost += dstNode.size
+
+    # print weight, cost
+    return cost
+
+
+# maxCost = 0
+# for sourceNode in sources:
+#     for sinkNode in sinks:
+#         simple_paths = nx.all_simple_paths(g, sourceNode, sinkNode)
+
+#         for path in simple_paths:
+#             print sourceNode, sinkNode
+#             c = cost(g, path)
+#             if c > maxCost:
+#                 maxCost = c
+#                 print c, len(path), sourceNode, sinkNode
+
+# sys.exit(-1)
+
 print "longest path:"
-longestPath = nx.dag_longest_path(g)
+longestPath = nx.dag_longest_path(g, weight="Cost")
 baseCost = 0.0
-optCost = 0.0
 for i in range(len(longestPath) - 1):
     srcIdx = i
     dstIdx = i + 1
@@ -104,19 +171,21 @@ for i in range(len(longestPath) - 1):
     dstNodeId = longestPath[dstIdx]
     srcNode = g.node[srcNodeId]['node']
     dstNode = g.node[dstNodeId]['node']
-    print srcNodeId, srcNode, dstNodeId, dstNode
-    if type(srcNode) == pycprof.Value:
-        if type(dstNode) == pycprof.Value:
-            baseCost += srcNode.size
-        elif type(dstNode) == pycprof.API:
-            baseCost += srcNode.size
-            optCost += srcNode.size
-    elif type(srcNode) == pycprof.API:
-        if type(dstNode) == pycprof.Value:
-            baseCost += dstNode.size
-            optCost += dstNode.size
+    apiCauseId = g[srcNodeId][dstNodeId]["Cause"]
+    print srcNodeId + " -> " + dstNodeId, g[srcNodeId][dstNodeId]['Cost']
+    if isinstance(srcNode, pycprof.Value):
+        if isinstance(dstNode, pycprof.Value):
+            srcAllocId = srcNode.allocation_id
+            dstAllocId = dstNode.allocation_id
+            srcAlloc = ALLOCS[srcAllocId]
+            dstAlloc = ALLOCS[dstAllocId]
+            srcLoc = srcAlloc.loc
+            dstLoc = dstAlloc.loc
+            if srcLoc != dstLoc:
+                print srcLoc, srcNode.size, dstLoc, dstNode.size, APIS[apiCauseId].functionName
+                baseCost += dstNode.size
 
-print len(longestPath), baseCost, optCost, optCost / baseCost
+print len(longestPath), baseCost
 print "done"
 
 print "writing graph...",
