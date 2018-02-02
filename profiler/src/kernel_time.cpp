@@ -320,7 +320,7 @@ void KernelCallTime::save_configured_call(uint32_t cid,
 
 void KernelCallTime::callback_add_annotations(const CUpti_CallbackData *cbInfo){
   uint64_t start;
-  CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), std::cerr);
+  // CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), std::cerr);
 
   span_t current_span;
   //To fill in with various data
@@ -397,6 +397,7 @@ void addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
   current_span->SetTag("runtimeCorrelationId", std::to_string(local_Memcpy_Activity.runtimeCorrelationId));
   current_span->SetTag("srcKind", std::to_string(local_Memcpy_Activity.srcKind));
   current_span->SetTag("streamId", std::to_string(local_Memcpy_Activity.streamId));  
+  current_span->Finish({FinishTimestamp(end_time_stamp)});
 }
 
 void KernelCallTime::activity_add_annotations(CUpti_Activity * activity_data){

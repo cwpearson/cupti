@@ -704,7 +704,8 @@ static void handleCudaFreeHost(Allocations &allocations,
     auto AS = profiler::hardware().address_space(devId);
 
     auto numFreed = allocations.free(ptr, AS);
-    assert(numFreed && "Freeing unallocated memory?");
+    //Issue
+    // assert(numFreed && "Freeing unallocated memory?");
   } else {
     assert(0 && "How did we get here?");
   }

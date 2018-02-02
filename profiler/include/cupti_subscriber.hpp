@@ -2,6 +2,7 @@
 #define CUPTI_SUBSCRIBER_HPP
 
 #include <iostream>
+#include <thread>
 
 #include "cprof/util_cupti.hpp"
 

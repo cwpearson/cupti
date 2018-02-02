@@ -2,6 +2,7 @@
 #define PROFILER_HPP
 
 #include <ostream>
+#include <atomic>
 
 #include "cprof/allocations.hpp"
 #include "cprof/model/driver.hpp"
@@ -49,7 +50,15 @@ public:
   std::shared_ptr<opentracing::Tracer> rootTracer_;
   std::shared_ptr<opentracing::Tracer> memcpyTracer_;
   std::shared_ptr<opentracing::Tracer> launchTracer_;
+
+  /*Vector of pointers to executing activity threads. Ensures that all threads have finished completing on program exit*/
+  static std::vector<std::thread*> activity_threads;
+  void activity_cleanup(uint8_t *localBuffer, size_t validSize);
+  static std::atomic<int> conditional_variable;
+    
+
   span_t rootSpan_;
+  
 
 private:
   Profiler();
@@ -64,6 +73,7 @@ private:
   uint32_t zipkinPort_;
 
   bool isInitialized_;
+  
 
 };
 
