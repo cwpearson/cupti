@@ -518,11 +518,8 @@ static void handleCudaMallocManaged(Allocations &allocations,
       assert(0 && "How to handle?");
     }
 
-    const auto loc =
-        profiler::driver().this_thread().pause_cupti_get_location(devPtr);
-
     auto a = allocations.new_allocation(devPtr, size, AddressSpace::CudaUVA(),
-                                        M, loc);
+                                        M, Location::Unknown());
   } else {
     assert(0 && "How did we get here?");
   }
