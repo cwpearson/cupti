@@ -75,6 +75,7 @@ script:
 - cd $TRAVIS_BUILD_DIR
 - make
 - make tests
+- cd $TRAVIS_BUILD_DIR/cprof
 - make docker_docs
 after_success:
 - export DEPLOY=dist/amd64
