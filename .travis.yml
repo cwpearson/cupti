@@ -6,6 +6,7 @@ addons:
     - libcurl4-openssl-dev
     - git
     - cmake
+    - make
 sudo: required
 services: docker
 env:
