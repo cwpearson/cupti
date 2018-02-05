@@ -42,7 +42,7 @@ TEST_F(AllocationsTest, find) {
 
   const auto AS = AddressSpace::Host();
   const auto M = Memory::Pageable;
-  const auto L = Location::Host();
+  const auto L = Location::Host(0);
 
   const auto a1 = as.new_allocation(1, 1, AS, M, L);
   EXPECT_EQ(1, a1.pos());
@@ -61,7 +61,7 @@ TEST_F(AllocationsTest, nofind) {
 
   const auto AS = AddressSpace::Host();
   const auto M = Memory::Pageable;
-  const auto L = Location::Host();
+  const auto L = Location::Host(0);
 
   const auto a1 = as.new_allocation(100, 10, AS, M, L);
   const auto a2 = as.find(10, 1, AS);
@@ -73,7 +73,7 @@ TEST_F(AllocationsTest, free) {
 
   const auto AS = AddressSpace::Host();
   const auto M = Memory::Pageable;
-  const auto L = Location::Host();
+  const auto L = Location::Host(0);
   auto a1 = as.new_allocation(1, 1, AS, M, L);
   EXPECT_TRUE(a1);
 
@@ -86,7 +86,7 @@ TEST_F(AllocationsTest, merge) {
 
   const auto AS = AddressSpace::Host();
   const auto M = Memory::Pageable;
-  const auto L = Location::Host();
+  const auto L = Location::Host(0);
 
   const auto a1 = as.new_allocation(1, 3, AS, M, L);
   const auto a2 = as.new_allocation(2, 3, AS, M, L);
@@ -108,7 +108,7 @@ TEST_F(AllocationsTest, newsame) {
 
   const auto AS = AddressSpace::Host();
   const auto M = Memory::Pageable;
-  const auto L = Location::Host();
+  const auto L = Location::Host(0);
 
   const auto a1 = as.new_allocation(70366076463264, 200, AS, M, L);
   const auto a2 = as.find(70366076463264, 200, AS);
