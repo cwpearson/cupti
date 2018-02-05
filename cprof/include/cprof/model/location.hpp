@@ -22,8 +22,10 @@ private:
 
 public:
   static Location Unknown() { return Location(Type::Unknown); }
-  static Location Host() { return Location(Type::Host); }
-  static Location CudaDevice(int id) { return Location(Type::CudaDevice, id); }
+  static Location Host(const int id) { return Location(Type::Host, id); }
+  static Location CudaDevice(const int id) {
+    return Location(Type::CudaDevice, id);
+  }
 
   static std::string to_string(const Type &type) {
     switch (type) {

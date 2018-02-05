@@ -18,9 +18,9 @@
 #include "cprof/allocations.hpp"
 #include "cprof/hash.hpp"
 #include "cprof/memorycopykind.hpp"
-#include "cprof/numa.hpp"
 #include "cprof/util_cuda.hpp"
 #include "cprof/util_cupti.hpp"
+#include "cprof/util_numa.hpp"
 #include "cprof/value.hpp"
 // #include "cprof/values.hpp"
 // #include "cprof/dependencies.hpp"
@@ -260,8 +260,12 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     // Source allocation may not have been created by a CUDA api
     srcAlloc = allocations.find(src, srcCount, srcAS);
     if (!srcAlloc) {
+
+      const auto numaNode = get_numa_node(src);
+      const auto loc = Location::Host(numaNode);
+
       srcAlloc = allocations.new_allocation(src, srcCount, srcAS,
-                                            Memory::Unknown, Location::Host());
+                                            Memory::Unknown, loc);
       profiler::err() << "WARN: Couldn't find src alloc. Created implict host "
                          "allocation= {"
                       << srcAS.str() << "}[ " << src << " , +" << srcCount
@@ -275,8 +279,12 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     // it overlaps, it should be joined
     dstAlloc = allocations.find(dst, dstCount, dstAS);
     if (!dstAlloc) {
+
+      const auto numaNode = get_numa_node(dst);
+      const auto loc = Location::Host(numaNode);
+
       dstAlloc = allocations.new_allocation(dst, dstCount, dstAS,
-                                            Memory::Unknown, Location::Host());
+                                            Memory::Unknown, loc);
       profiler::err() << "WARN: Couldn't find dst alloc. Created implict host "
                          "allocation= {"
                       << dstAS.str() << "}[ " << dst << " , +" << dstCount
@@ -504,12 +512,17 @@ static void handleCudaMallocManaged(Allocations &allocations,
     cprof::model::Memory M;
     if (major >= 6) {
       M = cprof::model::Memory::Unified6;
-    } else {
+    } else if (major >= 3) {
       M = cprof::model::Memory::Unified3;
+    } else {
+      assert(0 && "How to handle?");
     }
 
+    const auto loc =
+        profiler::driver().this_thread().pause_cupti_get_location(devPtr);
+
     auto a = allocations.new_allocation(devPtr, size, AddressSpace::CudaUVA(),
-                                        M, Location::Unknown());
+                                        M, loc);
   } else {
     assert(0 && "How did we get here?");
   }
@@ -522,10 +535,12 @@ void record_mallochost(Allocations &allocations, const uintptr_t ptr,
 
   const int devId = profiler::driver().this_thread().current_device();
   auto AS = profiler::hardware().address_space(devId);
+  const int numaNode = get_numa_node(ptr);
 
   Allocation alloc =
-      allocations.new_allocation(ptr, size, AS, AM, Location::Host());
-  profiler::err() << "INFO: made new mallochost @ " << ptr << std::endl;
+      allocations.new_allocation(ptr, size, AS, AM, Location::Host(numaNode));
+  profiler::err() << "INFO: made new mallochost @ " << ptr
+                  << " [nn=" << numaNode << "]" << std::endl;
 
   assert(alloc);
 }

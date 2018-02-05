@@ -16,7 +16,9 @@
 
 #include "cprof/api_record.hpp"
 #include "cprof/model/cuda/configured_call.hpp"
+#include "cprof/model/location.hpp"
 #include "cprof/model/thread.hpp"
+#include "cprof/util_numa.hpp"
 #include "util/logging.hpp"
 
 namespace cprof {
@@ -71,6 +73,31 @@ public:
   }
 
   bool is_cupti_callbacks_enabled() const { return cuptiCallbacksEnabled_; }
+
+  Location pause_cupti_get_location(const void *p) {
+
+    cudaPointerAttributes attrs;
+    pause_cupti_callbacks();
+    cudaError_t ret = cudaPointerGetAttributes(&attrs, p);
+    resume_cupti_callbacks();
+    if (ret != cudaSuccess) {
+      return Location::Unknown();
+    }
+
+    if (attrs.memoryType == cudaMemoryTypeHost) {
+      int numaNode = get_numa_node(p);
+      return Location::Host(numaNode);
+    } else if (attrs.memoryType == cudaMemoryTypeDevice) {
+      return Location::CudaDevice(attrs.device);
+    } else {
+      assert(0 && "Unexpected cudaMemoryType");
+    }
+
+    assert(0 && "How did we get here?");
+  }
+  Location pause_cupti_get_location(const uintptr_t p) {
+    return pause_cupti_get_location(reinterpret_cast<const void *>(p));
+  }
 
   ConfiguredCall &configured_call() { return configuredCall_; }
 };
