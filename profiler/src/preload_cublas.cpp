@@ -6,6 +6,7 @@
 #include "cprof/allocations.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
+#include "cprof/util_numa.hpp"
 
 #include "profiler.hpp"
 
@@ -433,11 +434,8 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
 
   if (!rAlloc) {
     profiler::err()
-        << "WARN: creating implicit allocation for cublasSdot result"
+        << "WARN: creating implicit host allocation for cublasSdot result"
         << std::endl;
-
-    const Location loc =
-        driver().this_thread().pause_cupti_get_location(result);
 
     auto mem = Memory::Unknown;
     if (profiler::hardware().cuda_device(devId).major_ >= 6) {
@@ -449,7 +447,7 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
     }
 
     rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float), AS,
-                                        mem, loc);
+                                        mem, Location::Host(get_numa_node(result)));
     assert(rAlloc);
   }
   profiler::err() << "result allocId=" << uintptr_t(rAlloc.id()) << std::endl;
