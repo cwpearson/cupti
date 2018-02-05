@@ -29,12 +29,8 @@ LIB += -L$(LIBDIR)
 
 ifdef BOOST_ROOT
   BOOST_INC=$(BOOST_ROOT)/include
-  BOOST_LIB=$(BOOST_ROOT)/lib
   INC += -isystem$(BOOST_INC) 
-  LIB += -L$(BOOST_LIB) -Wl,-rpath=$(BOOST_LIB)
 endif
-LIB += -lboost_system
-
 
 ifdef NUMA_ROOT
   NUMA_INC=$(NUMA_ROOT)/include
