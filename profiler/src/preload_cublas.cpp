@@ -437,7 +437,9 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
         << std::endl;
 
     cudaPointerAttributes attrs;
+    driver().this_thread().pause_cupti_callbacks();
     cudaError_t ret = cudaPointerGetAttributes(&attrs, result);
+    driver().this_thread().resume_cupti_callbacks();
     assert(ret == cudaSuccess &&
            "Pointer is not in a ctx supporting unified addressing");
 
