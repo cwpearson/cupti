@@ -6,6 +6,7 @@ addons:
     - libcurl4-openssl-dev
     - git
     - cmake
+    - make
 sudo: required
 services: docker
 env:
@@ -68,13 +69,14 @@ script:
 - echo BUILD_TYPE=$BUILD_TYPE >> Makefile.config
 - cd $TRAVIS_BUILD_DIR/cprof
 - touch Makefile.config
-- make
-- make tests
-- make docker_docs
 - cd $TRAVIS_BUILD_DIR/profiler
 - echo OPENTRACING_ROOT=$OPENTRACING_ROOT >> Makefile.config
 - echo ZIPKIN_OPENTRACING_ROOT=$ZIPKIN_ROOT >> Makefile.config
+- cd $TRAVIS_BUILD_DIR
 - make
+- make tests
+# - cd $TRAVIS_BUILD_DIR/cprof
+# - make docker_docs
 after_success:
 - export DEPLOY=dist/amd64
 - export LATEST=$DEPLOY/latest
