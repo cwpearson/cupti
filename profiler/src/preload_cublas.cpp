@@ -435,9 +435,33 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
     profiler::err()
         << "WARN: creating implicit allocation for cublasSdot result"
         << std::endl;
+
+    cudaPointerAttributes attrs;
+    cudaError_t ret = cudaPointerGetAttributes(&attrs, result);
+    assert(ret == cudaSuccess &&
+           "Pointer is not in a ctx supporting unified addressing");
+
+    const int device = attrs.device;
+    auto mem = Memory::Unknown;
+    if (profiler::hardware().cuda_device(device).major_ >= 6) {
+      mem = Memory::Unified6;
+    } else if (profiler::hardware().cuda_device(device).major_ >= 3) {
+      mem = Memory::Unified3;
+    } else {
+      assert(0 && "How to handle.");
+    }
+
+    auto loc = Location::Unknown();
+    if (attrs.memoryType == cudaMemoryTypeHost) {
+      loc = Location::Host();
+    } else if (attrs.memoryType == cudaMemoryTypeDevice) {
+      loc = Location::CudaDevice(device);
+    } else {
+      assert(0 && "Unexpected cudaMemoryType");
+    }
+
     rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float), AS,
-                                        Memory::Unknown,
-                                        Location::Unknown() /*FIXME */);
+                                        mem, loc);
     assert(rAlloc);
   }
   profiler::err() << "result allocId=" << uintptr_t(rAlloc.id()) << std::endl;
