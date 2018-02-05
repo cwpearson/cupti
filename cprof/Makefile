@@ -27,13 +27,22 @@ DEPS = $(CPP_DEPS)
 INC += -Iinclude
 LIB += -L$(LIBDIR)
 
-# Use BOOST_ROOT if set
 ifdef BOOST_ROOT
   BOOST_INC=$(BOOST_ROOT)/include
   BOOST_LIB=$(BOOST_ROOT)/lib
   INC += -isystem$(BOOST_INC) 
   LIB += -L$(BOOST_LIB) -Wl,-rpath=$(BOOST_LIB)
 endif
+LIB += -lboost_system
+
+
+ifdef NUMA_ROOT
+  NUMA_INC=$(NUMA_ROOT)/include
+  NUMA_LIB=$(NUMA_ROOT)/lib
+  INC += -isystem$(NUMA_INC) 
+  LIB += -L$(NUMA_LIB) -Wl,-rpath=$(BOOST_LIB)
+endif
+LIB += -lnuma
 
 # Set CUDA-related variables
 ifdef CUDA_ROOT
@@ -45,10 +54,6 @@ NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
 LIB += -L$(CUDA_CUPTI_LIB) -lcupti -Wl,-rpath=$(CUDA_CUPTI_LIB) \
        -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt
-
-# libnuma
-LIB += -lnuma
-LD = ld
 
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC
 NVCCFLAGS += -std=c++11 -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC
@@ -84,7 +89,7 @@ cppcheck:
 
 $(LIBDIR)/libcprof.so: $(CPP_OBJECTS)
 	mkdir -p $(LIBDIR)
-	$(CXX) $(CXXFLAGS) -shared -Wl,--no-undefined $^ -o $@ $(LIB)
+	$(CXX) $(CXXFLAGS) -shared $^ -o $@ $(LIB) -Wl,--no-undefined
 
 $(BUILDDIR)/%.o : $(SRCDIR)/%.cpp
 	mkdir -p `dirname $(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$@)`
