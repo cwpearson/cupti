@@ -219,3 +219,17 @@ extern "C" ncclResult_t ncclAllReduce(const void *sendbuff, void *recvbuff,
   profiler::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
+
+typedef ncclResult_t (*ncclCommDestroyFunc)(ncclComm_t comm);
+extern "C" ncclResult_t nccCommDestroy(ncclComm_t comm) {
+  NCCL_DLSYM_BOILERPLATE(ncclCommDestroy);
+
+  profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
+                  << " disabling CUPTI callbacks during ncclCommDestroy"
+                  << std::endl;
+
+  profiler::driver().this_thread().pause_cupti_callbacks();
+  const ncclResult_t ret = real_ncclCommDestroy(comm);
+  profiler::driver().this_thread().resume_cupti_callbacks();
+  return ret;
+}
