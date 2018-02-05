@@ -76,6 +76,7 @@ public:
 
   Location pause_cupti_get_location(const void *p) {
 
+/*
     cudaPointerAttributes attrs;
     pause_cupti_callbacks();
     cudaError_t ret = cudaPointerGetAttributes(&attrs, p);
@@ -92,7 +93,8 @@ public:
     } else {
       assert(0 && "Unexpected cudaMemoryType");
     }
-
+*/
+    return Location::Unknown();
     assert(0 && "How did we get here?");
   }
   Location pause_cupti_get_location(const uintptr_t p) {
