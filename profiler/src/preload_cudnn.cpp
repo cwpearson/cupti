@@ -492,9 +492,33 @@ extern "C" cudnnStatus_t cudnnPoolingForward(
     cudnnHandle_t handle, const cudnnPoolingDescriptor_t poolingDesc,
     const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,
     const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
+
   CUDNN_DLSYM_BOILERPLATE(cudnnPoolingForward);
 
-  profiler::err() << "WARN: ignoring cudnnPoolingForward" << std::endl;
+  auto &allocations = profiler::allocations();
+
+  const int devId = profiler::driver().device_from_cudnn_handle(handle);
+  AddressSpace AS = profiler::hardware().address_space(devId);
+
+  // Find input values
+  auto xVal = allocations.find_value((uintptr_t)x, AS);
+  assert(xVal && "Couldn't find cudnnPoolingForward x value on device");
+  auto api = std::make_shared<ApiRecord>("cudnnPoolingForward", devId);
+
+  // FIXME: ignoring alpha, beta
+
+  // Create output value
+  const size_t ySize = tensorSize(yDesc);
+  auto yAlloc = allocations.find((uintptr_t)y, ySize, AS);
+  assert(yAlloc && "y allocation should be on device");
+
+  auto yVal = yAlloc.new_value((uintptr_t)y, ySize, true /*initialized*/);
+  yVal.add_depends_on(xVal, api->id());
+
+  // track api
+  api->add_output(yVal);
+  api->add_input(xVal);
+  profiler::atomic_out(api->json());
 
   // Do the actual call
   profiler::err()
