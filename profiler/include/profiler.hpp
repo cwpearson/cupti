@@ -3,6 +3,7 @@
 
 #include <ostream>
 #include <atomic>
+#include <thread>
 
 #include "cprof/allocations.hpp"
 #include "cprof/model/driver.hpp"
@@ -11,6 +12,8 @@
 #include "util/logging.hpp"
 
 #include "cupti_subscriber.hpp"
+#include "timer.hpp"
+
 
 namespace profiler {
 cprof::model::Driver &driver();
