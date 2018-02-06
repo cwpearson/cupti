@@ -8,6 +8,11 @@
 #include <iostream>
 #include <mutex>
 #include <thread>
+//Libraries required to write to JSON
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <sstream>
+
 
 #include "cupti_subscriber.hpp"
 #include "timer.hpp"
@@ -364,6 +369,31 @@ void Timer::addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity)
   current_span->SetTag("streamId", std::to_string(local_Kernel_Activity.streamId));
   current_span->SetTag("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
   current_span->Finish({FinishTimestamp(end_time_stamp)});
+
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
+
+  pt.put("blockX", std::to_string(local_Kernel_Activity.blockX));
+  pt.put("blockY", std::to_string(local_Kernel_Activity.blockY));
+  pt.put("blockZ", std::to_string(local_Kernel_Activity.blockZ));
+  pt.put("completed", std::to_string(local_Kernel_Activity.completed));
+  pt.put("deviceId", std::to_string(local_Kernel_Activity.deviceId));
+  pt.put("dynamicSharedMemory", std::to_string(local_Kernel_Activity.dynamicSharedMemory));
+  pt.put("gridId", std::to_string(local_Kernel_Activity.gridId));
+  pt.put("gridX", std::to_string(local_Kernel_Activity.gridX));
+  pt.put("gridY", std::to_string(local_Kernel_Activity.gridY));
+  pt.put("gridZ", std::to_string(local_Kernel_Activity.gridZ));
+  pt.put("localMemoryPerThread", std::to_string(local_Kernel_Activity.localMemoryPerThread));
+  pt.put("localMemoryTotal", std::to_string(local_Kernel_Activity.localMemoryTotal));
+  pt.put("registersPerThread", std::to_string(local_Kernel_Activity.registersPerThread));
+  pt.put("sharedMemoryConfig", std::to_string(local_Kernel_Activity.sharedMemoryConfig));
+  pt.put("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
+  pt.put("streamId", std::to_string(local_Kernel_Activity.streamId));
+  pt.put("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
+  std::ostringstream buf;
+  write_json(buf, pt, false);
 }
 
 void Timer::addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
@@ -395,6 +425,22 @@ void Timer::addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
   current_span->SetTag("srcKind", std::to_string(local_Memcpy_Activity.srcKind));
   current_span->SetTag("streamId", std::to_string(local_Memcpy_Activity.streamId));  
   current_span->Finish({FinishTimestamp(end_time_stamp)});
+
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
+  pt.put("bytes", std::to_string(local_Memcpy_Activity.bytes));
+  pt.put("contextId", std::to_string(local_Memcpy_Activity.contextId));
+  pt.put("copyKind", std::to_string(local_Memcpy_Activity.copyKind));
+  pt.put("deviceId", std::to_string(local_Memcpy_Activity.deviceId));
+  pt.put("dstKind", std::to_string(local_Memcpy_Activity.dstKind));
+  pt.put("flags", std::to_string(local_Memcpy_Activity.flags));
+  pt.put("runtimeCorrelationId", std::to_string(local_Memcpy_Activity.runtimeCorrelationId));
+  pt.put("srcKind", std::to_string(local_Memcpy_Activity.srcKind));
+  pt.put("streamId", std::to_string(local_Memcpy_Activity.streamId));  
+  std::ostringstream buf;
+  write_json(buf, pt, false);
 }
 
 void Timer::activity_add_annotations(CUpti_Activity * activity_data){
