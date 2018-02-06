@@ -3,7 +3,7 @@
 #include "cprof/activity_callbacks.hpp"
 #include "cprof/callbacks.hpp"
 #include "cprof/cupti_subscriber.hpp"
-#include "cprof/kernel_time.hpp"
+#include "cprof/timer.hpp"
 #include "cprof/profiler.hpp"
 #include "cprof/util_cupti.hpp"
 

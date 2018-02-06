@@ -4,7 +4,7 @@
 #include <boost/any.hpp>
 
 #include "cupti_subscriber.hpp"
-#include "kernel_time.hpp"
+#include "timer.hpp"
 #include "profiler.hpp"
 
 using profiler::err;

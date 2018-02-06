@@ -5,7 +5,7 @@
 #include "cupti_activity.hpp"
 #include "cupti_callback.hpp"
 #include "cupti_subscriber.hpp"
-#include "kernel_time.hpp"
+#include "timer.hpp"
 #include "profiler.hpp"
 
 typedef void (*BufReqFun)(uint8_t **buffer, size_t *size,

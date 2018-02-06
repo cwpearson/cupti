@@ -6,7 +6,7 @@
 
 #include "cprof/util_cupti.hpp"
 
-#include "kernel_time.hpp"
+#include "timer.hpp"
 #include "zipkin.hpp"
 
 #define BUFFER_SIZE 100000

@@ -10,7 +10,7 @@
 #include <thread>
 
 #include "cupti_subscriber.hpp"
-#include "kernel_time.hpp"
+#include "timer.hpp"
 #include "profiler.hpp"
 
 using namespace std::chrono;
@@ -20,10 +20,7 @@ using namespace opentracing;
 static std::unordered_map<std::string, std::string> text_map;
 static TextMapCarrier carrier(text_map);
 
-std::map<uint32_t, std::tuple<bool, bool>> KernelCallTime::cid_to_completion;
-std::map<uint32_t, std::map<std::string, std::string>> KernelCallTime::cid_to_values;
-
-void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
+void Timer::kernel_start_time(const CUpti_CallbackData *cbInfo) {
   // std::lock_guard<std::mutex> guard(accessMutex_);
   // uint64_t startTimeStamp;
   // cuptiDeviceGetTimestamp(cbInfo->context, &startTimeStamp);
@@ -61,7 +58,7 @@ void KernelCallTime::kernel_start_time(const CUpti_CallbackData *cbInfo) {
   //     correlationId, cprof::model::get_thread_id()));
 }
 
-void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
+void Timer::kernel_end_time(const CUpti_CallbackData *cbInfo) {
   // uint64_t endTimeStamp;
   // cuptiDeviceGetTimestamp(cbInfo->context, &endTimeStamp);
   // auto correlationId = cbInfo->correlationId;
@@ -163,7 +160,7 @@ void KernelCallTime::kernel_end_time(const CUpti_CallbackData *cbInfo) {
   //   cuda " << time_point.end_time - time_point.start_time << std::endl;
 }
 
-const char *KernelCallTime::memcpy_type_to_string(uint8_t kind) {
+const char *Timer::memcpy_type_to_string(uint8_t kind) {
   switch (kind) {
   case cudaMemcpyHostToHost: {
     return "cudaMemcpyHostToHost";
@@ -184,7 +181,7 @@ const char *KernelCallTime::memcpy_type_to_string(uint8_t kind) {
   }
 }
 
-void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
+void Timer::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   if (Profiler::instance().manager_->enable_zipkin()) {
     span_t current_span;
     auto correlationId = memcpyRecord->correlationId;
@@ -228,7 +225,7 @@ void KernelCallTime::memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord) {
   }
 }
 
-void KernelCallTime::kernel_activity_times(
+void Timer::kernel_activity_times(
     uint32_t cid, uint64_t startTime, uint64_t endTime,
     CUpti_ActivityKernel3 *launchRecord) {
   if (Profiler::instance().manager_->enable_zipkin()) {
@@ -312,13 +309,13 @@ void KernelCallTime::kernel_activity_times(
   }
 }
 
-void KernelCallTime::save_configured_call(uint32_t cid,
+void Timer::save_configured_call(uint32_t cid,
                                           std::vector<uintptr_t> configCall) {
   this->cid_to_call.insert(
       std::pair<uint32_t, std::vector<uintptr_t>>(cid, configCall));
 }
 
-void KernelCallTime::callback_add_annotations(const CUpti_CallbackData *cbInfo){
+void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo){
   uint64_t start;
   // CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), std::cerr);
 
@@ -328,7 +325,7 @@ void KernelCallTime::callback_add_annotations(const CUpti_CallbackData *cbInfo){
 
 
 /*CUDA8*/
-void addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity){
+void Timer::addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity){
 
   CUpti_ActivityKernel3 local_Kernel_Activity = *kernel_Activity;
 
@@ -369,7 +366,7 @@ void addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity){
   current_span->Finish({FinishTimestamp(end_time_stamp)});
 }
 
-void addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
+void Timer::addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
   CUpti_ActivityMemcpy local_Memcpy_Activity = *memcpy_Activity;
 
   /*Get start and end times for kernel*/
@@ -400,7 +397,7 @@ void addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
   current_span->Finish({FinishTimestamp(end_time_stamp)});
 }
 
-void KernelCallTime::activity_add_annotations(CUpti_Activity * activity_data){
+void Timer::activity_add_annotations(CUpti_Activity * activity_data){
   switch(activity_data->kind) {
     case CUPTI_ACTIVITY_KIND_KERNEL: {
       auto activity_cast = (CUpti_ActivityKernel3 *)activity_data;

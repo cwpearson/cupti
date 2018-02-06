@@ -23,7 +23,7 @@ typedef struct {
   size_t memcpySize;
 } memcpy_info_t;
 
-class KernelCallTime {
+class Timer {
 
 private:
   std::mutex accessMutex_;
@@ -36,29 +36,15 @@ public:
   void memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord);
   void save_configured_call(uint32_t cid, std::vector<uintptr_t> configCall);
 
-  std::map<uint32_t, time_points_t> tid_to_time;
-  std::map<uint32_t, const char *> correlation_to_function;
-  std::map<uint32_t, const char *> correlation_to_symbol;
-  std::map<uint32_t, std::chrono::time_point<std::chrono::system_clock>>
-      correlation_to_start;
-  std::map<uint32_t, memcpy_info_t> correlation_id_to_info;
-  std::map<uint32_t, uintptr_t> correlation_to_dest;
-  std::map<uintptr_t, TextMapCarrier> ptr_to_span;
-  std::unordered_map<std::string, std::string> text_map;
-  std::map<uint32_t, std::vector<uintptr_t>> cid_to_call;
-  std::map<uint32_t, uint32_t> cid_to_tid;
-
-   //First bool corresponds to CALLBACKS completion, second corresponds to ACTIVITY completion
-   static std::map<uint32_t, std::tuple<bool, bool>> cid_to_completion;
-   static std::map<uint32_t, std::map<std::string, std::string>> cid_to_values;
- 
    void callback_add_annotations(const CUpti_CallbackData *cbInfo);
    void activity_add_annotations(CUpti_Activity * activity_data);
-   void check_completion(uint32_t cid);
  
 
 private:
   const char *memcpy_type_to_string(uint8_t kind);
+  void addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity);
+  void addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity);
+
 };
 
 class tidStats {
