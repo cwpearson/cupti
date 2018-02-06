@@ -174,6 +174,12 @@ void Profiler::init() {
     launchTracerOpts.collector_port = Profiler::instance().zipkin_port();
     launchTracer_ = makeZipkinOtTracer(launchTracerOpts);
 
+    zipkin::ZipkinOtTracerOptions overheadTracerOpts;
+    overheadTracerOpts.service_name = "Profiler Overhead Tracer";
+    overheadTracerOpts.collector_host = Profiler::instance().zipkin_host();
+    overheadTracerOpts.collector_port = Profiler::instance().zipkin_port();
+    overheadTracer_ = makeZipkinOtTracer(overheadTracerOpts);
+
     rootSpan_ = rootTracer_->StartSpan("Root");
   }
 

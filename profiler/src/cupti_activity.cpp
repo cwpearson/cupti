@@ -36,9 +36,15 @@ void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
                                            uint8_t *buffer, size_t size,
                                            size_t validSize) {
 
+  span_t activity_span;
+  activity_span =  Profiler::instance().manager_->overhead_tracer->StartSpan("Activity API", 
+  {
+      FollowsFrom(&Profiler::instance().manager_->parent_span->context())
+  });
   uint8_t *localBuffer;  
   localBuffer = (uint8_t *)malloc(BUFFER_SIZE * 1024 + ALIGN_SIZE);
   ALIGN_BUFFER(localBuffer, ALIGN_SIZE);
   memcpy(localBuffer, buffer, validSize);
   Profiler::instance().activity_cleanup(localBuffer, validSize);
+  activity_span->Finish();    
 }

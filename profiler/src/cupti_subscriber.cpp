@@ -42,6 +42,11 @@ void CuptiSubscriber::init() {
     launch_tracer_options.collector_port = Profiler::instance().zipkin_port();
     launch_tracer = makeZipkinOtTracer(launch_tracer_options);
 
+    overhead_tracer_options.service_name = "Profiler Overhead Tracer";
+    overhead_tracer_options.collector_host = Profiler::instance().zipkin_host();
+    overhead_tracer_options.collector_port = Profiler::instance().zipkin_port();
+    overhead_tracer = makeZipkinOtTracer(overhead_tracer_options);
+
     parent_span = tracer->StartSpan("Parent");
   }
 
