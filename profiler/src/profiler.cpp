@@ -12,8 +12,8 @@ namespace profiler {
 cprof::model::Driver &driver() { return Profiler::instance().driver_; }
 cprof::model::Hardware &hardware() { return Profiler::instance().hardware_; }
 cprof::Allocations &allocations() { return Profiler::instance().allocations_; }
-KernelCallTime &kernelCallTime() {
-  return Profiler::instance().kernelCallTime_;
+Timer &timer() {
+  return Profiler::instance().timer_;
 }
 
 std::ostream &out() { return Profiler::instance().out(); }
@@ -39,10 +39,10 @@ void threadFunc(uint8_t * localBuffer, size_t validSize){
 
     switch (record->kind) {
     case CUPTI_ACTIVITY_KIND_KERNEL:
-      profiler::kernelCallTime().activity_add_annotations(record);
+      profiler::timer().activity_add_annotations(record);
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY:
-      profiler::kernelCallTime().activity_add_annotations(record);
+      profiler::timer().activity_add_annotations(record);
       break;
     default:
       exit(-1);

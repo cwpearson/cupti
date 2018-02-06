@@ -16,7 +16,7 @@ namespace profiler {
 cprof::model::Driver &driver();
 cprof::model::Hardware &hardware();
 cprof::Allocations &allocations();
-KernelCallTime &kernelCallTime();
+Timer &timer();
 
 std::ostream &out();
 void atomic_out(const std::string &s);
@@ -27,7 +27,7 @@ class Profiler {
   friend cprof::model::Driver &profiler::driver();
   friend cprof::model::Hardware &profiler::hardware();
   friend cprof::Allocations &profiler::allocations();
-  friend KernelCallTime &profiler::kernelCallTime();
+  friend Timer &profiler::timer();
 
 public:
   ~Profiler();
@@ -66,7 +66,7 @@ private:
   cprof::model::Hardware hardware_;
   cprof::model::Driver driver_;
   cprof::Allocations allocations_;
-  KernelCallTime kernelCallTime_;
+  Timer timer_;
 
   bool enableZipkin_;
   std::string zipkinHost_;

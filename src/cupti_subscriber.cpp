@@ -85,8 +85,6 @@ CuptiSubscriber::~CuptiSubscriber() {
   if (enableZipkin_) {
     parent_span->Finish();
   }
-  auto kernelTimer = KernelCallTime::instance();
-  kernelTimer.flush_tracers();
   cprof::err() << "Deactivating callbacks!" << std::endl;
   CUPTI_CHECK(cuptiUnsubscribe(subscriber_), cprof::err());
   cprof::err() << "INFO: done deactivating callbacks!" << std::endl;

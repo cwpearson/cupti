@@ -32,22 +32,6 @@ void CUPTIAPI cuptiActivityBufferRequested(uint8_t **buffer, size_t *size,
   }
 }
 
-// template <typename T>
-// void insertDataHelper(std::map<std::string, boost::any> &memcpyData, std::string key, T value){
-//     memcpyData.insert(std::pair<std::string, std::string>(key, std::to_string(value)));  
-// }
-  
-
-// static void handleCuptiKindKernel(CUpti_Activity *record) {
-//   err() << "INFO: handleCuptiKindKernel" << std::endl;
-//   profiler::kernelCallTime().activity_add_annotations(record);
-// }
-
-// static void handleCuptiKindMemcpy(CUpti_Activity *record) {
-//   err() << "INFO: handleCuptiKindMemcpy" << std::endl;  
-//   profiler::kernelCallTime().activity_add_annotations(record);
-// }
-
 void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
                                            uint8_t *buffer, size_t size,
                                            size_t validSize) {

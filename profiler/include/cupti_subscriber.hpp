@@ -18,7 +18,7 @@ private:
   bool enableCallbackAPI_; ///< gather info from the CUPTI callback API
   bool enableZipkin_;      ///< send traces to zipkin
 
-  KernelCallTime kernelCallTime_;
+  Timer timer_;
 
 public:
   zipkin::ZipkinOtTracerOptions options;
