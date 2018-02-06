@@ -930,8 +930,7 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
       handleCudaSetupArgument(cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
-      handleCudaLaunch(userdata, profiler::allocations(),
-                       profiler::kernelCallTime(), cbInfo);
+      handleCudaLaunch(userdata, profiler::allocations(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020:
       handleCudaSetDevice(cbInfo);
