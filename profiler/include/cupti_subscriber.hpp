@@ -24,10 +24,13 @@ public:
   zipkin::ZipkinOtTracerOptions options;
   zipkin::ZipkinOtTracerOptions memcpy_tracer_options;
   zipkin::ZipkinOtTracerOptions launch_tracer_options;
+  zipkin::ZipkinOtTracerOptions overhead_tracer_options;
+
 
   std::shared_ptr<opentracing::Tracer> tracer;
   std::shared_ptr<opentracing::Tracer> memcpy_tracer;
   std::shared_ptr<opentracing::Tracer> launch_tracer;
+  std::shared_ptr<opentracing::Tracer> overhead_tracer;
   span_t parent_span;
 
   CuptiSubscriber(const bool enableActivityAPI, const bool enableCallbackAPI,
