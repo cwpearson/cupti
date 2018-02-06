@@ -6,6 +6,7 @@ addons:
     - libcurl4-openssl-dev
     - git
     - cmake
+    - make
 sudo: required
 services: docker
 env:
@@ -32,8 +33,8 @@ matrix:
 
 before_install:
 - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-- sudo apt-get -qq update
-- sudo apt-get install --no-install-suggests --no-install-recommends -y g++-4.9
+- travis_retry sudo apt-get -qq update
+- travis_retry sudo apt-get install --no-install-suggests --no-install-recommends -y g++-4.9
 install:
 - git clone https://github.com/opentracing/opentracing-cpp.git $OPENTRACING_SRC
 - cd $OPENTRACING_SRC && mkdir .build && cd .build
@@ -65,14 +66,17 @@ script:
 - cd $TRAVIS_BUILD_DIR
 - echo CXX=g++-4.9 >> Makefile.config
 - echo CUDA_ROOT=$CUDA_ROOT >> Makefile.config
+- echo BUILD_TYPE=$BUILD_TYPE >> Makefile.config
 - cd $TRAVIS_BUILD_DIR/cprof
-- make
-- make tests
-- make docker_docs
+- touch Makefile.config
 - cd $TRAVIS_BUILD_DIR/profiler
 - echo OPENTRACING_ROOT=$OPENTRACING_ROOT >> Makefile.config
 - echo ZIPKIN_OPENTRACING_ROOT=$ZIPKIN_ROOT >> Makefile.config
+- cd $TRAVIS_BUILD_DIR
 - make
+- make tests
+# - cd $TRAVIS_BUILD_DIR/cprof
+# - make docker_docs
 after_success:
 - export DEPLOY=dist/amd64
 - export LATEST=$DEPLOY/latest

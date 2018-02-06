@@ -68,7 +68,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
     api->add_input(rootBuffVal);
 
     for (auto &v : dstBuffVals) {
-      v.add_depends_on(rootBuffVal);
+      v.add_depends_on(rootBuffVal, api->id());
       api->add_output(v);
     }
     profiler::atomic_out(api->json());
@@ -114,7 +114,7 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
     for (const auto &sendVal : sendBuffVals) {
       api->add_input(sendVal);
       for (const auto &recvVal : recvBuffVals) {
-        recvVal.add_depends_on(sendVal);
+        recvVal.add_depends_on(sendVal, api->id());
       }
     }
     for (const auto &v : recvBuffVals) {
@@ -216,6 +216,20 @@ extern "C" ncclResult_t ncclAllReduce(const void *sendbuff, void *recvbuff,
 
   const ncclResult_t ret =
       real_ncclAllReduce(sendbuff, recvbuff, count, datatype, op, comm, stream);
+  profiler::driver().this_thread().resume_cupti_callbacks();
+  return ret;
+}
+
+typedef ncclResult_t (*ncclCommDestroyFunc)(ncclComm_t comm);
+extern "C" ncclResult_t nccCommDestroy(ncclComm_t comm) {
+  NCCL_DLSYM_BOILERPLATE(ncclCommDestroy);
+
+  profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
+                  << " disabling CUPTI callbacks during ncclCommDestroy"
+                  << std::endl;
+
+  profiler::driver().this_thread().pause_cupti_callbacks();
+  const ncclResult_t ret = real_ncclCommDestroy(comm);
   profiler::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }

@@ -29,7 +29,7 @@ public:
         initialized_(initialized), id_(id) {}
   Value() : Value(0, 0, 0, 0, AddressSpace::Unknown(), false) {}
 
-  void add_depends_on(const Value &V) const;
+  void add_depends_on(const Value &V, const uint64_t apiId) const;
   std::string json() const;
 
   explicit operator bool() const noexcept { return id_ != 0; }

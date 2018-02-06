@@ -1,13 +1,13 @@
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
+#include <cxxabi.h>
 #include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <vector>
 #include <typeinfo>
-#include <cxxabi.h>
+#include <vector>
 #define quote(x) #x
 
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -18,9 +18,9 @@
 #include "cprof/allocations.hpp"
 #include "cprof/hash.hpp"
 #include "cprof/memorycopykind.hpp"
-#include "cprof/numa.hpp"
 #include "cprof/util_cuda.hpp"
 #include "cprof/util_cupti.hpp"
+#include "cprof/util_numa.hpp"
 #include "cprof/value.hpp"
 // #include "cprof/values.hpp"
 // #include "cprof/dependencies.hpp"
@@ -41,7 +41,7 @@ static void handleCudaLaunch(void *userdata, Allocations &allocations,
                              const CUpti_CallbackData *cbInfo) {
   profiler::err() << "INFO: callback: cudaLaunch preamble (tid="
                   << cprof::model::get_thread_id() << ")" << std::endl;
-                
+
   // print_backtrace();
 
   // Get the current stream
@@ -125,8 +125,10 @@ static void handleCudaLaunch(void *userdata, Allocations &allocations,
     // for (const auto &argKey : kernelArgIds) {
     //   // const auto &argValue = values[argKey];
     //   int status;
-    //   char * demangled = abi::__cxa_demangle(typeid(argKey).name(),0,0,&status);
-    //   std::cout<<"Demangled value: " << demangled<<"\t"<< quote(argKey) <<"\n";
+    //   char * demangled =
+    //   abi::__cxa_demangle(typeid(argKey).name(),0,0,&status);
+    //   std::cout<<"Demangled value: " << demangled<<"\t"<< quote(argKey)
+    //   <<"\n";
     //   // std::cout << typeof(argKey) << std::endl;
     //   // if (std::is_pointer<>::value) {
     //     // std::cout << "No" << std::endl;
@@ -156,7 +158,7 @@ static void handleCudaLaunch(void *userdata, Allocations &allocations,
       for (const auto &depVal : kernelArgIds) {
         profiler::err() << "INFO: launch: val id=" << newVal.id() << " deps on "
                         << depVal.id() << std::endl;
-        newVal.add_depends_on(depVal);
+        newVal.add_depends_on(depVal, api->id());
       }
       api->add_output(newVal);
     }
@@ -249,8 +251,12 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     // Source allocation may not have been created by a CUDA api
     srcAlloc = allocations.find(src, srcCount, srcAS);
     if (!srcAlloc) {
+
+      const auto numaNode = get_numa_node(src);
+      const auto loc = Location::Host(numaNode);
+
       srcAlloc = allocations.new_allocation(src, srcCount, srcAS,
-                                            Memory::Unknown, Location::Host());
+                                            Memory::Unknown, loc);
       profiler::err() << "WARN: Couldn't find src alloc. Created implict host "
                          "allocation= {"
                       << srcAS.str() << "}[ " << src << " , +" << srcCount
@@ -264,8 +270,12 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
     // it overlaps, it should be joined
     dstAlloc = allocations.find(dst, dstCount, dstAS);
     if (!dstAlloc) {
+
+      const auto numaNode = get_numa_node(dst);
+      const auto loc = Location::Host(numaNode);
+
       dstAlloc = allocations.new_allocation(dst, dstCount, dstAS,
-                                            Memory::Unknown, Location::Host());
+                                            Memory::Unknown, loc);
       profiler::err() << "WARN: Couldn't find dst alloc. Created implict host "
                          "allocation= {"
                       << dstAS.str() << "}[ " << dst << " , +" << dstCount
@@ -299,7 +309,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   assert(srcVal);
   auto dstVal = dstAlloc.new_value(dst, dstCount, srcVal.initialized());
   assert(dstVal);
-  dstVal.add_depends_on(srcVal);
+  dstVal.add_depends_on(srcVal, api->id());
   // dstVal->record_meta_append(cbInfo->functionName); // FIXME
 
   api->add_input(srcVal);
@@ -361,8 +371,8 @@ static void handleCudaMemcpy(Allocations &allocations,
                   count, count, 0 /*unused*/, 0 /*unused */);
     profiler::err() << "INFO: callback: cudaMemcpy exit" << std::endl;
 
-
     std::map<std::string, std::string> sampleMap;
+    // Sample for KernelTimer
   } else {
     assert(0 && "How did we get here?");
   }
@@ -487,8 +497,10 @@ static void handleCudaMallocManaged(Allocations &allocations,
     cprof::model::Memory M;
     if (major >= 6) {
       M = cprof::model::Memory::Unified6;
-    } else {
+    } else if (major >= 3) {
       M = cprof::model::Memory::Unified3;
+    } else {
+      assert(0 && "How to handle?");
     }
 
     auto a = allocations.new_allocation(devPtr, size, AddressSpace::CudaUVA(),
@@ -505,10 +517,12 @@ void record_mallochost(Allocations &allocations, const uintptr_t ptr,
 
   const int devId = profiler::driver().this_thread().current_device();
   auto AS = profiler::hardware().address_space(devId);
+  const int numaNode = get_numa_node(ptr);
 
   Allocation alloc =
-      allocations.new_allocation(ptr, size, AS, AM, Location::Host());
-  profiler::err() << "INFO: made new mallochost @ " << ptr << std::endl;
+      allocations.new_allocation(ptr, size, AS, AM, Location::Host(numaNode));
+  profiler::err() << "INFO: made new mallochost @ " << ptr
+                  << " [nn=" << numaNode << "]" << std::endl;
 
   assert(alloc);
 }
@@ -714,7 +728,6 @@ static void handleCudaMalloc(Allocations &allocations,
       return;
     }
 
-   
     // Create the new allocation
     // FIXME: need to check which address space this is in
     const int devId = profiler::driver().this_thread().current_device();
@@ -725,9 +738,9 @@ static void handleCudaMalloc(Allocations &allocations,
                                               Location::CudaDevice(devId));
     profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
                     << ") [cudaMalloc] new alloc=" << (uintptr_t)a.id()
-<< " pos=" << a.pos() << std::endl;
- 
-    //Create new database allocation record
+                    << " pos=" << a.pos() << std::endl;
+
+    // Create new database allocation record
     // auto dependency_tracking = DependencyTracking::instance();
     // dependency_tracking.memory_ptr_create(a->pos());
 
@@ -740,32 +753,32 @@ static void handleCudaMalloc(Allocations &allocations,
 
 static void handleCudaFree(Allocations &allocations,
                            const CUpti_CallbackData *cbInfo) {
-   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
-   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-     auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
-     auto devPtr = (uintptr_t)params->devPtr;
-     cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
-     profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
-                     << ") [cudaFree] " << devPtr << std::endl;
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+  } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    auto params = ((cudaFree_v3020_params *)(cbInfo->functionParams));
+    auto devPtr = (uintptr_t)params->devPtr;
+    cudaError_t ret = *static_cast<cudaError_t *>(cbInfo->functionReturnValue);
+    profiler::err() << "INFO: (tid=" << cprof::model::get_thread_id()
+                    << ") [cudaFree] " << devPtr << std::endl;
 
-     assert(cudaSuccess == ret);
+    assert(cudaSuccess == ret);
 
-     if (!devPtr) { // does nothing if passed 0
-       profiler::err() << "WARN: cudaFree called on 0? Does nothing."
-                       << std::endl;
-       return;
-     }
+    if (!devPtr) { // does nothing if passed 0
+      profiler::err() << "WARN: cudaFree called on 0? Does nothing."
+                      << std::endl;
+      return;
+    }
 
-     const int devId = profiler::driver().this_thread().current_device();
-     auto AS = profiler::hardware().address_space(devId);
+    const int devId = profiler::driver().this_thread().current_device();
+    auto AS = profiler::hardware().address_space(devId);
 
-     // Find the live matching allocation
-     profiler::err() << "Looking for " << devPtr << std::endl;
-     auto freeAlloc = allocations.free(devPtr, AS);
-    //  assert(freeAlloc && "Freeing unallocated memory?");
-   } else {
-     assert(0 && "How did we get here?");
-   }
+    // Find the live matching allocation
+    profiler::err() << "Looking for " << devPtr << std::endl;
+    auto freeAlloc = allocations.free(devPtr, AS);
+    assert(freeAlloc && "Freeing unallocated memory?");
+  } else {
+    assert(0 && "How did we get here?");
+  }
 }
 
 static void handleCudaSetDevice(const CUpti_CallbackData *cbInfo) {
@@ -868,7 +881,7 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
                                     CUpti_CallbackId cbid,
                                     const CUpti_CallbackData *cbInfo) {
   (void)userdata; // data supplied at subscription
-  
+  // profiler::kernelCallTime().callback_add_annotations(cbInfo);
 
   if (!profiler::driver().this_thread().is_cupti_callbacks_enabled()) {
     return;
@@ -917,7 +930,8 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
       handleCudaSetupArgument(cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
-      handleCudaLaunch(userdata, profiler::allocations(), cbInfo);
+      handleCudaLaunch(userdata, profiler::allocations(),
+                       profiler::kernelCallTime(), cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020:
       handleCudaSetDevice(cbInfo);

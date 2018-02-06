@@ -27,14 +27,16 @@ cprof::Value AllocationRecord::new_value(uintptr_t pos, size_t size,
                                          const bool initialized) {
   val_ = next_val_++;
   val_initialized_ = initialized;
-  cprof::Value newVal = value(pos, size);
+  val_size_ = size;
+  cprof::Value newVal(val_, pos, val_size_, uintptr_t(this), address_space_,
+                      val_initialized_);
   logging::atomic_out(newVal.json());
   return newVal;
 }
 
-cprof::Value AllocationRecord::value(const uintptr_t pos,
-                                     const size_t size) const {
-  return cprof::Value(val_, pos, size, uintptr_t(this), address_space_,
+/// \brief Get existing value at pos
+cprof::Value AllocationRecord::value(const uintptr_t pos) const {
+  return cprof::Value(val_, pos, val_size_, uintptr_t(this), address_space_,
                       val_initialized_);
 }
 

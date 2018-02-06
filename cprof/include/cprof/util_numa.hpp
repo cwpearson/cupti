@@ -1,5 +1,5 @@
-#ifndef NUMA_HPP
-#define NUMA_HPP
+#ifndef UTIL_NUMA_HPP
+#define UTIL_NUMA_HPP
 
 /*
 https://stackoverflow.com/questions/7986903/can-i-get-the-numa-node-from-a-pointer-address-in-c-on-linux/8015480#8015480

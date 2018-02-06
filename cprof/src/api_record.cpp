@@ -40,7 +40,7 @@ static ptree to_json(const std::vector<Value> &v) {
 
 std::string ApiRecord::json() const {
   ptree pt;
-  pt.put("api.id", Id());
+  pt.put("api.id", id());
   pt.put("api.name", apiName_);
   pt.put("api.device", device_);
   pt.put("api.symbolname", kernelName_);

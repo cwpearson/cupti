@@ -23,12 +23,9 @@ DEPS = $(CPP_DEPS)
 INC += -Iinclude 
 LIB += -L$(LIBDIR)
 
-# Use BOOST_ROOT if set
 ifdef BOOST_ROOT
   BOOST_INC=$(BOOST_ROOT)/include
-  BOOST_LIB=$(BOOST_ROOT)/lib
   INC += -isystem$(BOOST_INC) 
-  LIB += -L$(BOOST_LIB) -Wl,-rpath=$(BOOST_LIB)
 endif
 
 ifdef OPENTRACING_ROOT 
@@ -56,8 +53,8 @@ NVCC = $(CUDA_ROOT)/bin/nvcc
 INC += -isystem$(CUDA_ROOT)/include -isystem$(CUDA_ROOT)/extras/CUPTI/include
 LIB += -ldl \
        -L$(CUDA_ROOT)/extras/CUPTI/lib64 -lcupti -Wl,-rpath=$(CUDA_ROOT)/extras/CUPTI/lib64 \
-       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lnccl \
-	     -lnuma -lopentracing -lzipkin -lzipkin_opentracing
+       -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lcudnn -L/usr/lib -lnccl \
+	     -lopentracing -lzipkin -lzipkin_opentracing
 
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC
 NVCCFLAGS += -std=c++11 -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC

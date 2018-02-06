@@ -53,7 +53,7 @@ public:
   void add_kv(const std::string &key, const size_t &val);
 
   int device() const { return device_; }
-  id_type Id() const { return id_; }
+  id_type id() const { return id_; }
   const std::string &name() const { return apiName_; }
 
   std::string json() const;

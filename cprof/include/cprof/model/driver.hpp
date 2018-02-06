@@ -16,7 +16,9 @@
 
 #include "cprof/api_record.hpp"
 #include "cprof/model/cuda/configured_call.hpp"
+#include "cprof/model/location.hpp"
 #include "cprof/model/thread.hpp"
+#include "cprof/util_numa.hpp"
 #include "util/logging.hpp"
 
 namespace cprof {

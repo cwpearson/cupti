@@ -75,7 +75,7 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
   auto newAlloc = insert(ar);
 
   // dump the value in this allocation
-  auto val = newAlloc.value(pos, size);
+  auto val = newAlloc.new_value(pos, size, false);
   logging::debug() << "Emitting value during new allocation\n";
   logging::atomic_out(val.json());
   return newAlloc;
@@ -97,7 +97,7 @@ Value Allocations::find_value(const uintptr_t pos, const size_t size,
                    << alloc.size() << ") while looking for value @ [" << pos
                    << ", +" << size << ")" << std::endl;
   }
-  const auto val = alloc.value(pos, size);
+  const auto val = alloc.value(pos);
   return val;
 }
 

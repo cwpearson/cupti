@@ -18,11 +18,12 @@ std::ostream &operator<<(std::ostream &os, const cprof::Value &dt) {
 
 namespace cprof {
 
-void Value::add_depends_on(const Value &v) const {
+void Value::add_depends_on(const Value &v, const uint64_t apiId) const {
   ptree pt;
   pt.put("dep.dst_id", v.id());
   pt.put("dep.src_id", id());
   pt.put("dep.tid", cprof::model::get_thread_id());
+  pt.put("dep.api_cause", apiId);
   std::stringstream buf;
   write_json(buf, pt, false);
   logging::atomic_out(buf.str());

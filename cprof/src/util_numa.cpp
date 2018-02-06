@@ -2,7 +2,7 @@
 #include "unistd.h"
 #include <cassert>
 
-#include "cprof/numa.hpp"
+#include "cprof/util_numa.hpp"
 
 static void *get_page(const void *ptr, const int page_size) {
   const auto u = reinterpret_cast<uintptr_t>(ptr);
