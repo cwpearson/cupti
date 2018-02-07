@@ -27,7 +27,7 @@ static size_t ncclSizeOf(const ncclDataType_t t) noexcept {
   case ncclInt64:
     return sizeof(int64_t);
   default:
-    assert(0);
+    profiler::err() << "ERROR: Unsupported ncclDataType_t" << std::endl;
   }
 }
 

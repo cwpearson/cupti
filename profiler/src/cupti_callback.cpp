@@ -194,16 +194,20 @@ static void handleCudaLaunchKernel(void *userdata, Allocations &allocations,
   const char *symbolName = cbInfo->symbolName;
   // const char *symbolName = (char*)func;
 
-  assert(0 && "Unimplemented");
+  // assert(0 && "Unimplemented");
 
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
 
   } else if (cbInfo->callbackSite == CUPTI_API_EXIT) {
-    auto api = std::make_shared<ApiRecord>(
-        cbInfo->functionName, cbInfo->symbolName,
-        profiler::driver().this_thread().current_device());
+    //Some NCCL calls reach here and do not have a symbol name.
+    //Sanity check to prevent crash.
+    if (cbInfo->symbolName != NULL){
+      auto api = std::make_shared<ApiRecord>(
+          cbInfo->functionName, cbInfo->symbolName,
+          profiler::driver().this_thread().current_device());
 
-    profiler::atomic_out(api->json());
+      profiler::atomic_out(api->json());
+    }
 
   } else {
     assert(0 && "How did we get here?");
@@ -775,7 +779,7 @@ static void handleCudaFree(Allocations &allocations,
     // Find the live matching allocation
     profiler::err() << "Looking for " << devPtr << std::endl;
     auto freeAlloc = allocations.free(devPtr, AS);
-    assert(freeAlloc && "Freeing unallocated memory?");
+    // assert(freeAlloc && "Freeing unallocated memory?");
   } else {
     assert(0 && "How did we get here?");
   }
