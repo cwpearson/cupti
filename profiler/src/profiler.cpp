@@ -27,41 +27,6 @@ std::ostream &err() { return Profiler::instance().err(); }
  */
 Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {}
 
-std::vector<std::thread*> Profiler::activity_threads;
-std::atomic<int> Profiler::conditional_variable;
-void threadFunc(uint8_t * localBuffer, size_t validSize){
-  CUpti_Activity *record = NULL;  
-  for (int i = 0; i < BUFFER_SIZE; i++) {
-    auto err = cuptiActivityGetNextRecord(localBuffer, validSize, &record);
-    if (err == CUPTI_ERROR_MAX_LIMIT_REACHED) {
-      break;
-    }
-
-    switch (record->kind) {
-    case CUPTI_ACTIVITY_KIND_KERNEL:
-      profiler::timer().activity_add_annotations(record);
-      break;
-    case CUPTI_ACTIVITY_KIND_MEMCPY:
-      profiler::timer().activity_add_annotations(record);
-      break;
-    default:
-      exit(-1);
-    }
-  }
-
-  if (localBuffer != NULL){
-    free(localBuffer);
-  }
-  Profiler::instance().conditional_variable--;
-  std::cout << "Conditional Variable: " << Profiler::instance().conditional_variable--;
-}
-
-void Profiler::activity_cleanup(uint8_t *localBuffer, size_t validSize){
-  auto activityThread = std::thread(threadFunc, localBuffer, validSize);
-  activityThread.detach();
-  Profiler::instance().activity_threads.push_back(&activityThread);
-}
-
 
 Profiler::~Profiler() {
   logging::err() << "Profiler dtor\n";
@@ -72,13 +37,6 @@ Profiler::~Profiler() {
   profiler::err() << "INFO: done cuptiActivityFlushAll" << std::endl;
 // }
 
-  for (auto thread : this->activity_threads){
-      std::cout << "Joining thread" << std::endl;
-      this->conditional_variable++;
-      // thread->join();
-  }
-
-  while(this->conditional_variable != 0){}
   delete manager_;
 
   if (enableZipkin_) {
@@ -109,7 +67,6 @@ void Profiler::atomic_out(const std::string &s) {
 void Profiler::init() {
   // std::cerr << model::get_thread_id() << std::endl;
 
-  conditional_variable = 0;
   if (isInitialized_) {
     logging::err() << "Profiler alread initialized" << std::endl;
     return;

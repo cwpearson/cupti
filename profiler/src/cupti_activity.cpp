@@ -32,6 +32,28 @@ void CUPTIAPI cuptiActivityBufferRequested(uint8_t **buffer, size_t *size,
   }
 }
 
+
+void threadFunc(uint8_t * localBuffer, size_t validSize){
+  CUpti_Activity *record = NULL;  
+  for (int i = 0; i < BUFFER_SIZE; i++) {
+    auto err = cuptiActivityGetNextRecord(localBuffer, validSize, &record);
+    if (err == CUPTI_ERROR_MAX_LIMIT_REACHED) {
+      break;
+    }
+
+    switch (record->kind) {
+    case CUPTI_ACTIVITY_KIND_KERNEL:
+      profiler::timer().activity_add_annotations(record);
+      break;
+    case CUPTI_ACTIVITY_KIND_MEMCPY:
+      profiler::timer().activity_add_annotations(record);
+      break;
+    default:
+      exit(-1);
+    }
+  }
+}
+
 void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
                                            uint8_t *buffer, size_t size,
                                            size_t validSize) {
@@ -41,10 +63,11 @@ void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
   {
       FollowsFrom(&Profiler::instance().manager_->parent_span->context())
   });
-  uint8_t *localBuffer;  
-  localBuffer = (uint8_t *)malloc(BUFFER_SIZE * 1024 + ALIGN_SIZE);
-  ALIGN_BUFFER(localBuffer, ALIGN_SIZE);
-  memcpy(localBuffer, buffer, validSize);
-  Profiler::instance().activity_cleanup(localBuffer, validSize);
+  // uint8_t *localBuffer;  
+  // localBuffer = (uint8_t *)malloc(BUFFER_SIZE * 1024 + ALIGN_SIZE);
+  // ALIGN_BUFFER(localBuffer, ALIGN_SIZE);
+  // memcpy(localBuffer, buffer, validSize);
+  // threadFunc()
+  threadFunc(buffer, validSize);
   activity_span->Finish();    
 }
