@@ -12,6 +12,7 @@ docs/
 
 .vscode/*
 
+examples/testing/cublas/cublas_test
 examples/samples/matrixMul/mm
 examples/samples/vectorAdd/vec
 examples/samples/deviceQuery/query
