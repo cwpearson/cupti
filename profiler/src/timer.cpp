@@ -23,11 +23,75 @@ using namespace zipkin;
 using namespace opentracing;
 
 
-void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo){
-  uint64_t start;
-  // CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &start), std::cerr);
+void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo,  CUpti_CallbackId cbid){
 
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
   span_t current_span;
+  current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
+    std::to_string(cbInfo->correlationId),
+  {
+    FollowsFrom(&Profiler::instance().manager_->parent_span->context())
+  });
+  current_span->SetTag("contextUid", std::to_string(cbInfo->contextUid));
+  std::string functionName(cbInfo->functionName, strlen(cbInfo->functionName));
+  current_span->SetTag("functionName", functionName);
+
+  if (cbInfo->symbolName != NULL){
+    std::string symbolName(cbInfo->symbolName, strlen(cbInfo->symbolName));
+    current_span->SetTag("symbolName", symbolName);
+    pt.put("symbolName", symbolName);
+  }
+
+  //Fill in to parse the different arguments depending on what type of driver call 
+  switch (cbid) {
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyPeerAsync_v4000:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMalloc_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMallocHost_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMallocManaged_v6000:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaFree_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaFreeHost_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaConfigureCall_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaStreamCreate_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaStreamDestroy_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy2DAsync_v3020:
+      break;
+    case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000:
+       break;
+    default:
+      profiler::err() << "Unsupported cbid, cannot get arguments" << std::endl;
+      break;
+  }
+
+  pt.put("contextUid", std::to_string(cbInfo->contextUid));
+  pt.put("functionName", functionName);
+  std::ostringstream buf;
+  write_json(buf, pt, false);    
+
+  current_span->Finish();
   //To fill in with various data
 }
 

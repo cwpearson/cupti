@@ -29,14 +29,7 @@ private:
   std::mutex accessMutex_;
 
 public:
-  void kernel_start_time(const CUpti_CallbackData *cbInfo);
-  void kernel_end_time(const CUpti_CallbackData *cbInfo);
-  void kernel_activity_times(uint32_t cid, uint64_t startTime, uint64_t endTime,
-                             CUpti_ActivityKernel3 *launchRecord);
-  void memcpy_activity_times(CUpti_ActivityMemcpy *memcpyRecord);
-  void save_configured_call(uint32_t cid, std::vector<uintptr_t> configCall);
-
-   void callback_add_annotations(const CUpti_CallbackData *cbInfo);
+   void callback_add_annotations(const CUpti_CallbackData *cbInfo, CUpti_CallbackId cbid);
    void activity_add_annotations(CUpti_Activity * activity_data);
  
 
