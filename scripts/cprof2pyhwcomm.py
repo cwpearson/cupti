@@ -1,12 +1,26 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
+import argparse
 import sys
+
 import networkx as nx
 import matplotlib as plt
 
 from pycprof.profile import Profile
-import pyhwcomm.machines.minsky
+from pyhwcomm.machines.minsky import Minsky
+from pyhwcomm.parsers import MakeConcrete
+from pyhwcomm.executor import ReplayExecutor
 import pyhwcomm
+
+
+parser = argparse.ArgumentParser(description=u'Test script')
+parser.add_argument(u"profile_path", type=str,
+                    help=u"path to the profile file")
+parser.add_argument(
+    u'-n', u'--num_lines', type=int, default=0, help=u'the number of lines from the profile to read')
+args = parser.parse_args()
 
 # from pyhwcomm.machines.minsky import Minsky
 
@@ -14,23 +28,16 @@ ALLOCS = {}
 VALUES = {}
 APIS = {}
 
-minsky = pyhwcomm.machines.minsky.Minsky()
 
-
-def loc_to_minsky_device(loc):
-    if loc.type == "cuda":
-        dst = minsky.cuda_gpu()[loc.id_]
-    elif loc.type == "host":
-        if loc.id_ == -1:
-            loc.id_ = 0
-        dst = minsky.cpu()[loc.id_]
-    else:
-        assert False
-    return dst
-
-
-p = Profile(sys.argv[1])
-print len(p.graph.nodes)
+print("reading profile...")
+profile = Profile(args.profile_path, num_lines=args.num_lines)
+print("done")
+machine = Minsky()
+print("making concrete program...")
+program = MakeConcrete(profile, machine)
+print("done")
+executor = ReplayExecutor()
+executor(program, machine)
 
 # nx.draw(p.graph)
 # plt.show()
