@@ -37,7 +37,9 @@ print("making concrete program...")
 program = MakeConcrete(profile, machine)
 print("done")
 executor = ReplayExecutor()
-executor(program, machine)
+time = executor(program, machine)
+
+print("Final time:", time)
 
 # nx.draw(p.graph)
 # plt.show()
