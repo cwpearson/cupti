@@ -336,10 +336,21 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   auto rAlloc = allocations.find((uintptr_t)result, sizeof(float), AS);
 
   if (!rAlloc) {
-    // FIXME - can we do a better job with some parameters here
-    rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float), AS,
-                                        cprof::model::Memory::Unknown,
-                                        Location::Unknown());
+    auto mem = Memory::Unknown;
+    if (profiler::hardware().cuda_device(devId).major_ >= 6) {
+      mem = Memory::Unified6;
+    } else if (profiler::hardware().cuda_device(devId).major_ >= 3) {
+      mem = Memory::Unified3;
+    } else {
+      assert(0 && "How to handle.");
+    }
+
+    rAlloc =
+        allocations.new_allocation((uintptr_t)result, sizeof(float), AS, mem,
+                                   Location::Host(get_numa_node(result)));
+
+    assert(rAlloc);
+
     profiler::err() << "WARN: new allocId=" << uintptr_t(rAlloc.id())
                     << " for result=" << uintptr_t(result) << std::endl;
   }
@@ -446,8 +457,9 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
       assert(0 && "How to handle.");
     }
 
-    rAlloc = allocations.new_allocation((uintptr_t)result, sizeof(float), AS,
-                                        mem, Location::Host(get_numa_node(result)));
+    rAlloc =
+        allocations.new_allocation((uintptr_t)result, sizeof(float), AS, mem,
+                                   Location::Host(get_numa_node(result)));
     assert(rAlloc);
   }
   profiler::err() << "result allocId=" << uintptr_t(rAlloc.id()) << std::endl;
