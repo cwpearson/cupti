@@ -39,6 +39,7 @@ public:
 
   const std::string &zipkin_host() { return zipkinHost_; }
   const uint32_t &zipkin_port() { return zipkinPort_; }
+  bool is_zipkin_enabled() const { return enableZipkin_; }
 
   std::ostream &err();
   std::ostream &out();
@@ -64,7 +65,6 @@ private:
   uint32_t zipkinPort_;
 
   bool isInitialized_;
-
 };
 
 /* \brief Runs Profiler::init() at load time
