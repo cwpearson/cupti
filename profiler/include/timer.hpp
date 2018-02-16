@@ -38,6 +38,8 @@ private:
   void addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity);
   void addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity);
   void addEnvironmentActivityAnnotations(CUpti_ActivityEnvironment* environment_Activity);
+  void addOverheadActivityAnnotations(CUpti_ActivityOverhead* overhead_Activity);
+  void addGlobalAccessActivityAnnotations(CUpti_ActivityGlobalAccess2 * overhead_GlobalAccess);
 };
 
 class tidStats {

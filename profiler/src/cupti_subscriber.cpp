@@ -60,6 +60,13 @@ void CuptiSubscriber::init() {
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_KERNEL);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_ENVIRONMENT);
+
+    //Profiles overhead caused by CUPTI itself
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD);
+
+    //Global memory access(?)
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS);
+    
     cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
                                    cuptiActivityBufferCompleted);
     profiler::err() << "INFO: done registering activity callbacks" << std::endl;

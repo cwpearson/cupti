@@ -30,7 +30,7 @@ void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo,  CUpti_Ca
   
   ptree pt;
 
-  if (Profiler::instance().is_zipkin_enabled()){
+  // if (Profiler::instance().is_zipkin_enabled()){
     span_t current_span;
     current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
       std::to_string(cbInfo->correlationId),
@@ -44,7 +44,7 @@ void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo,  CUpti_Ca
       std::string symbolName(cbInfo->symbolName, strlen(cbInfo->symbolName));
       current_span->SetTag("symbolName", symbolName);
     }
-  }
+  // }
 
   if (cbInfo->symbolName != NULL){
     std::string symbolName(cbInfo->symbolName, strlen(cbInfo->symbolName));
@@ -117,7 +117,7 @@ void Timer::addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity)
   auto end_time_stamp =
     std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
 
-  if (Profiler::instance().is_zipkin_enabled()){}
+  // if (Profiler::instance().is_zipkin_enabled()){}
     span_t current_span;  
     current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
       std::to_string(local_Kernel_Activity.correlationId),
@@ -145,7 +145,7 @@ void Timer::addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity)
     current_span->SetTag("streamId", std::to_string(local_Kernel_Activity.streamId));
     current_span->SetTag("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
     current_span->Finish({FinishTimestamp(end_time_stamp)});
-  }
+  // }
 
   using boost::property_tree::ptree;
   using boost::property_tree::write_json;
@@ -184,7 +184,7 @@ void Timer::addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
   std::chrono::nanoseconds end_dur(local_Memcpy_Activity.end);
   auto end_time_stamp =
     std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
-  if (Profiler::instance().is_zipkin_enabled()){
+  // if (Profiler::instance().is_zipkin_enabled()){
     span_t current_span;  
     current_span = Profiler::instance().manager_->memcpy_tracer->StartSpan(
       std::to_string(local_Memcpy_Activity.correlationId),
@@ -203,7 +203,7 @@ void Timer::addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
     current_span->SetTag("srcKind", std::to_string(local_Memcpy_Activity.srcKind));
     current_span->SetTag("streamId", std::to_string(local_Memcpy_Activity.streamId));  
     current_span->Finish({FinishTimestamp(end_time_stamp)});
-  }
+  // }
 
   using boost::property_tree::ptree;
   using boost::property_tree::write_json;
@@ -227,7 +227,6 @@ void Timer::addEnvironmentActivityAnnotations(CUpti_ActivityEnvironment* environ
   using boost::property_tree::write_json;
   
   ptree pt;
-  std::cout << "Enviornment variable" << std::endl;
   switch (environment_Activity->environmentKind){
     case CUPTI_ACTIVITY_ENVIRONMENT_SPEED: {
 
@@ -244,9 +243,37 @@ void Timer::addEnvironmentActivityAnnotations(CUpti_ActivityEnvironment* environ
         logging::atomic_out(buf.str());
     };
     default: {
-      // profiler::err() << "Environment data type not supported " << environment_Activity->environmentKind << std::endl;
+      profiler::err() << "Environment data type not supported " << environment_Activity->environmentKind << std::endl;
     }
   }
+}
+
+void Timer::addOverheadActivityAnnotations(CUpti_ActivityOverhead* overhead_Activity){
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
+
+
+  std::ostringstream buf;
+  write_json(buf, pt, false);  
+  logging::atomic_out(buf.str());
+}
+
+void Timer::addGlobalAccessActivityAnnotations(CUpti_ActivityGlobalAccess2* overhead_GlobalAccess){
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
+
+  pt.put("correlationId", std::to_string(overhead_GlobalAccess->correlationId));
+  pt.put("functionName", std::to_string(overhead_GlobalAccess->functionId));
+  pt.put("executed", std::to_string(overhead_GlobalAccess->executed));
+  pt.put("threadsExecuted", std::to_string(overhead_GlobalAccess->threadsExecuted));
+
+  std::ostringstream buf;
+  write_json(buf, pt, false);  
+  logging::atomic_out(buf.str());
 }
 
 void Timer::activity_add_annotations(CUpti_Activity * activity_data){
@@ -263,6 +290,14 @@ void Timer::activity_add_annotations(CUpti_Activity * activity_data){
     case CUPTI_ACTIVITY_KIND_ENVIRONMENT: {
       auto activity_cast = (CUpti_ActivityEnvironment *)activity_data;
       addEnvironmentActivityAnnotations(activity_cast);
+    }
+    case CUPTI_ACTIVITY_KIND_OVERHEAD: {
+      auto activity_cast = (CUpti_ActivityOverhead *)activity_data;
+      addOverheadActivityAnnotations(activity_cast);
+    }
+    case CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS: {
+      auto activity_cast = (CUpti_ActivityGlobalAccess2 *)activity_data;
+      addGlobalAccessActivityAnnotations(activity_cast);
     }
     default: {
       auto activity_cast = activity_data;
