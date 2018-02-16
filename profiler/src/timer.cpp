@@ -152,6 +152,7 @@ void Timer::addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity)
   
   ptree pt;
 
+  pt.put("correlationId", std::to_string(local_Kernel_Activity.correlationId));
   pt.put("blockX", std::to_string(local_Kernel_Activity.blockX));
   pt.put("blockY", std::to_string(local_Kernel_Activity.blockY));
   pt.put("blockZ", std::to_string(local_Kernel_Activity.blockZ));
