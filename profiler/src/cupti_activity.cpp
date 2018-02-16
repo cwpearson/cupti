@@ -40,17 +40,7 @@ void threadFunc(uint8_t * localBuffer, size_t validSize){
     if (err == CUPTI_ERROR_MAX_LIMIT_REACHED) {
       break;
     }
-
-    switch (record->kind) {
-    case CUPTI_ACTIVITY_KIND_KERNEL:
-      profiler::timer().activity_add_annotations(record);
-      break;
-    case CUPTI_ACTIVITY_KIND_MEMCPY:
-      profiler::timer().activity_add_annotations(record);
-      break;
-    default:
-      exit(-1);
-    }
+    profiler::timer().activity_add_annotations(record);
   }
 }
 

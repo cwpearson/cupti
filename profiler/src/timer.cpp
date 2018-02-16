@@ -29,15 +29,22 @@ void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo,  CUpti_Ca
   using boost::property_tree::write_json;
   
   ptree pt;
-  span_t current_span;
-  current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
-    std::to_string(cbInfo->correlationId),
-  {
-    FollowsFrom(&Profiler::instance().manager_->parent_span->context())
-  });
-  current_span->SetTag("contextUid", std::to_string(cbInfo->contextUid));
-  std::string functionName(cbInfo->functionName, strlen(cbInfo->functionName));
-  current_span->SetTag("functionName", functionName);
+
+  if (Profiler::instance().is_zipkin_enabled()){
+    span_t current_span;
+    current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
+      std::to_string(cbInfo->correlationId),
+    {
+      FollowsFrom(&Profiler::instance().manager_->parent_span->context())
+    });
+    current_span->SetTag("contextUid", std::to_string(cbInfo->contextUid));
+    std::string functionName(cbInfo->functionName, strlen(cbInfo->functionName));
+    current_span->SetTag("functionName", functionName);
+    if (cbInfo->symbolName != NULL){
+      std::string symbolName(cbInfo->symbolName, strlen(cbInfo->symbolName));
+      current_span->SetTag("symbolName", symbolName);
+    }
+  }
 
   if (cbInfo->symbolName != NULL){
     std::string symbolName(cbInfo->symbolName, strlen(cbInfo->symbolName));
@@ -89,7 +96,8 @@ void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo,  CUpti_Ca
   pt.put("contextUid", std::to_string(cbInfo->contextUid));
   pt.put("functionName", functionName);
   std::ostringstream buf;
-  write_json(buf, pt, false);    
+  write_json(buf, pt, false);  
+  logging::atomic_out(buf.str());  
 
   current_span->Finish();
   //To fill in with various data
@@ -109,33 +117,35 @@ void Timer::addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity)
   auto end_time_stamp =
     std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
 
-  span_t current_span;  
-  current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
-    std::to_string(local_Kernel_Activity.correlationId),
-    {
-      FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
-      StartTimestamp(start_time_point)
-    }
-  );
-  //Extract useful information from local_Kernel_Activity and add it to trace
-  current_span->SetTag("blockX", std::to_string(local_Kernel_Activity.blockX));
-  current_span->SetTag("blockY", std::to_string(local_Kernel_Activity.blockY));
-  current_span->SetTag("blockZ", std::to_string(local_Kernel_Activity.blockZ));
-  current_span->SetTag("completed", std::to_string(local_Kernel_Activity.completed));
-  current_span->SetTag("deviceId", std::to_string(local_Kernel_Activity.deviceId));
-  current_span->SetTag("dynamicSharedMemory", std::to_string(local_Kernel_Activity.dynamicSharedMemory));
-  current_span->SetTag("gridId", std::to_string(local_Kernel_Activity.gridId));
-  current_span->SetTag("gridX", std::to_string(local_Kernel_Activity.gridX));
-  current_span->SetTag("gridY", std::to_string(local_Kernel_Activity.gridY));
-  current_span->SetTag("gridZ", std::to_string(local_Kernel_Activity.gridZ));
-  current_span->SetTag("localMemoryPerThread", std::to_string(local_Kernel_Activity.localMemoryPerThread));
-  current_span->SetTag("localMemoryTotal", std::to_string(local_Kernel_Activity.localMemoryTotal));
-  current_span->SetTag("registersPerThread", std::to_string(local_Kernel_Activity.registersPerThread));
-  current_span->SetTag("sharedMemoryConfig", std::to_string(local_Kernel_Activity.sharedMemoryConfig));
-  current_span->SetTag("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
-  current_span->SetTag("streamId", std::to_string(local_Kernel_Activity.streamId));
-  current_span->SetTag("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
-  current_span->Finish({FinishTimestamp(end_time_stamp)});
+  if (Profiler::instance().is_zipkin_enabled()){}
+    span_t current_span;  
+    current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
+      std::to_string(local_Kernel_Activity.correlationId),
+      {
+        FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
+        StartTimestamp(start_time_point)
+      }
+    );
+    //Extract useful information from local_Kernel_Activity and add it to trace
+    current_span->SetTag("blockX", std::to_string(local_Kernel_Activity.blockX));
+    current_span->SetTag("blockY", std::to_string(local_Kernel_Activity.blockY));
+    current_span->SetTag("blockZ", std::to_string(local_Kernel_Activity.blockZ));
+    current_span->SetTag("completed", std::to_string(local_Kernel_Activity.completed));
+    current_span->SetTag("deviceId", std::to_string(local_Kernel_Activity.deviceId));
+    current_span->SetTag("dynamicSharedMemory", std::to_string(local_Kernel_Activity.dynamicSharedMemory));
+    current_span->SetTag("gridId", std::to_string(local_Kernel_Activity.gridId));
+    current_span->SetTag("gridX", std::to_string(local_Kernel_Activity.gridX));
+    current_span->SetTag("gridY", std::to_string(local_Kernel_Activity.gridY));
+    current_span->SetTag("gridZ", std::to_string(local_Kernel_Activity.gridZ));
+    current_span->SetTag("localMemoryPerThread", std::to_string(local_Kernel_Activity.localMemoryPerThread));
+    current_span->SetTag("localMemoryTotal", std::to_string(local_Kernel_Activity.localMemoryTotal));
+    current_span->SetTag("registersPerThread", std::to_string(local_Kernel_Activity.registersPerThread));
+    current_span->SetTag("sharedMemoryConfig", std::to_string(local_Kernel_Activity.sharedMemoryConfig));
+    current_span->SetTag("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
+    current_span->SetTag("streamId", std::to_string(local_Kernel_Activity.streamId));
+    current_span->SetTag("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
+    current_span->Finish({FinishTimestamp(end_time_stamp)});
+  }
 
   using boost::property_tree::ptree;
   using boost::property_tree::write_json;
@@ -161,6 +171,7 @@ void Timer::addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity)
   pt.put("staticSharedMemory", std::to_string(local_Kernel_Activity.staticSharedMemory));
   std::ostringstream buf;
   write_json(buf, pt, false);
+  logging::atomic_out(buf.str());
 }
 
 void Timer::addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
@@ -173,25 +184,26 @@ void Timer::addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
   std::chrono::nanoseconds end_dur(local_Memcpy_Activity.end);
   auto end_time_stamp =
     std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
-
-  span_t current_span;  
-  current_span = Profiler::instance().manager_->memcpy_tracer->StartSpan(
-    std::to_string(local_Memcpy_Activity.correlationId),
-    {
-      FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
-      StartTimestamp(start_time_point)
-    }
-  );
-  current_span->SetTag("bytes", std::to_string(local_Memcpy_Activity.bytes));
-  current_span->SetTag("contextId", std::to_string(local_Memcpy_Activity.contextId));
-  current_span->SetTag("copyKind", std::to_string(local_Memcpy_Activity.copyKind));
-  current_span->SetTag("deviceId", std::to_string(local_Memcpy_Activity.deviceId));
-  current_span->SetTag("dstKind", std::to_string(local_Memcpy_Activity.dstKind));
-  current_span->SetTag("flags", std::to_string(local_Memcpy_Activity.flags));
-  current_span->SetTag("runtimeCorrelationId", std::to_string(local_Memcpy_Activity.runtimeCorrelationId));
-  current_span->SetTag("srcKind", std::to_string(local_Memcpy_Activity.srcKind));
-  current_span->SetTag("streamId", std::to_string(local_Memcpy_Activity.streamId));  
-  current_span->Finish({FinishTimestamp(end_time_stamp)});
+  if (Profiler::instance().is_zipkin_enabled()){
+    span_t current_span;  
+    current_span = Profiler::instance().manager_->memcpy_tracer->StartSpan(
+      std::to_string(local_Memcpy_Activity.correlationId),
+      {
+        FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
+        StartTimestamp(start_time_point)
+      }
+    );
+    current_span->SetTag("bytes", std::to_string(local_Memcpy_Activity.bytes));
+    current_span->SetTag("contextId", std::to_string(local_Memcpy_Activity.contextId));
+    current_span->SetTag("copyKind", std::to_string(local_Memcpy_Activity.copyKind));
+    current_span->SetTag("deviceId", std::to_string(local_Memcpy_Activity.deviceId));
+    current_span->SetTag("dstKind", std::to_string(local_Memcpy_Activity.dstKind));
+    current_span->SetTag("flags", std::to_string(local_Memcpy_Activity.flags));
+    current_span->SetTag("runtimeCorrelationId", std::to_string(local_Memcpy_Activity.runtimeCorrelationId));
+    current_span->SetTag("srcKind", std::to_string(local_Memcpy_Activity.srcKind));
+    current_span->SetTag("streamId", std::to_string(local_Memcpy_Activity.streamId));  
+    current_span->Finish({FinishTimestamp(end_time_stamp)});
+  }
 
   using boost::property_tree::ptree;
   using boost::property_tree::write_json;
@@ -210,6 +222,33 @@ void Timer::addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity){
   write_json(buf, pt, false);
 }
 
+void Timer::addEnvironmentActivityAnnotations(CUpti_ActivityEnvironment* environment_Activity){
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
+  std::cout << "Enviornment variable" << std::endl;
+  switch (environment_Activity->environmentKind){
+    case CUPTI_ACTIVITY_ENVIRONMENT_SPEED: {
+
+    };
+    case CUPTI_ACTIVITY_ENVIRONMENT_POWER: {
+      auto powerAct = environment_Activity;
+        pt.put("activityType", std::to_string(CUPTI_ACTIVITY_ENVIRONMENT_POWER));
+        pt.put("power", std::to_string(powerAct->data.power.power));
+        pt.put("deviceId", std::to_string(powerAct->deviceId));
+        pt.put("timestamp", std::to_string(powerAct->timestamp));
+
+        std::ostringstream buf;
+        write_json(buf, pt, false);  
+        logging::atomic_out(buf.str());
+    };
+    default: {
+      // profiler::err() << "Environment data type not supported " << environment_Activity->environmentKind << std::endl;
+    }
+  }
+}
+
 void Timer::activity_add_annotations(CUpti_Activity * activity_data){
   switch(activity_data->kind) {
     case CUPTI_ACTIVITY_KIND_KERNEL: {
@@ -221,8 +260,11 @@ void Timer::activity_add_annotations(CUpti_Activity * activity_data){
       auto activity_cast = (CUpti_ActivityMemcpy *)activity_data;
       addMemcpyActivityAnnotations(activity_cast);
     } 
+    case CUPTI_ACTIVITY_KIND_ENVIRONMENT: {
+      auto activity_cast = (CUpti_ActivityEnvironment *)activity_data;
+      addEnvironmentActivityAnnotations(activity_cast);
+    }
     default: {
-      // assert(0 && "This shouldn't be happening...");
       auto activity_cast = activity_data;
     }
   };

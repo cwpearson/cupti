@@ -37,7 +37,7 @@ private:
   const char *memcpy_type_to_string(uint8_t kind);
   void addKernelActivityAnnotations(CUpti_ActivityKernel3 *kernel_Activity);
   void addMemcpyActivityAnnotations(CUpti_ActivityMemcpy* memcpy_Activity);
-
+  void addEnvironmentActivityAnnotations(CUpti_ActivityEnvironment* environment_Activity);
 };
 
 class tidStats {

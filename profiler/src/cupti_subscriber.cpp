@@ -59,6 +59,7 @@ void CuptiSubscriber::init() {
                               &attrValueSize, &attrValuePoolSize);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_KERNEL);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_ENVIRONMENT);
     cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
                                    cuptiActivityBufferCompleted);
     profiler::err() << "INFO: done registering activity callbacks" << std::endl;
