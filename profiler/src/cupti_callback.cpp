@@ -892,7 +892,7 @@ void CUPTIAPI cuptiCallbackFunction(void *userdata, CUpti_CallbackDomain domain,
     return;
   }
 
-  profiler::timer().callback_add_annotations(cbInfo, cbid);
+  // profiler::timer().callback_add_annotations(cbInfo, cbid);
 
   if ((domain == CUPTI_CB_DOMAIN_DRIVER_API) ||
       (domain == CUPTI_CB_DOMAIN_RUNTIME_API)) {

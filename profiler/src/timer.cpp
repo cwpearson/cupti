@@ -32,7 +32,7 @@ void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo,  CUpti_Ca
 
   std::string functionName(cbInfo->functionName, strlen(cbInfo->functionName));
   std::string symbolName(cbInfo->symbolName, strlen(cbInfo->symbolName));
-  
+
   if (Profiler::instance().is_zipkin_enabled()){
     span_t current_span;
     current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
