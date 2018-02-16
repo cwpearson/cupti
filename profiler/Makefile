@@ -56,7 +56,7 @@ LIB += -ldl \
        -L$(CUDA_ROOT)/lib64 -lcuda -lcudart -lcudadevrt -lcudnn -L/usr/lib -lnccl \
 	     -lopentracing -lzipkin -lzipkin_opentracing
 
-CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC
+CXXFLAGS += -std=c++11 -Wall -Wextra -Wshadow -Wpedantic -fPIC -pthread
 NVCCFLAGS += -std=c++11 -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC
 
 ifeq ($(BUILD_TYPE),Release)

@@ -5,7 +5,7 @@
 #include "cupti_activity.hpp"
 #include "cupti_callback.hpp"
 #include "cupti_subscriber.hpp"
-#include "kernel_time.hpp"
+#include "timer.hpp"
 #include "profiler.hpp"
 
 typedef void (*BufReqFun)(uint8_t **buffer, size_t *size,
@@ -42,6 +42,11 @@ void CuptiSubscriber::init() {
     launch_tracer_options.collector_port = Profiler::instance().zipkin_port();
     launch_tracer = makeZipkinOtTracer(launch_tracer_options);
 
+    overhead_tracer_options.service_name = "Profiler Overhead Tracer";
+    overhead_tracer_options.collector_host = Profiler::instance().zipkin_host();
+    overhead_tracer_options.collector_port = Profiler::instance().zipkin_port();
+    overhead_tracer = makeZipkinOtTracer(overhead_tracer_options);
+
     parent_span = tracer->StartSpan("Parent");
   }
 
@@ -54,6 +59,14 @@ void CuptiSubscriber::init() {
                               &attrValueSize, &attrValuePoolSize);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_KERNEL);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_ENVIRONMENT);
+
+    //Profiles overhead caused by CUPTI itself
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD);
+
+    //Global memory access(?)
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS);
+    
     cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
                                    cuptiActivityBufferCompleted);
     profiler::err() << "INFO: done registering activity callbacks" << std::endl;

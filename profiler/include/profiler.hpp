@@ -2,6 +2,8 @@
 #define PROFILER_HPP
 
 #include <ostream>
+#include <atomic>
+#include <thread>
 
 #include "cprof/allocations.hpp"
 #include "cprof/model/driver.hpp"
@@ -10,12 +12,14 @@
 #include "util/logging.hpp"
 
 #include "cupti_subscriber.hpp"
+#include "timer.hpp"
+
 
 namespace profiler {
 cprof::model::Driver &driver();
 cprof::model::Hardware &hardware();
 cprof::Allocations &allocations();
-KernelCallTime &kernelCallTime();
+Timer &timer();
 
 std::ostream &out();
 void atomic_out(const std::string &s);
@@ -26,7 +30,7 @@ class Profiler {
   friend cprof::model::Driver &profiler::driver();
   friend cprof::model::Hardware &profiler::hardware();
   friend cprof::Allocations &profiler::allocations();
-  friend KernelCallTime &profiler::kernelCallTime();
+  friend Timer &profiler::timer();
 
 public:
   ~Profiler();
@@ -50,7 +54,10 @@ public:
   std::shared_ptr<opentracing::Tracer> rootTracer_;
   std::shared_ptr<opentracing::Tracer> memcpyTracer_;
   std::shared_ptr<opentracing::Tracer> launchTracer_;
+  std::shared_ptr<opentracing::Tracer> overheadTracer_;
+
   span_t rootSpan_;
+  
 
 private:
   Profiler();
@@ -58,7 +65,7 @@ private:
   cprof::model::Hardware hardware_;
   cprof::model::Driver driver_;
   cprof::Allocations allocations_;
-  KernelCallTime kernelCallTime_;
+  Timer timer_;
 
   bool enableZipkin_;
   std::string zipkinHost_;
@@ -67,14 +74,12 @@ private:
   bool isInitialized_;
 };
 
-/* \brief Runs Profiler::init() at load time
- */
 class ProfilerInitializer {
-public:
-  ProfilerInitializer() {
-    Profiler &p = Profiler::instance();
-    p.init();
-  }
-};
+    public:
+      ProfilerInitializer() {
+        Profiler &p = Profiler::instance();
+        p.init();
+      }
+  };
 
 #endif

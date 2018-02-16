@@ -12,8 +12,8 @@ namespace profiler {
 cprof::model::Driver &driver() { return Profiler::instance().driver_; }
 cprof::model::Hardware &hardware() { return Profiler::instance().hardware_; }
 cprof::Allocations &allocations() { return Profiler::instance().allocations_; }
-KernelCallTime &kernelCallTime() {
-  return Profiler::instance().kernelCallTime_;
+Timer &timer() {
+  return Profiler::instance().timer_;
 }
 
 std::ostream &out() { return Profiler::instance().out(); }
@@ -27,8 +27,16 @@ std::ostream &err() { return Profiler::instance().err(); }
  */
 Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {}
 
+
 Profiler::~Profiler() {
   logging::err() << "Profiler dtor\n";
+
+   // if (enableActivityAPI_) {
+  profiler::err() << "INFO: CuptiSubscriber cleaning up activity API" << std::endl;
+  cuptiActivityFlushAll(0);
+  profiler::err() << "INFO: done cuptiActivityFlushAll" << std::endl;
+// }
+
   delete manager_;
 
   if (enableZipkin_) {
@@ -41,6 +49,8 @@ Profiler::~Profiler() {
 
   isInitialized_ = false;
   logging::err() << "Profiler dtor almost done...\n";
+
+
 }
 
 std::ostream &Profiler::err() { return logging::err(); }
@@ -120,6 +130,12 @@ void Profiler::init() {
     launchTracerOpts.collector_host = Profiler::instance().zipkin_host();
     launchTracerOpts.collector_port = Profiler::instance().zipkin_port();
     launchTracer_ = makeZipkinOtTracer(launchTracerOpts);
+
+    zipkin::ZipkinOtTracerOptions overheadTracerOpts;
+    overheadTracerOpts.service_name = "Profiler Overhead Tracer";
+    overheadTracerOpts.collector_host = Profiler::instance().zipkin_host();
+    overheadTracerOpts.collector_port = Profiler::instance().zipkin_port();
+    overheadTracer_ = makeZipkinOtTracer(overheadTracerOpts);
 
     rootSpan_ = rootTracer_->StartSpan("Root");
   }
