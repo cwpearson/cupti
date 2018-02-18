@@ -276,6 +276,97 @@ void Timer::addGlobalAccessActivityAnnotations(CUpti_ActivityGlobalAccess2* over
   logging::atomic_out(buf.str());
 }
 
+/**
+ * 
+ * */
+void Timer::addCudaEventActivityAnnotations(CUpti_ActivityCudaEvent * event_Activity){
+  /**
+   * CUpti_ActivityCudaEvent
+    uint32_t  contextId
+    uint32_t  correlationId
+    uint32_t  eventId
+    CUpti_ActivityKind kind
+    uint32_t  pad
+    uint32_t  streamId
+   * Read more at: http://docs.nvidia.com/cuda/cupti/index.html#ixzz57QBm8lWC 
+   * */
+ 
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
+  pt.put("contextId", std::to_string(event_Activity->contextId));  
+  pt.put("correlationId", std::to_string(event_Activity->correlationId));
+  pt.put("eventId", std::to_string(event_Activity->correlationId));
+  pt.put("pad", std::to_string(event_Activity->pad));
+  pt.put("streamId", std::to_string(event_Activity->streamId));
+  
+  std::ostringstream buf;
+  write_json(buf, pt, false);  
+  logging::atomic_out(buf.str());
+}
+
+void Timer::addCudaDriverAndRuntimeAnnotations(CUpti_ActivityAPI * activity_Activity){
+  /**
+   * CUpti_ActivityAPI
+   *CUpti_CallbackId cbid
+    uint32_t  correlationId
+    uint64_t  end
+    CUpti_ActivityKind kind
+    uint32_t  processId
+    uint32_t  returnValue
+    uint64_t  start
+    uint32_t  threadId
+
+
+    Read more at: http://docs.nvidia.com/cuda/cupti/index.html#ixzz57RpPGxZA 
+   * */
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
+  pt.put("correlationId", std::to_string(activity_Activity->correlationId));
+  pt.put("end", std::to_string(activity_Activity->end));
+  pt.put("processId", std::to_string(activity_Activity->processId));
+  pt.put("start", std::to_string(activity_Activity->start));
+  pt.put("threadId", std::to_string(activity_Activity->threadId));
+
+  std::ostringstream buf;
+  write_json(buf, pt, false);  
+  logging::atomic_out(buf.str());
+}
+
+void Timer::addCudaActivitySynchronizationAnnotations(CUpti_ActivitySynchronization * synchronization_Activity){
+  /**
+   * CUpti_ActivitySynchronization
+    uint32_t  contextId
+    uint32_t  correlationId
+    uint32_t  cudaEventId
+    uint64_t  end
+    CUpti_ActivityKind kind
+    uint64_t  start
+    uint32_t  streamId
+    CUpti_ActivitySynchronizationType type
+    Read more at: http://docs.nvidia.com/cuda/cupti/index.html#ixzz57RnfhfUV 
+   * */
+
+  using boost::property_tree::ptree;
+  using boost::property_tree::write_json;
+  
+  ptree pt;
+  pt.put("contextId", std::to_string(synchronization_Activity->contextId));  
+  pt.put("correlationId", std::to_string(synchronization_Activity->correlationId));
+  pt.put("cudaEventId", std::to_string(synchronization_Activity->cudaEventId));  
+  pt.put("end", std::to_string(synchronization_Activity->end));  
+  pt.put("start", std::to_string(synchronization_Activity->start));  
+  pt.put("streamId", std::to_string(synchronization_Activity->streamId));  
+  pt.put("streamId", std::to_string(synchronization_Activity->streamId));
+
+  std::ostringstream buf;
+  write_json(buf, pt, false);  
+  logging::atomic_out(buf.str());
+}
+
 void Timer::activity_add_annotations(CUpti_Activity * activity_data){
   switch(activity_data->kind) {
     case CUPTI_ACTIVITY_KIND_KERNEL: {
@@ -298,6 +389,22 @@ void Timer::activity_add_annotations(CUpti_Activity * activity_data){
     case CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS: {
       auto activity_cast = (CUpti_ActivityGlobalAccess2 *)activity_data;
       addGlobalAccessActivityAnnotations(activity_cast);
+    }
+    case CUPTI_ACTIVITY_KIND_CUDA_EVENT: {
+      auto activity_cast = (CUpti_ActivityCudaEvent *)activity_data;
+      addCudaEventActivityAnnotations(activity_cast);
+    }
+    case CUPTI_ACTIVITY_KIND_DRIVER: {
+      auto activity_cast = (CUpti_ActivityAPI *)activity_data;
+      addCudaDriverAndRuntimeAnnotations(activity_cast);
+    }
+    case CUPTI_ACTIVITY_KIND_RUNTIME: {
+      auto activity_cast = (CUpti_ActivityAPI *)activity_data;
+      addCudaDriverAndRuntimeAnnotations(activity_cast);
+    }
+    case CUPTI_ACTIVITY_KIND_SYNCHRONIZATION: {
+      auto activity_cast = (CUpti_ActivitySynchronization *)activity_data;
+      addCudaActivitySynchronizationAnnotations(activity_cast);
     }
     default: {
       auto activity_cast = activity_data;

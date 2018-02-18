@@ -40,6 +40,10 @@ private:
   void addEnvironmentActivityAnnotations(CUpti_ActivityEnvironment* environment_Activity);
   void addOverheadActivityAnnotations(CUpti_ActivityOverhead* overhead_Activity);
   void addGlobalAccessActivityAnnotations(CUpti_ActivityGlobalAccess2 * overhead_GlobalAccess);
+  void addCudaEventActivityAnnotations(CUpti_ActivityCudaEvent * event_Activity);
+  void addCudaDriverAndRuntimeAnnotations(CUpti_ActivityAPI * activity_Activity);
+  void addCudaActivitySynchronizationAnnotations(CUpti_ActivitySynchronization * synchronization_Activity);
+
 };
 
 class tidStats {

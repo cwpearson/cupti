@@ -60,6 +60,10 @@ void CuptiSubscriber::init() {
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_KERNEL);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_ENVIRONMENT);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CUDA_EVENT);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION);
 
     //Profiles overhead caused by CUPTI itself
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD);
