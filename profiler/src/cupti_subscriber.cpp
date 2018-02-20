@@ -50,6 +50,7 @@ void CuptiSubscriber::init() {
     parent_span = tracer->StartSpan("Parent");
   }
 
+  //if (false) {
   if (enableActivityAPI_) {
     profiler::err() << "INFO: CuptiSubscriber enabling activity API"
                     << std::endl;
@@ -64,12 +65,8 @@ void CuptiSubscriber::init() {
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME);
     cuptiActivityEnable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION);
-
-    //Profiles overhead caused by CUPTI itself
-    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD);
-
-    //Global memory access(?)
-    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS);
+    cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD); // cupti's overhead
+    //cuptiActivityEnable(CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS); // global mem access?
     
     cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
                                    cuptiActivityBufferCompleted);

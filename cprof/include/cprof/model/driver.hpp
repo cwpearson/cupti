@@ -121,9 +121,10 @@ public:
 
   int device(const ncclComm_t c) {
     std::stringstream ss;
-    ss << "DEBU: looking for nccl comm " << c << std::endl;
+    const int dev = ncclCommToDevice_.at(c);
+    ss << "DEBU: (tid= " << get_thread_id() << ") found nccl comm" << c << "on device " << dev << std::endl;
     logging::atomic_err(ss.str());
-    return ncclCommToDevice_.at(c);
+    return dev;
   }
 
   mapped_type &this_thread() { return threadStates_[get_thread_id()]; }

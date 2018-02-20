@@ -352,7 +352,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
     assert(rAlloc);
 
     profiler::err() << "WARN: new allocId=" << uintptr_t(rAlloc.id())
-                    << " for result=" << uintptr_t(result) << std::endl;
+                    << " for cublasSasum result=" << uintptr_t(result) << std::endl;
   }
   assert(rAlloc && "If there is no allocation, we need to make one");
   auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
