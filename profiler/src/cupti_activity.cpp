@@ -49,15 +49,19 @@ void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
                                            size_t validSize) {
 
   span_t activity_span;
-  activity_span =  Profiler::instance().manager_->overhead_tracer->StartSpan("Activity API", 
-  {
-      FollowsFrom(&Profiler::instance().manager_->parent_span->context())
-  });
+  if (Profiler::instance().is_zipkin_enabled()){
+    activity_span =  Profiler::instance().manager_->overhead_tracer->StartSpan("Activity API", 
+    {
+        FollowsFrom(&Profiler::instance().manager_->parent_span->context())
+    });
+  }
   // uint8_t *localBuffer;  
   // localBuffer = (uint8_t *)malloc(BUFFER_SIZE * 1024 + ALIGN_SIZE);
   // ALIGN_BUFFER(localBuffer, ALIGN_SIZE);
   // memcpy(localBuffer, buffer, validSize);
   // threadFunc()
   threadFunc(buffer, validSize);
-  activity_span->Finish();    
+  if (Profiler::instance().is_zipkin_enabled()){
+    activity_span->Finish();        
+  }
 }
