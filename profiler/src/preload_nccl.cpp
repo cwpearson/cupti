@@ -1,12 +1,14 @@
 #include <cassert>
 #include <dlfcn.h>
 #include <mutex>
+#include <sstream>
 
 #include <nccl.h>
 
 #include "cprof/allocations.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/thread.hpp"
+#include "util/logging.hpp"
 
 #include "profiler.hpp"
 
@@ -28,6 +30,7 @@ static size_t ncclSizeOf(const ncclDataType_t t) noexcept {
     return sizeof(int64_t);
   default:
     profiler::err() << "ERROR: Unsupported ncclDataType_t" << std::endl;
+    assert(0);
   }
 }
 
@@ -63,8 +66,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
   }
   if (unsigned(commSize) == dstBuffVals.size()) {
 
-    auto api = std::make_shared<ApiRecord>("ncclBcast",
-                                           profiler::driver().device(comm));
+    auto api = std::make_shared<ApiRecord>("ncclBcast", dev);
     api->add_input(rootBuffVal);
 
     for (auto &v : dstBuffVals) {
@@ -128,7 +130,7 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
 
 #define NCCL_DLSYM_BOILERPLATE(name)                                           \
   static name##Func real_##name = nullptr;                                     \
-  profiler::err() << "LD_PRELOAD intercept: " #name << std::endl;              \
+  profiler::err() << "LD_PRELOAD intercept (tid= " << cprof::model::get_thread_id() << "): " <<  #name << std::endl;              \
   if (real_##name == nullptr) {                                                \
     {                                                                          \
       void *h = dlopen("libnccl.so", RTLD_LAZY);                               \
@@ -182,14 +184,27 @@ extern "C" ncclResult_t ncclBcast(void *buff, int count,
                                   ncclComm_t comm, cudaStream_t stream) {
   NCCL_DLSYM_BOILERPLATE(ncclBcast);
 
+  std::stringstream ss1, ss2, ss3, ss4;
+  const auto tid = cprof::model::get_thread_id();
+  ss1 << "DEBU: (tid= " << tid << ") bcast register\n";
+  ss2 << "DEBU: (tid= " << tid << ") bcast register done\n";
+  ss3 << "DEBU: (tid= " << tid << ") bcast call\n";
+  ss4 << "DEBU: (tid= " << tid << ") bcast call done\n";
+  
+
+
   profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during ncclBcast" << std::endl;
 
   profiler::driver().this_thread().pause_cupti_callbacks();
+  logging::atomic_err(ss1.str());
   register_ncclBcast(uintptr_t(buff), count, datatype, root, comm);
+  logging::atomic_err(ss2.str());
 
+  logging::atomic_err(ss3.str());
   const ncclResult_t ret =
       real_ncclBcast(buff, count, datatype, root, comm, stream);
+  logging::atomic_err(ss4.str());
   profiler::driver().this_thread().resume_cupti_callbacks();
   return ret;
 }
