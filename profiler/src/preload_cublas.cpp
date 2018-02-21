@@ -16,6 +16,14 @@ using cprof::model::Memory;
 using profiler::driver;
 using profiler::hardware;
 
+template <typename FN, typename... Args>
+cublasStatus_t call_and_set_time(ApiRecordRef api, FN function, Args... args) {
+  const auto start = cprof::now();
+  const cublasStatus_t ret = function(args...);
+  api->set_time(start, cprof::now());
+  return ret;
+}
+
 #define CUBLAS_DLSYM_BOILERPLATE(name)                                         \
   static name##Func real_##name = nullptr;                                     \
   profiler::err() << "LD_PRELOAD intercept: " #name << std::endl;              \
@@ -95,15 +103,16 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasDgemm call"
                   << std::endl;
 
+  const cublasStatus_t ret =
+      call_and_set_time(api, real_cublasDgemm, handle, transa, transb, m, n, k,
+                        alpha, A, lda, B, ldb, beta, C, ldc);
+  driver().this_thread().resume_cupti_callbacks();
+
   api->add_output(newVal);
   api->add_input(aVal);
   api->add_input(bVal);
   api->add_input(cVal);
   profiler::atomic_out(api->json());
-
-  const cublasStatus_t ret = real_cublasDgemm(
-      handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-  driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -136,20 +145,18 @@ cublasSaxpy(cublasHandle_t handle, int n,
   outVal.add_depends_on(xVal, api->id());
   outVal.add_depends_on(yVal, api->id());
 
-  // track api
+  // Do the actual call
+  profiler::err() << "WARN: disabling CUPTI callbacks during cublasSaxpy call"
+                  << std::endl;
+  driver().this_thread().pause_cupti_callbacks();
+  const cublasStatus_t ret = call_and_set_time(api, real_cublasSaxpy, handle, n,
+                                               alpha, x, incx, y, incy);
+  driver().this_thread().resume_cupti_callbacks();
 
   api->add_output(outVal);
   api->add_input(xVal);
   api->add_input(yVal);
   profiler::atomic_out(api->json());
-
-  // Do the actual call
-  profiler::err() << "WARN: disabling CUPTI callbacks during cublasSaxpy call"
-                  << std::endl;
-  driver().this_thread().pause_cupti_callbacks();
-  const cublasStatus_t ret =
-      real_cublasSaxpy(handle, n, alpha, x, incx, y, incy);
-  driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -194,8 +201,9 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasSgemm "
                      "call"
                   << std::endl;
-  const cublasStatus_t ret = real_cublasSgemm(
-      handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+  const cublasStatus_t ret =
+      call_and_set_time(api, real_cublasSgemm, handle, transa, transb, m, n, k,
+                        alpha, A, lda, B, ldb, beta, C, ldc);
   driver().this_thread().resume_cupti_callbacks();
 
   api->add_output(newVal);
@@ -247,8 +255,9 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasDgemv "
                      "call"
                   << std::endl;
-  const cublasStatus_t ret = real_cublasDgemv(handle, trans, m, n, alpha, A,
-                                              lda, x, incx, beta, y, incy);
+  const cublasStatus_t ret =
+      call_and_set_time(api, real_cublasDgemv, handle, trans, m, n, alpha, A,
+                        lda, x, incx, beta, y, incy);
   driver().this_thread().resume_cupti_callbacks();
 
   api->add_output(newVal);
@@ -302,8 +311,9 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasSgemv "
                      "call"
                   << std::endl;
-  const cublasStatus_t ret = real_cublasSgemv(handle, trans, m, n, alpha, A,
-                                              lda, x, incx, beta, y, incy);
+  const cublasStatus_t ret =
+      call_and_set_time(api, real_cublasSgemv, handle, trans, m, n, alpha, A,
+                        lda, x, incx, beta, y, incy);
   driver().this_thread().resume_cupti_callbacks();
 
   api->add_output(newVal);
@@ -352,7 +362,8 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
     assert(rAlloc);
 
     profiler::err() << "WARN: new allocId=" << uintptr_t(rAlloc.id())
-                    << " for cublasSasum result=" << uintptr_t(result) << std::endl;
+                    << " for cublasSasum result=" << uintptr_t(result)
+                    << std::endl;
   }
   assert(rAlloc && "If there is no allocation, we need to make one");
   auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
@@ -362,16 +373,18 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
       rAlloc.new_value((uintptr_t)result, sizeof(float), true /*initialized*/);
   rVal.add_depends_on(xVal, api->id());
 
-  api->add_output(rVal);
-  api->add_input(xVal);
-  profiler::atomic_out(api->json());
-
   driver().this_thread().pause_cupti_callbacks();
   profiler::err() << "WARN: tid=" << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during cublasSasum call"
                   << std::endl;
-  const cublasStatus_t ret = real_cublasSasum(handle, n, x, incx, result);
+  const cublasStatus_t ret =
+      call_and_set_time(api, real_cublasSasum, handle, n, x, incx, result);
   driver().this_thread().resume_cupti_callbacks();
+
+  api->add_output(rVal);
+  api->add_input(xVal);
+  profiler::atomic_out(api->json());
+
   return ret;
 }
 
@@ -398,18 +411,17 @@ cublasSscal(cublasHandle_t handle, int n,
   auto outVal = allocations.duplicate_value(xVal, true);
   outVal.add_depends_on(xVal, api->id());
 
-  // track api
-
-  api->add_output(outVal);
-  api->add_input(xVal);
-  profiler::atomic_out(api->json());
-
   // Do the actual call
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasSscal call"
                   << std::endl;
   driver().this_thread().pause_cupti_callbacks();
-  const cublasStatus_t ret = real_cublasSscal(handle, n, alpha, x, incx);
+  const cublasStatus_t ret =
+      call_and_set_time(api, real_cublasSscal, handle, n, alpha, x, incx);
   driver().this_thread().resume_cupti_callbacks();
+
+  profiler::atomic_out(api->json());
+  api->add_output(outVal);
+  api->add_input(xVal);
 
   return ret;
 }
@@ -475,13 +487,14 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   api->add_output(rVal);
   api->add_input(xVal);
   api->add_input(yVal);
-  profiler::atomic_out(api->json());
 
   driver().this_thread().pause_cupti_callbacks();
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasSdot call"
                   << std::endl;
-  const cublasStatus_t ret =
-      real_cublasSdot(handle, n, x, incx, y, incy, result);
+
+  auto ret = call_and_set_time(api, real_cublasSdot, handle, n, x, incx, y,
+                               incy, result);
   driver().this_thread().resume_cupti_callbacks();
+  profiler::atomic_out(api->json());
   return ret;
 }
