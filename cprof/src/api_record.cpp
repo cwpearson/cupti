@@ -28,6 +28,12 @@ void ApiRecord::add_kv(const std::string &k, const size_t &v) {
   add_kv(k, std::to_string(v));
 }
 
+void ApiRecord::set_time(const cprof::time_point_t &start,
+                         const cprof::time_point_t &end) {
+  start_ = start;
+  end_ = end;
+}
+
 static ptree to_json(const std::vector<Value> &v) {
   ptree array;
   for (const auto &e : v) {
@@ -39,6 +45,9 @@ static ptree to_json(const std::vector<Value> &v) {
 }
 
 std::string ApiRecord::json() const {
+
+  using cprof::nanos;
+
   ptree pt;
   pt.put("api.id", id());
   pt.put("api.name", apiName_);

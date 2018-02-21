@@ -56,6 +56,8 @@ public:
   void add_output(const cprof::Value &v);
   void add_kv(const std::string &key, const std::string &val);
   void add_kv(const std::string &key, const size_t &val);
+  void set_time(const cprof::time_point_t &start,
+                const cprof::time_point_t &end);
 
   int device() const { return device_; }
   id_type id() const { return id_; }
@@ -68,8 +70,8 @@ public:
   CUpti_CallbackId cbid() const { return cbid_; }
   const CUpti_CallbackData *cb_info() const { return cbInfo_; }
 
-  time_point_t start_;
-  time_point_t end_;
+  cprof::time_point_t start_;
+  cprof::time_point_t end_;
 };
 
 typedef std::shared_ptr<ApiRecord> ApiRecordRef;
