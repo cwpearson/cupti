@@ -4,7 +4,7 @@
 |--------|---------|
 | coming soon... | [![Build Status](https://travis-ci.org/cwpearson/cupti.svg?branch=develop)](https://travis-ci.org/cwpearson/cupti)
 
-This work is supposed by IBM through the Center for Cognitive Computing and Systems Research (C3SR) at the University of Illinois.
+This work is supported by IBM through the Center for Cognitive Computing and Systems Research (C3SR) at the University of Illinois.
 
 ## Setup
 

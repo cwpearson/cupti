@@ -48,6 +48,7 @@ std::string ApiRecord::json() const {
   pt.add_child("api.outputs", to_json(outputs_));
   pt.put("api.start", nanos(start_));
   pt.put("api.end", nanos(end_));
+  pt.put("api.correlation_id", correlationId_);
   for (const auto &p : kv_) {
     const std::string &key = p.first;
     const std::string &val = p.second;

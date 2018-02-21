@@ -1,0 +1,11 @@
+share
+lib
+etc
+include
+bin
+opentracing*
+zipkin*
+libre*
+CMake*
+Testing
+*.tcl

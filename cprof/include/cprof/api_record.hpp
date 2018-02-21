@@ -22,6 +22,9 @@ private:
 
   CUpti_CallbackDomain domain_;
   CUpti_CallbackId cbid_;
+  int64_t correlationId_;
+
+  // This is only valid during the callback in question
   const CUpti_CallbackData *cbInfo_;
 
   static std::atomic<id_type> next_id_;
@@ -31,17 +34,19 @@ private:
 public:
   ApiRecord(const std::string &apiName, const int device,
             const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
-            const CUpti_CallbackData *cbInfo)
+            const int64_t correlationId, const CUpti_CallbackData *cbInfo)
       : apiName_(apiName), device_(device), domain_(domain), cbid_(cbid),
-        cbInfo_(cbInfo), id_(new_id()), start_(std::chrono::nanoseconds(0)),
-        end_(std::chrono::nanoseconds(0)) {}
+        correlationId_(correlationId), cbInfo_(cbInfo), id_(new_id()),
+        start_(std::chrono::nanoseconds(0)), end_(std::chrono::nanoseconds(0)) {
+  }
   ApiRecord(const int device, const CUpti_CallbackDomain domain,
             const CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo)
-      : ApiRecord(cbInfo->functionName, device, domain, cbid, cbInfo) {}
+      : ApiRecord(cbInfo->functionName, device, domain, cbid,
+                  cbInfo->correlationId, cbInfo) {}
   // Not all ApiRecords come from CUPTI
   ApiRecord(const std::string &apiName, const std::string &kernelName,
             const int device)
-      : ApiRecord(apiName, device, CUPTI_CB_DOMAIN_INVALID, -1, nullptr) {
+      : ApiRecord(apiName, device, CUPTI_CB_DOMAIN_INVALID, -1, -1, nullptr) {
     kernelName_ = kernelName;
   }
   ApiRecord(const std::string &name, const int device)
