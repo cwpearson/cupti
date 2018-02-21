@@ -22,12 +22,6 @@ parser.add_argument(
     u'-n', u'--num_lines', type=int, default=0, help=u'the number of lines from the profile to read')
 args = parser.parse_args()
 
-# from pyhwcomm.machines.minsky import Minsky
-
-ALLOCS = {}
-VALUES = {}
-APIS = {}
-
 
 print("reading profile...")
 profile = Profile(args.profile_path, num_lines=args.num_lines)
