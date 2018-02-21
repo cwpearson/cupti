@@ -41,20 +41,15 @@ static void register_ncclBcast(uintptr_t buff, int count,
   static Value rootBuffVal = Value();
   static std::vector<Value> dstBuffVals;
   const int dev = profiler::driver().device(comm);
-  const auto &AS = profiler::hardware().address_space(dev);
+  const auto &dstAS = profiler::hardware().address_space(dev);
   const size_t numBytes = count * ncclSizeOf(datatype);
 
   // Only one thread should proceed at a time from here
   std::lock_guard<std::mutex> guard(access);
 
-  // If we're the root device, we know the location of the buffer that
-  // everyone depends on
-  if (dev == root) {
-    rootBuffVal = profiler::allocations().find_value(buff, numBytes, AS);
-  }
-
-  auto dstBuffAlloc = profiler::allocations().find(buff, numBytes, AS);
+  auto dstBuffAlloc = profiler::allocations().find(buff, numBytes, dstAS);
   const auto &dstBuffVal = dstBuffAlloc.new_value(buff, numBytes, true);
+  assert(dstBuffVal);
   dstBuffVals.push_back(dstBuffVal);
 
   // If the root has been found, we have enough info to add some deps
@@ -67,6 +62,10 @@ static void register_ncclBcast(uintptr_t buff, int count,
   if (unsigned(commSize) == dstBuffVals.size()) {
 
     auto api = std::make_shared<ApiRecord>("ncclBcast", dev);
+
+    // Find the root's buffer value and add it
+    const auto &rootDevAS = profiler::hardware().address_space(root);
+    rootBuffVal = profiler::allocations().find_value(buff, numBytes, rootDevAS);
     api->add_input(rootBuffVal);
 
     for (auto &v : dstBuffVals) {
