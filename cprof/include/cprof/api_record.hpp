@@ -37,8 +37,8 @@ public:
             const int64_t correlationId, const CUpti_CallbackData *cbInfo)
       : apiName_(apiName), device_(device), domain_(domain), cbid_(cbid),
         correlationId_(correlationId), cbInfo_(cbInfo), id_(new_id()),
-        start_(std::chrono::nanoseconds(0)), end_(std::chrono::nanoseconds(0)) {
-  }
+        wallStart_(std::chrono::nanoseconds(0)),
+        wallEnd_(std::chrono::nanoseconds(0)) {}
   ApiRecord(const int device, const CUpti_CallbackDomain domain,
             const CUpti_CallbackId cbid, const CUpti_CallbackData *cbInfo)
       : ApiRecord(cbInfo->functionName, device, domain, cbid,
@@ -56,8 +56,8 @@ public:
   void add_output(const cprof::Value &v);
   void add_kv(const std::string &key, const std::string &val);
   void add_kv(const std::string &key, const size_t &val);
-  void set_time(const cprof::time_point_t &start,
-                const cprof::time_point_t &end);
+  void set_wall_time(const cprof::time_point_t &start,
+                     const cprof::time_point_t &end);
 
   int device() const { return device_; }
   id_type id() const { return id_; }
@@ -70,8 +70,9 @@ public:
   CUpti_CallbackId cbid() const { return cbid_; }
   const CUpti_CallbackData *cb_info() const { return cbInfo_; }
 
-  cprof::time_point_t start_;
-  cprof::time_point_t end_;
+  /// Wall time of start and end of API
+  cprof::time_point_t wallStart_;
+  cprof::time_point_t wallEnd_;
 };
 
 typedef std::shared_ptr<ApiRecord> ApiRecordRef;

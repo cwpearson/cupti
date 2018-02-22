@@ -13,5 +13,6 @@ inline uint64_t nanos(const time_point_t &t) {
 }
 
 inline time_point_t now() { return std::chrono::high_resolution_clock::now(); }
+
 } // namespace cprof
 #endif

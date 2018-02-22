@@ -21,6 +21,14 @@
   }                                                                            \
   assert(real_##name && "Will the real " #name " please stand up?");
 
+template <typename FN, typename... Args>
+cudnnStatus_t call_and_set_time(ApiRecordRef api, FN function, Args... args) {
+  const auto start = cprof::now();
+  const cudnnStatus_t ret = function(args...);
+  api->set_wall_time(start, cprof::now());
+  return ret;
+}
+
 typedef cudnnStatus_t (*cudnnCreateFunc)(cudnnHandle_t *handle);
 extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
   CUDNN_DLSYM_BOILERPLATE(cudnnCreate);
@@ -81,17 +89,18 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   auto yVal = yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true);
   yVal.add_depends_on(xVal, api->id());
 
-  api->add_output(yVal);
-  api->add_input(xVal);
-  profiler::atomic_out(api->json());
-
   profiler::err()
       << "WARN: disabling CUPTI callbacks during cudnnActivationForward call"
       << std::endl;
   profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret = real_cudnnActivationForward(
-      handle, activationDesc, alpha, xDesc, x, beta, yDesc, y);
+  const cudnnStatus_t ret =
+      call_and_set_time(api, real_cudnnActivationForward, handle,
+                        activationDesc, alpha, xDesc, x, beta, yDesc, y);
   profiler::driver().this_thread().resume_cupti_callbacks();
+
+  api->add_output(yVal);
+  api->add_input(xVal);
+  profiler::atomic_out(api->json());
 
   return ret;
 }
@@ -125,19 +134,20 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   dstVal.add_depends_on(aVal, api->id());
   dstVal.add_depends_on(cVal, api->id());
 
-  api->add_output(dstVal);
-  api->add_input(aVal);
-  api->add_input(cVal);
-  profiler::atomic_out(api->json());
-
   profiler::err() << "WARN: thread " << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during cudnnAddTensor call"
                   << std::endl;
 
   profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret =
-      real_cudnnAddTensor(handle, alpha, aDesc, A, beta, cDesc, C);
+  const cudnnStatus_t ret = call_and_set_time(api, real_cudnnAddTensor, handle,
+                                              alpha, aDesc, A, beta, cDesc, C);
   profiler::driver().this_thread().resume_cupti_callbacks();
+
+  api->add_output(dstVal);
+  api->add_input(aVal);
+  api->add_input(cVal);
+  profiler::atomic_out(api->json());
+
   return ret;
 }
 
@@ -180,21 +190,21 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   dxVal.add_depends_on(yVal, api->id());
   dxVal.add_depends_on(dyVal, api->id());
 
+  profiler::err()
+      << "WARN: disabling CUPTI callbacks during cudnnActivationBackward call"
+      << std::endl;
+  profiler::driver().this_thread().pause_cupti_callbacks();
+  const cudnnStatus_t ret = call_and_set_time(
+      api, real_cudnnActivationBackward, handle, activationDesc, alpha, yDesc,
+      y, dyDesc, dy, xDesc, x, beta, dxDesc, dx);
+  profiler::driver().this_thread().resume_cupti_callbacks();
+
   // FIXME: also depends on alpha, beta
   api->add_output(dxVal);
   api->add_input(xVal);
   api->add_input(yVal);
   api->add_input(dyVal);
   profiler::atomic_out(api->json());
-
-  profiler::err()
-      << "WARN: disabling CUPTI callbacks during cudnnActivationBackward call"
-      << std::endl;
-  profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret =
-      real_cudnnActivationBackward(handle, activationDesc, alpha, yDesc, y,
-                                   dyDesc, dy, xDesc, x, beta, dxDesc, dx);
-  profiler::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -237,7 +247,16 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   outVal.add_depends_on(dyVal, api->id());
   outVal.add_depends_on(workSpaceVal, api->id());
   outVal.add_depends_on(dxVal, api->id());
-  // track api
+
+  // Do the actual call
+  profiler::err() << "WARN: disabling CUPTI callbacks during "
+                     "cudnnConvolutionBackwardData call"
+                  << std::endl;
+  profiler::driver().this_thread().pause_cupti_callbacks();
+  const cudnnStatus_t ret = call_and_set_time(
+      api, real_cudnnConvolutionBackwardData, handle, alpha, wDesc, w, dyDesc,
+      dy, convDesc, algo, workSpace, workSpaceSizeInBytes, beta, dxDesc, dx);
+  profiler::driver().this_thread().resume_cupti_callbacks();
 
   api->add_output(outVal);
   api->add_input(wVal);
@@ -245,16 +264,6 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   api->add_input(workSpaceVal);
   api->add_input(dxVal);
   profiler::atomic_out(api->json());
-
-  // Do the actual call
-  profiler::err() << "WARN: disabling CUPTI callbacks during "
-                     "cudnnConvolutionBackwardData call"
-                  << std::endl;
-  profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret = real_cudnnConvolutionBackwardData(
-      handle, alpha, wDesc, w, dyDesc, dy, convDesc, algo, workSpace,
-      workSpaceSizeInBytes, beta, dxDesc, dx);
-  profiler::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -290,19 +299,20 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
                                  true /*initialized*/);
   dbVal.add_depends_on(dyVal, api->id());
 
-  api->add_output(dbVal);
-  api->add_input(dyVal);
-  profiler::atomic_out(api->json());
-
   // Do the actual call
   profiler::err() << "WARN: disabling CUPTI callbacks during "
                      "cudnnConvolutionBackwardBias call"
                   << std::endl;
 
   profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret = real_cudnnConvolutionBackwardBias(
-      handle, alpha, dyDesc, dy, beta, dbDesc, db);
+  const cudnnStatus_t ret =
+      call_and_set_time(api, real_cudnnConvolutionBackwardBias, handle, alpha,
+                        dyDesc, dy, beta, dbDesc, db);
   profiler::driver().this_thread().resume_cupti_callbacks();
+
+  api->add_output(dbVal);
+  api->add_input(dyVal);
+  profiler::atomic_out(api->json());
 
   return ret;
 }
@@ -352,21 +362,21 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
                   << " deps on " << xVal << " " << dyVal << " " << workSpaceVal
                   << " " << dwVal << std::endl;
 
+  profiler::err() << "WARN: disabling CUPTI callbacks during "
+                     "cudnnConvolutionBackwardFilter call"
+                  << std::endl;
+  profiler::driver().this_thread().pause_cupti_callbacks();
+  const cudnnStatus_t ret = call_and_set_time(
+      api, real_cudnnConvolutionBackwardFilter, handle, alpha, xDesc, x, dyDesc,
+      dy, convDesc, algo, workSpace, workSpaceSizeInBytes, beta, dwDesc, dw);
+  profiler::driver().this_thread().resume_cupti_callbacks();
+
   api->add_output(outVal);
   api->add_input(xVal);
   api->add_input(dyVal);
   api->add_input(workSpaceVal);
   api->add_input(dwVal);
   profiler::atomic_out(api->json());
-
-  profiler::err() << "WARN: disabling CUPTI callbacks during "
-                     "cudnnConvolutionBackwardFilter call"
-                  << std::endl;
-  profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret = real_cudnnConvolutionBackwardFilter(
-      handle, alpha, xDesc, x, dyDesc, dy, convDesc, algo, workSpace,
-      workSpaceSizeInBytes, beta, dwDesc, dw);
-  profiler::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -417,22 +427,22 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
                   << yVal << " " << xVal << " " << wVal << " " << workSpaceVal
                   << std::endl;
 
+  profiler::err()
+      << "WARN: thread " << cprof::model::get_thread_id()
+      << " disabling CUPTI callbacks during cudnnConvolutionForward call"
+      << std::endl;
+  profiler::driver().this_thread().pause_cupti_callbacks();
+  const cudnnStatus_t ret = call_and_set_time(
+      api, real_cudnnConvolutionForward, handle, alpha, xDesc, x, wDesc, w,
+      convDesc, algo, workSpace, workSpaceSizeInBytes, beta, yDesc, y);
+  profiler::driver().this_thread().resume_cupti_callbacks();
+
   api->add_output(outVal);
   api->add_input(xVal);
   api->add_input(wVal);
   api->add_input(workSpaceVal);
   api->add_input(yVal);
   profiler::atomic_out(api->json());
-
-  profiler::err()
-      << "WARN: thread " << cprof::model::get_thread_id()
-      << " disabling CUPTI callbacks during cudnnConvolutionForward call"
-      << std::endl;
-  profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret = real_cudnnConvolutionForward(
-      handle, alpha, xDesc, x, wDesc, w, convDesc, algo, workSpace,
-      workSpaceSizeInBytes, beta, yDesc, y);
-  profiler::driver().this_thread().resume_cupti_callbacks();
 
   return ret;
 }
@@ -466,20 +476,19 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
       yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true /*initialized*/);
   yVal.add_depends_on(xVal, api->id());
 
-  // track api
-
-  api->add_output(yVal);
-  api->add_input(xVal);
-  profiler::atomic_out(api->json());
-
   // Do the actual call
   profiler::err()
       << "WARN: disabling CUPTI callbacks during cudnnSoftmaxForward call"
       << std::endl;
   profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret = real_cudnnSoftmaxForward(handle, algo, mode, alpha,
-                                                     xDesc, x, beta, yDesc, y);
+  const cudnnStatus_t ret =
+      call_and_set_time(api, real_cudnnSoftmaxForward, handle, algo, mode,
+                        alpha, xDesc, x, beta, yDesc, y);
   profiler::driver().this_thread().resume_cupti_callbacks();
+
+  api->add_output(yVal);
+  api->add_input(xVal);
+  profiler::atomic_out(api->json());
 
   return ret;
 }
@@ -515,19 +524,19 @@ extern "C" cudnnStatus_t cudnnPoolingForward(
   auto yVal = yAlloc.new_value((uintptr_t)y, ySize, true /*initialized*/);
   yVal.add_depends_on(xVal, api->id());
 
-  // track api
-  api->add_output(yVal);
-  api->add_input(xVal);
-  profiler::atomic_out(api->json());
-
   // Do the actual call
   profiler::err()
       << "WARN: disabling CUPTI callbacks during cudnnPoolingForward call"
       << std::endl;
   profiler::driver().this_thread().pause_cupti_callbacks();
-  const cudnnStatus_t ret = real_cudnnPoolingForward(handle, poolingDesc, alpha,
-                                                     xDesc, x, beta, yDesc, y);
+  const cudnnStatus_t ret =
+      call_and_set_time(api, real_cudnnPoolingForward, handle, poolingDesc,
+                        alpha, xDesc, x, beta, yDesc, y);
   profiler::driver().this_thread().resume_cupti_callbacks();
+
+  api->add_output(yVal);
+  api->add_input(xVal);
+  profiler::atomic_out(api->json());
   return ret;
 }
 

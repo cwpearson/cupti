@@ -20,7 +20,7 @@ template <typename FN, typename... Args>
 cublasStatus_t call_and_set_time(ApiRecordRef api, FN function, Args... args) {
   const auto start = cprof::now();
   const cublasStatus_t ret = function(args...);
-  api->set_time(start, cprof::now());
+  api->set_wall_time(start, cprof::now());
   return ret;
 }
 

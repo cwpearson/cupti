@@ -28,10 +28,10 @@ void ApiRecord::add_kv(const std::string &k, const size_t &v) {
   add_kv(k, std::to_string(v));
 }
 
-void ApiRecord::set_time(const cprof::time_point_t &start,
-                         const cprof::time_point_t &end) {
-  start_ = start;
-  end_ = end;
+void ApiRecord::set_wall_time(const cprof::time_point_t &start,
+                              const cprof::time_point_t &end) {
+  wallStart_ = start;
+  wallEnd_ = end;
 }
 
 static ptree to_json(const std::vector<Value> &v) {
@@ -55,8 +55,8 @@ std::string ApiRecord::json() const {
   pt.put("api.symbolname", kernelName_);
   pt.add_child("api.inputs", to_json(inputs_));
   pt.add_child("api.outputs", to_json(outputs_));
-  pt.put("api.start", nanos(start_));
-  pt.put("api.end", nanos(end_));
+  pt.put("api.wall_start", nanos(wallStart_));
+  pt.put("api.wall_end", nanos(wallEnd_));
   pt.put("api.correlation_id", correlationId_);
   for (const auto &p : kv_) {
     const std::string &key = p.first;
