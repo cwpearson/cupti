@@ -31,6 +31,10 @@ private:
   id_type id_;
   id_type new_id() { return next_id_++; }
 
+  /// Wall time of start and end of API
+  cprof::time_point_t wallStart_;
+  cprof::time_point_t wallEnd_;
+
 public:
   ApiRecord(const std::string &apiName, const int device,
             const CUpti_CallbackDomain domain, const CUpti_CallbackId cbid,
@@ -56,6 +60,8 @@ public:
   void add_output(const cprof::Value &v);
   void add_kv(const std::string &key, const std::string &val);
   void add_kv(const std::string &key, const size_t &val);
+  void set_wall_start(const cprof::time_point_t &start);
+  void set_wall_end(const cprof::time_point_t &end);
   void set_wall_time(const cprof::time_point_t &start,
                      const cprof::time_point_t &end);
 
@@ -70,9 +76,8 @@ public:
   CUpti_CallbackId cbid() const { return cbid_; }
   const CUpti_CallbackData *cb_info() const { return cbInfo_; }
 
-  /// Wall time of start and end of API
-  cprof::time_point_t wallStart_;
-  cprof::time_point_t wallEnd_;
+  const cprof::time_point_t &wall_end() const { return wallEnd_; }
+  const cprof::time_point_t &wall_start() const { return wallStart_; }
 };
 
 typedef std::shared_ptr<ApiRecord> ApiRecordRef;

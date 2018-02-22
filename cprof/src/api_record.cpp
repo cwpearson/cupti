@@ -28,10 +28,16 @@ void ApiRecord::add_kv(const std::string &k, const size_t &v) {
   add_kv(k, std::to_string(v));
 }
 
+void ApiRecord::set_wall_start(const cprof::time_point_t &start) {
+  wallStart_ = start;
+}
+
+void ApiRecord::set_wall_end(const cprof::time_point_t &end) { wallEnd_ = end; }
+
 void ApiRecord::set_wall_time(const cprof::time_point_t &start,
                               const cprof::time_point_t &end) {
-  wallStart_ = start;
-  wallEnd_ = end;
+  set_wall_start(start);
+  set_wall_end(end);
 }
 
 static ptree to_json(const std::vector<Value> &v) {
