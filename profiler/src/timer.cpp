@@ -298,7 +298,8 @@ void Timer::addGlobalAccessActivityAnnotations(
 
   ptree pt;
 
-  pt.put("correlationId", std::to_string(overhead_GlobalAccess->correlationId));
+  pt.put("correlation_id",
+         std::to_string(overhead_GlobalAccess->correlationId));
   pt.put("functionName", std::to_string(overhead_GlobalAccess->functionId));
   pt.put("executed", std::to_string(overhead_GlobalAccess->executed));
   pt.put("threadsExecuted",
@@ -330,7 +331,7 @@ void Timer::addCudaEventActivityAnnotations(
 
   ptree pt;
   pt.put("contextId", std::to_string(event_Activity->contextId));
-  pt.put("correlationId", std::to_string(event_Activity->correlationId));
+  pt.put("correlation_id", std::to_string(event_Activity->correlationId));
   pt.put("eventId", std::to_string(event_Activity->correlationId));
   pt.put("pad", std::to_string(event_Activity->pad));
   pt.put("streamId", std::to_string(event_Activity->streamId));
@@ -360,7 +361,7 @@ void Timer::addCudaDriverAndRuntimeAnnotations(
   using boost::property_tree::write_json;
 
   ptree pt;
-  pt.put("correlationId", std::to_string(activity_Activity->correlationId));
+  pt.put("correlation_id", std::to_string(activity_Activity->correlationId));
   pt.put("end", std::to_string(activity_Activity->end));
   pt.put("processId", std::to_string(activity_Activity->processId));
   pt.put("start", std::to_string(activity_Activity->start));
@@ -391,7 +392,7 @@ void Timer::addCudaActivitySynchronizationAnnotations(
 
   ptree pt;
   pt.put("contextId", std::to_string(synchronization_Activity->contextId));
-  pt.put("correlationId",
+  pt.put("correlation_id",
          std::to_string(synchronization_Activity->correlationId));
   pt.put("cudaEventId", std::to_string(synchronization_Activity->cudaEventId));
   pt.put("end", std::to_string(synchronization_Activity->end));
