@@ -137,24 +137,39 @@ void Profiler::init() {
     assert(0 && "Unsupported mode");
   }
 
+  // Set CUPTI parameters
+  CUPTI_CHECK(cuptiActivitySetAttribute(
+                  CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
+                  cupti_activity_config::attr_value_size(
+                      CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE),
+                  cupti_activity_config::attr_device_buffer_size()),
+              err());
+  CUPTI_CHECK(cuptiActivitySetAttribute(
+                  CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
+                  cupti_activity_config::attr_value_size(
+                      CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT),
+                  cupti_activity_config::attr_device_buffer_pool_limit()),
+              err());
+
   switch (mode_) {
   case Mode::ActivityTimeline:
+    // Set handler function
     cupti_activity_config::set_activity_handler(tracing_activityHander);
+
+    // Enable CUPTI Activity API
+    err() << "INFO: Profiler enabling activity API" << std::endl;
+    for (const auto &kind : cuptiActivityKinds_) {
+      err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
+      CUPTI_CHECK(cuptiActivityEnable(kind), err());
+    }
+    CUPTI_CHECK(cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
+                                               cuptiActivityBufferCompleted),
+                err());
+
+    break;
   case Mode::Full: {
 
-    CUPTI_CHECK(cuptiActivitySetAttribute(
-                    CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
-                    cupti_activity_config::attr_value_size(
-                        CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE),
-                    cupti_activity_config::attr_device_buffer_size()),
-                err());
-    CUPTI_CHECK(cuptiActivitySetAttribute(
-                    CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
-                    cupti_activity_config::attr_value_size(
-                        CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT),
-                    cupti_activity_config::attr_device_buffer_pool_limit()),
-                err());
-
+    // Enable CUPTI Callback API
     profiler::err() << "INFO: CuptiSubscriber enabling callback API"
                     << std::endl;
     CUPTI_CHECK(cuptiSubscribe(&cuptiCallbackSubscriber_,
@@ -169,6 +184,7 @@ void Profiler::init() {
                 err());
     profiler::err() << "INFO: done enabling callback API domains" << std::endl;
 
+    // Enable CUPTI Activity API
     err() << "INFO: Profiler enabling activity API" << std::endl;
     for (const auto &kind : cuptiActivityKinds_) {
       err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
