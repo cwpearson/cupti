@@ -50,7 +50,7 @@ public:
   bool is_mode_timeline() const { return mode_ == Mode::ActivityTimeline; }
   bool is_mode_full() const { return mode_ == Mode::Full; }
 
-  const Tracer &chrome_tracer() { return *chromeTracer_; }
+  Tracer &chrome_tracer() { return *chromeTracer_; }
 
   std::ostream &err();
   std::ostream &out();

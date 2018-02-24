@@ -7,6 +7,7 @@
 #include "util/environment_variable.hpp"
 #include "util/tracer.hpp"
 
+#include "cupti_activity_tracing.hpp"
 #include "cupti_callback.hpp"
 #include "profiler.hpp"
 
@@ -32,6 +33,7 @@ Profiler::~Profiler() {
 
   switch (mode_) {
   case Mode::ActivityTimeline:
+    cupti_activity_config::set_activity_handler(tracing_activityHander);
   case Mode::Full:
     err() << "INFO: CuptiSubscriber cleaning up activity API";
     cuptiActivityFlushAll(0);
@@ -46,9 +48,9 @@ Profiler::~Profiler() {
 
   if (enableZipkin_) {
     profiler::err() << "INFO: Profiler finalizing Zipkin" << std::endl;
+    rootSpan_->Finish();
     memcpyTracer_->Close(); // FIXME: right order?
     launchTracer_->Close();
-    rootSpan_->Finish();
     rootTracer_->Close();
   }
 

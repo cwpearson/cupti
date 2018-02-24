@@ -15,6 +15,8 @@ size_t attrDeviceBufferSize = 8 * 1024 * 1024;
 size_t attrDeviceBufferPoolLimit = 2;
 size_t attrValueSize_size_t = sizeof(size_t);
 
+ActivityHandler activityHandler = nullptr;
+
 size_t *attr_value_size(const CUpti_ActivityAttribute &attr) {
   return &attrValueSize_size_t; // all attributes are size_t as of CUDA 9.1
 }
@@ -30,6 +32,9 @@ const size_t local_buffer_size() { return localBufferSize; }
 const size_t align_size() { return 8; }
 size_t *attr_device_buffer_size() { return &attrDeviceBufferSize; }
 size_t *attr_device_buffer_pool_limit() { return &attrDeviceBufferPoolLimit; }
+
+void set_activity_handler(ActivityHandler fn) { activityHandler = fn; }
+ActivityHandler activity_handler() { return activityHandler; }
 
 } // namespace cupti_activity_config
 
@@ -60,6 +65,8 @@ void CUPTIAPI cuptiActivityBufferRequested(uint8_t **buffer, size_t *size,
 
 void threadFunc(uint8_t *localBuffer, size_t validSize) {
 
+  using cupti_activity_config::activity_handler;
+
   CUpti_Activity *record = NULL;
   if (validSize > 0) {
     do {
@@ -70,6 +77,9 @@ void threadFunc(uint8_t *localBuffer, size_t validSize) {
 
       CUPTI_CHECK(err, profiler::err());
       profiler::timer().activity_add_annotations(record);
+      if (activity_handler()) {
+        activity_handler()(record);
+      }
     } while (true);
   }
 }
