@@ -11,6 +11,7 @@
 class Tracer {
 public:
   Tracer(const std::string &path) : out_(std::ofstream(path)), path_(path) {}
+  ~Tracer() { close(); }
 
   bool good() const { return out_.good(); }
   const std::string &path() const { return path_; }
@@ -46,7 +47,11 @@ public:
     }
   }
 
-  void close() { out_.close(); }
+  void close() {
+    if (out_.is_open()) {
+      out_.close();
+    }
+  }
 
 private:
   std::ofstream out_;
