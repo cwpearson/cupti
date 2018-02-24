@@ -93,6 +93,16 @@ void Profiler::init() {
     }
   }
 
+  {
+    auto n = EnvironmentVariable<uint32_t>("CPROF_CUPTI_DEVICE_BUFFER_SIZE", 0)
+                 .get();
+    if (n != 0) {
+      cupti_activity_config::set_device_buffer_size(n);
+    }
+    err() << "INFO: CUpti activity device buffer size: "
+          << *cupti_activity_config::attr_device_buffer_size() << std::endl;
+  }
+
   enableZipkin_ = EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
   err() << "INFO: enableZipkin: " << enableZipkin_ << std::endl;
 

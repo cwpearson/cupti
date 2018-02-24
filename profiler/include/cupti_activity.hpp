@@ -6,6 +6,7 @@
 namespace cupti_activity_config {
 typedef void (*ActivityHandler)(const CUpti_Activity *);
 void set_buffer_size(const size_t n);
+void set_device_buffer_size(const size_t bytes);
 size_t buffer_size();
 size_t *attr_device_buffer_size();
 size_t *attr_device_buffer_pool_limit();
