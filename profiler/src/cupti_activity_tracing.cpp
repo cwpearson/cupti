@@ -1,6 +1,11 @@
+#include <string>
+
 #include "cupti_activity_tracing.hpp"
 
-void kernel(const CUpti_ActivityKernel3 *record) {
+//
+// KERNEL
+//
+void handleKernel(const CUpti_ActivityKernel3 *record) {
   assert(record);
   const char *name = record->name;
 
@@ -16,20 +21,41 @@ void kernel(const CUpti_ActivityKernel3 *record) {
 
   Profiler::instance().chrome_tracer().complete_event(
       name, {}, start_time_point.count(),
-      end_time_stamp.count() - start_time_point.count(), "pid", "tid");
+      end_time_stamp.count() - start_time_point.count(), "kernel", "tid");
+}
+
+//
+// MEMCPY
+//
+void handleMemcpy(const CUpti_ActivityMemcpy *record) {
+  assert(record);
+  const uint32_t correlationId = record->correlationId;
+
+  /*Get start and end times for kernel*/
+  std::chrono::nanoseconds start_dur(record->start);
+  auto start_time_point =
+      std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
+  std::chrono::nanoseconds end_dur(record->end);
+  auto end_time_stamp =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
+
+  Profiler::instance().chrome_tracer().complete_event(
+      std::to_string(record->bytes), {}, start_time_point.count(),
+      end_time_stamp.count() - start_time_point.count(), "memcpy", "tid");
 }
 
 void tracing_activityHander(const CUpti_Activity *record) {
 
   switch (record->kind) {
   case CUPTI_ACTIVITY_KIND_KERNEL: {
-    auto activity_cast = (CUpti_ActivityKernel3 *)record;
-    kernel(activity_cast);
+    auto activity_cast =
+        reinterpret_cast<const CUpti_ActivityKernel3 *>(record);
+    handleKernel(activity_cast);
     break;
   }
   case CUPTI_ACTIVITY_KIND_MEMCPY: {
-    auto activity_cast = (CUpti_ActivityMemcpy *)record;
-    // addMemcpyActivityAnnotations(activity_cast);
+    auto activity_cast = reinterpret_cast<const CUpti_ActivityMemcpy *>(record);
+    handleMemcpy(activity_cast);
     break;
   }
   case CUPTI_ACTIVITY_KIND_ENVIRONMENT: {

@@ -86,10 +86,12 @@ void Profiler::init() {
   if (errPath != "-") {
     logging::set_err_path(errPath.c_str());
   }
-  auto chromeTracingPath =
-      EnvironmentVariable<std::string>("CPROF_CHROME_TRACING", "").get();
-  if (outPath != "") {
-    chromeTracer_ = std::make_shared<Tracer>(outPath.c_str());
+  {
+    auto chromeTracingPath =
+        EnvironmentVariable<std::string>("CPROF_CHROME_TRACING", "").get();
+    if (chromeTracingPath != "") {
+      chromeTracer_ = std::make_shared<Tracer>(chromeTracingPath.c_str());
+    }
   }
 
   enableZipkin_ = EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
