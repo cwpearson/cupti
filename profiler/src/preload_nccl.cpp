@@ -10,9 +10,16 @@
 #include "cprof/model/thread.hpp"
 #include "util/logging.hpp"
 
+#include "preload_nccl.hpp"
 #include "profiler.hpp"
 
 using cprof::Value;
+
+namespace preload_nccl {
+bool passthrough = false;
+bool is_passthrough() { return passthrough; }
+void set_passthrough(const bool b) { passthrough = b; }
+} // namespace preload_nccl
 
 static size_t ncclSizeOf(const ncclDataType_t t) noexcept {
   switch (t) {
@@ -129,7 +136,9 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
 
 #define NCCL_DLSYM_BOILERPLATE(name)                                           \
   static name##Func real_##name = nullptr;                                     \
-  profiler::err() << "LD_PRELOAD intercept (tid= " << cprof::model::get_thread_id() << "): " <<  #name << std::endl;              \
+  profiler::err() << "LD_PRELOAD intercept (tid= "                             \
+                  << cprof::model::get_thread_id() << "): " << #name           \
+                  << std::endl;                                                \
   if (real_##name == nullptr) {                                                \
     {                                                                          \
       void *h = dlopen("libnccl.so", RTLD_LAZY);                               \
@@ -138,11 +147,17 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
   }                                                                            \
   assert(real_##name && "Will the real " #name " please stand up?");
 
+#define PASSTHROUGH_CHECK(expr)
+
 typedef ncclResult_t (*ncclCommInitAllFunc)(ncclComm_t *comms, int nGPUs,
                                             const int *devList);
 extern "C" ncclResult_t ncclCommInitAll(ncclComm_t *comms, int nGPUs,
                                         const int *devList) {
   NCCL_DLSYM_BOILERPLATE(ncclCommInitAll);
+
+  if (preload_nccl::is_passthrough()) {
+    return real_ncclCommInitAll(comms, nGPUs, devList);
+  }
 
   profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during ncclCommInitAll"
@@ -164,6 +179,10 @@ extern "C" ncclResult_t ncclCommInitRank(ncclComm_t *comm, int ndev,
                                          ncclUniqueId cliqueId, int rank) {
   NCCL_DLSYM_BOILERPLATE(ncclCommInitRank);
 
+  if (preload_nccl::is_passthrough()) {
+    return real_ncclCommInitAll(comms, nGPUs, devList);
+  }
+
   profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during ncclCommInitRank"
                   << std::endl;
@@ -183,14 +202,16 @@ extern "C" ncclResult_t ncclBcast(void *buff, int count,
                                   ncclComm_t comm, cudaStream_t stream) {
   NCCL_DLSYM_BOILERPLATE(ncclBcast);
 
+  if (preload_nccl::is_passthrough()) {
+    return real_ncclCommInitAll(comms, nGPUs, devList);
+  }
+
   std::stringstream ss1, ss2, ss3, ss4;
   const auto tid = cprof::model::get_thread_id();
   ss1 << "DEBU: (tid= " << tid << ") bcast register\n";
   ss2 << "DEBU: (tid= " << tid << ") bcast register done\n";
   ss3 << "DEBU: (tid= " << tid << ") bcast call\n";
   ss4 << "DEBU: (tid= " << tid << ") bcast call done\n";
-  
-
 
   profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during ncclBcast" << std::endl;
@@ -218,6 +239,10 @@ extern "C" ncclResult_t ncclAllReduce(const void *sendbuff, void *recvbuff,
                                       ncclRedOp_t op, ncclComm_t comm,
                                       cudaStream_t stream) {
   NCCL_DLSYM_BOILERPLATE(ncclAllReduce);
+
+  if (preload_nccl::is_passthrough()) {
+    return real_ncclCommInitAll(comms, nGPUs, devList);
+  }
 
   profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during ncclAllReduce"

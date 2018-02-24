@@ -9,6 +9,9 @@
 
 #include "cupti_activity_tracing.hpp"
 #include "cupti_callback.hpp"
+#include "preload_cublas.hpp"
+#include "preload_cudnn.hpp"
+#include "preload_nccl.hpp"
 #include "profiler.hpp"
 
 namespace profiler {
@@ -155,6 +158,11 @@ void Profiler::init() {
   case Mode::ActivityTimeline:
     // Set handler function
     cupti_activity_config::set_activity_handler(tracing_activityHander);
+
+    // disable preloads
+    preload_nccl::set_passthrough(true);
+    preload_cublas::set_passthrough(true);
+    preload_cudnn::set_passthrough(true);
 
     // Enable CUPTI Activity API
     err() << "INFO: Profiler enabling activity API" << std::endl;

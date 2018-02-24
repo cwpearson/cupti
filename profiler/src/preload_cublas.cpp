@@ -8,6 +8,7 @@
 #include "cprof/model/thread.hpp"
 #include "cprof/util_numa.hpp"
 
+#include "preload_cublas.hpp"
 #include "profiler.hpp"
 
 using cprof::model::Location;
@@ -15,6 +16,12 @@ using cprof::model::Memory;
 
 using profiler::driver;
 using profiler::hardware;
+
+namespace preload_cublas {
+bool passthrough = false;
+bool is_passthrough() { return passthrough; }
+void set_passthrough(const bool b) { passthrough = b; }
+} // namespace preload_cublas
 
 template <typename FN, typename... Args>
 cublasStatus_t call_and_set_time(ApiRecordRef api, FN function, Args... args) {

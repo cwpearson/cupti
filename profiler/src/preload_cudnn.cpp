@@ -8,7 +8,14 @@
 #include "cprof/model/thread.hpp"
 
 #include "cudnn_util.hpp"
+#include "preload_cudnn.hpp"
 #include "profiler.hpp"
+
+namespace preload_cudnn {
+bool passthrough = false;
+bool is_passthrough() { return passthrough; }
+void set_passthrough(const bool b) { passthrough = b; }
+} // namespace preload_cudnn
 
 #define CUDNN_DLSYM_BOILERPLATE(name)                                          \
   static name##Func real_##name = nullptr;                                     \
