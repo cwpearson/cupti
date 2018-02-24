@@ -40,6 +40,10 @@ typedef cudnnStatus_t (*cudnnCreateFunc)(cudnnHandle_t *handle);
 extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
   CUDNN_DLSYM_BOILERPLATE(cudnnCreate);
 
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnCreate(handle);
+  }
+
   profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during cudnnCreate call"
                   << std::endl;
@@ -56,6 +60,10 @@ extern "C" cudnnStatus_t cudnnCreate(cudnnHandle_t *handle) {
 typedef cudnnStatus_t (*cudnnDestroyFunc)(cudnnHandle_t handle);
 extern "C" cudnnStatus_t cudnnDestroy(cudnnHandle_t handle) {
   CUDNN_DLSYM_BOILERPLATE(cudnnDestroy);
+
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnDestroy(handle);
+  }
 
   profiler::err() << "WARN: disabling CUPTI callbacks during cudnnDestroy call"
                   << std::endl;
@@ -76,8 +84,12 @@ extern "C" cudnnStatus_t cudnnActivationForward(
     const void *alpha, const cudnnTensorDescriptor_t xDesc, const void *x,
     const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
 
-  // FIXME - also depends on alpha, beta
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationForward);
+
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnActivationForward(handle, activationDesc, alpha, xDesc, x,
+                                       beta, yDesc, y);
+  }
 
   auto &allocations = profiler::allocations();
 
@@ -93,6 +105,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   assert(yAlloc && "y alloc should be on device");
   auto api = std::make_shared<ApiRecord>("cudnnActivationForward", devId);
 
+  // FIXME - also depends on alpha, beta
   auto yVal = yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true);
   yVal.add_depends_on(xVal, api->id());
 
@@ -124,6 +137,10 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
                                         const cudnnTensorDescriptor_t cDesc,
                                         void *C) {
   CUDNN_DLSYM_BOILERPLATE(cudnnAddTensor);
+
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnAddTensor(handle, alpha, aDesc, A, beta, cDesc, C);
+  }
 
   // FIXME - alpha and beta
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
@@ -172,6 +189,11 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
     const cudnnTensorDescriptor_t dxDesc, void *dx) {
 
   CUDNN_DLSYM_BOILERPLATE(cudnnActivationBackward);
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnActivationBackward(handle, activationDesc, alpha, yDesc, y,
+                                        dyDesc, dy, xDesc, x, beta, dxDesc, dx);
+  }
+
   auto &allocations = profiler::allocations();
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
@@ -230,6 +252,11 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
     size_t workSpaceSizeInBytes, const void *beta,
     const cudnnTensorDescriptor_t dxDesc, void *dx) {
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardData);
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnConvolutionBackwardData(
+        handle, alpha, wDesc, w, dyDesc, dy, convDesc, algo, workSpace,
+        workSpaceSizeInBytes, beta, dxDesc, dx);
+  }
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
@@ -285,8 +312,12 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
                              const void *dy, const void *beta,
                              const cudnnTensorDescriptor_t dbDesc, void *db) {
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardBias);
-  auto &allocations = profiler::allocations();
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnConvolutionBackwardBias(handle, alpha, dyDesc, dy, beta,
+                                             dbDesc, db);
+  }
 
+  auto &allocations = profiler::allocations();
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
 
@@ -342,6 +373,11 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
     const cudnnFilterDescriptor_t dwDesc, void *dw) {
 
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionBackwardFilter);
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnConvolutionBackwardFilter(
+        handle, alpha, xDesc, x, dyDesc, dy, convDesc, algo, workSpace,
+        workSpaceSizeInBytes, beta, dwDesc, dw);
+  }
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
@@ -406,6 +442,11 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
                         const cudnnTensorDescriptor_t yDesc, void *y) {
 
   CUDNN_DLSYM_BOILERPLATE(cudnnConvolutionForward);
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnConvolutionForward(handle, alpha, xDesc, x, wDesc, w,
+                                        convDesc, algo, workSpace,
+                                        workSpaceSizeInBytes, beta, yDesc, y);
+  }
 
   const int devId = profiler::driver().device_from_cudnn_handle(handle);
   AddressSpace AS = profiler::hardware().address_space(devId);
@@ -464,6 +505,10 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
     const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
 
   CUDNN_DLSYM_BOILERPLATE(cudnnSoftmaxForward);
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnSoftmaxForward(handle, algo, mode, alpha, xDesc, x, beta,
+                                    yDesc, y);
+  }
 
   auto &allocations = profiler::allocations();
 
@@ -510,6 +555,10 @@ extern "C" cudnnStatus_t cudnnPoolingForward(
     const void *beta, const cudnnTensorDescriptor_t yDesc, void *y) {
 
   CUDNN_DLSYM_BOILERPLATE(cudnnPoolingForward);
+  if (preload_cudnn::is_passthrough()) {
+    return real_cudnnPoolingForward(handle, poolingDesc, alpha, xDesc, x, beta,
+                                    yDesc, y);
+  }
 
   auto &allocations = profiler::allocations();
 
