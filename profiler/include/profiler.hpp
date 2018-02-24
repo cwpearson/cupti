@@ -15,6 +15,7 @@
 #include "util/logging.hpp"
 #include "util/tracer.hpp"
 
+#include "cupti_activity.hpp"
 #include "timer.hpp"
 
 namespace profiler {
