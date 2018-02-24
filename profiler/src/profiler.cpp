@@ -137,14 +137,24 @@ void Profiler::init() {
     assert(0 && "Unsupported mode");
   }
 
-  err() << "INFO: scanning devices" << std::endl;
-  hardware_.get_device_properties();
-  err() << "INFO: done" << std::endl;
-
   switch (mode_) {
   case Mode::ActivityTimeline:
     cupti_activity_config::set_activity_handler(tracing_activityHander);
   case Mode::Full: {
+
+    CUPTI_CHECK(cuptiActivitySetAttribute(
+                    CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
+                    cupti_activity_config::attr_value_size(
+                        CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE),
+                    cupti_activity_config::attr_device_buffer_size()),
+                err());
+    CUPTI_CHECK(cuptiActivitySetAttribute(
+                    CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
+                    cupti_activity_config::attr_value_size(
+                        CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT),
+                    cupti_activity_config::attr_device_buffer_pool_limit()),
+                err());
+
     profiler::err() << "INFO: CuptiSubscriber enabling callback API"
                     << std::endl;
     CUPTI_CHECK(cuptiSubscribe(&cuptiCallbackSubscriber_,
@@ -160,15 +170,6 @@ void Profiler::init() {
     profiler::err() << "INFO: done enabling callback API domains" << std::endl;
 
     err() << "INFO: Profiler enabling activity API" << std::endl;
-    cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
-                              cupti_activity_config::attr_value_size(
-                                  CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE),
-                              cupti_activity_config::attr_device_buffer_size());
-    cuptiActivitySetAttribute(
-        CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
-        cupti_activity_config::attr_value_size(
-            CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT),
-        cupti_activity_config::attr_device_buffer_pool_limit());
     for (const auto &kind : cuptiActivityKinds_) {
       err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
       CUPTI_CHECK(cuptiActivityEnable(kind), err());
@@ -181,6 +182,10 @@ void Profiler::init() {
   }
   default: { assert(0 && "Unhandled mode"); }
   }
+
+  err() << "INFO: scanning devices" << std::endl;
+  hardware_.get_device_properties();
+  err() << "INFO: done" << std::endl;
 
   if (enableZipkin_) {
     profiler::err() << "INFO: Profiler enable zipkin" << std::endl;
