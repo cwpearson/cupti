@@ -180,7 +180,7 @@ extern "C" ncclResult_t ncclCommInitRank(ncclComm_t *comm, int ndev,
   NCCL_DLSYM_BOILERPLATE(ncclCommInitRank);
 
   if (preload_nccl::is_passthrough()) {
-    return real_ncclCommInitAll(comms, nGPUs, devList);
+    return real_ncclCommInitRank(comm, ndev, cliqueId, rank);
   }
 
   profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
@@ -203,7 +203,7 @@ extern "C" ncclResult_t ncclBcast(void *buff, int count,
   NCCL_DLSYM_BOILERPLATE(ncclBcast);
 
   if (preload_nccl::is_passthrough()) {
-    return real_ncclCommInitAll(comms, nGPUs, devList);
+    return real_ncclBcast(buff, count, datatype, root, comm, stream);
   }
 
   std::stringstream ss1, ss2, ss3, ss4;
@@ -241,7 +241,8 @@ extern "C" ncclResult_t ncclAllReduce(const void *sendbuff, void *recvbuff,
   NCCL_DLSYM_BOILERPLATE(ncclAllReduce);
 
   if (preload_nccl::is_passthrough()) {
-    return real_ncclCommInitAll(comms, nGPUs, devList);
+    return real_ncclAllReduce(sendbuff, recvbuff, count, datatype, op, comm,
+                              stream);
   }
 
   profiler::err() << "WARN: tid " << cprof::model::get_thread_id()
