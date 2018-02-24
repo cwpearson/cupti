@@ -17,7 +17,7 @@ void handleKernel(const CUpti_ActivityKernel3 *record) {
       std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
   std::chrono::nanoseconds end_dur(record->end);
   auto end_time_stamp =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
+      std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
 
   Profiler::instance().chrome_tracer().complete_event(
       name, {}, start_time_point.count(),
