@@ -117,10 +117,12 @@ void Profiler::init() {
     mode_ = Mode::Full;
     cuptiActivityKinds_ = {
         CUPTI_ACTIVITY_KIND_KERNEL, CUPTI_ACTIVITY_KIND_MEMCPY,
-        CUPTI_ACTIVITY_KIND_ENVIRONMENT, CUPTI_ACTIVITY_KIND_CUDA_EVENT,
+        CUPTI_ACTIVITY_KIND_ENVIRONMENT,
+        // CUPTI_ACTIVITY_KIND_CUDA_EVENT, // errors on minsky2
         CUPTI_ACTIVITY_KIND_DRIVER, CUPTI_ACTIVITY_KIND_RUNTIME,
         CUPTI_ACTIVITY_KIND_SYNCHRONIZATION,
-        // CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS,
+        // CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS, // causes a hang in nccl on
+        // minsky2
         CUPTI_ACTIVITY_KIND_OVERHEAD};
   } else {
     assert(0 && "Unsupported mode");
