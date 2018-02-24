@@ -6,9 +6,9 @@
 namespace cupti_activity_config {
 void set_buffer_size(const size_t n);
 size_t buffer_size();
-size_t *attr_value_buffer_size();
-size_t *attr_value_size();
-size_t *attr_value_pool_size();
+size_t *attr_device_buffer_size();
+size_t *attr_device_buffer_pool_limit();
+size_t *attr_value_size(const CUpti_ActivityAttribute &attr);
 } // namespace cupti_activity_config
 
 typedef void (*BufReqFun)(uint8_t **buffer, size_t *size,

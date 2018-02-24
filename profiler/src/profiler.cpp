@@ -90,14 +90,6 @@ void Profiler::init() {
     chromeTracer_ = std::make_shared<Tracer>(outPath.c_str());
   }
 
-  auto cuptiActivityBufferSize =
-      EnvironmentVariable<uint32_t>("CPROF_CUPTI_ACTIVITY_BUFFER_SIZE",
-                                    32 * 1024)
-          .get();
-  cupti_activity_config::set_buffer_size(cuptiActivityBufferSize);
-  err() << "INFO: activity buffer size: " << cuptiActivityBufferSize
-        << std::endl;
-
   enableZipkin_ = EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
   err() << "INFO: enableZipkin: " << enableZipkin_ << std::endl;
 
@@ -155,17 +147,21 @@ void Profiler::init() {
 
     err() << "INFO: Profiler enabling activity API" << std::endl;
     cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
-                              cupti_activity_config::attr_value_size(),
-                              cupti_activity_config::attr_value_buffer_size());
-    cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
-                              cupti_activity_config::attr_value_size(),
-                              cupti_activity_config::attr_value_pool_size());
+                              cupti_activity_config::attr_value_size(
+                                  CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE),
+                              cupti_activity_config::attr_device_buffer_size());
+    cuptiActivitySetAttribute(
+        CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
+        cupti_activity_config::attr_value_size(
+            CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT),
+        cupti_activity_config::attr_device_buffer_pool_limit());
     for (const auto &kind : cuptiActivityKinds_) {
       err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
       CUPTI_CHECK(cuptiActivityEnable(kind), err());
     }
-    cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
-                                   cuptiActivityBufferCompleted);
+    CUPTI_CHECK(cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
+                                               cuptiActivityBufferCompleted),
+                err());
     profiler::err() << "INFO: done enabling activity API" << std::endl;
     break;
   }
