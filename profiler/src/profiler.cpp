@@ -33,7 +33,6 @@ Profiler::~Profiler() {
 
   switch (mode_) {
   case Mode::ActivityTimeline:
-    cupti_activity_config::set_activity_handler(tracing_activityHander);
   case Mode::Full:
     err() << "INFO: CuptiSubscriber cleaning up activity API";
     cuptiActivityFlushAll(0);
@@ -133,8 +132,9 @@ void Profiler::init() {
   err() << "INFO: done" << std::endl;
 
   switch (mode_) {
-  case Mode::Full:
-  case Mode::ActivityTimeline: {
+  case Mode::ActivityTimeline:
+    cupti_activity_config::set_activity_handler(tracing_activityHander);
+  case Mode::Full: {
     profiler::err() << "INFO: CuptiSubscriber enabling callback API"
                     << std::endl;
     CUPTI_CHECK(cuptiSubscribe(&cuptiCallbackSubscriber_,
