@@ -153,6 +153,7 @@ void Profiler::init() {
     cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
                               &attrValueSize, &attrValuePoolSize);
     for (const auto &kind : cuptiActivityKinds_) {
+      err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
       CUPTI_CHECK(cuptiActivityEnable(kind), err());
     }
     cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
