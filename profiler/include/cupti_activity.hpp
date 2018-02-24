@@ -3,6 +3,11 @@
 
 #include <cupti.h>
 
+const size_t BUFFER_SIZE = 100000;
+
+typedef void (*BufReqFun)(uint8_t **buffer, size_t *size,
+                          size_t *maxNumRecords);
+
 void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
                                            uint8_t *buffer, size_t size,
                                            size_t validSize);

@@ -1,5 +1,5 @@
-#ifndef TRACER_HPP
-#define TRACER_HPP
+#ifndef UTIL_TRACER_HPP
+#define UTIL_TRACER_HPP
 
 #include <fstream>
 #include <mutex>
@@ -10,7 +10,9 @@
 
 class Tracer {
 public:
-  Tracer(const std::string &path) : out_(std::ofstream(path)), path_(path) {}
+  Tracer() : enabled_(false) {}
+  Tracer(const std::string &path)
+      : enabled_(true), out_(std::ofstream(path)), path_(path) {}
   ~Tracer() { close(); }
 
   bool good() const { return out_.good(); }
@@ -22,6 +24,10 @@ public:
                       const std::string &pid, const std::string &tid) {
     using boost::property_tree::ptree;
     using boost::property_tree::write_json;
+
+    if (!enabled_) {
+      return;
+    }
 
     std::string catStr;
     for (size_t i = 0; i < categories.size(); ++i) {
@@ -54,6 +60,7 @@ public:
   }
 
 private:
+  bool enabled_;
   std::ofstream out_;
   std::string path_;
   std::mutex out_mutex_;

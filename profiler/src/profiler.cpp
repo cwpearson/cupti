@@ -1,20 +1,24 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
-#include <memory>
 
 #include "cprof/model/thread.hpp"
+#include "cprof/util_cupti.hpp"
 #include "util/environment_variable.hpp"
+#include "util/tracer.hpp"
 
+#include "cupti_activity.hpp"
+#include "cupti_callback.hpp"
 #include "profiler.hpp"
+
+size_t attrValueBufferSize = BUFFER_SIZE * 1024, attrValueSize = sizeof(size_t),
+       attrValuePoolSize = BUFFER_SIZE;
 
 namespace profiler {
 cprof::model::Driver &driver() { return Profiler::instance().driver_; }
 cprof::model::Hardware &hardware() { return Profiler::instance().hardware_; }
 cprof::Allocations &allocations() { return Profiler::instance().allocations_; }
-Timer &timer() {
-  return Profiler::instance().timer_;
-}
+Timer &timer() { return Profiler::instance().timer_; }
 
 std::ostream &out() { return Profiler::instance().out(); }
 void atomic_out(const std::string &s) { Profiler::instance().atomic_out(s); }
@@ -25,19 +29,24 @@ std::ostream &err() { return Profiler::instance().err(); }
  *
  * Should not handle any initialization. Defer that to the init() method.
  */
-Profiler::Profiler() : manager_(nullptr), isInitialized_(false) {}
-
+Profiler::Profiler() : chromeTracer_(new Tracer()), isInitialized_(false) {}
 
 Profiler::~Profiler() {
   logging::err() << "Profiler dtor\n";
 
-   // if (enableActivityAPI_) {
-  profiler::err() << "INFO: CuptiSubscriber cleaning up activity API" << std::endl;
-  cuptiActivityFlushAll(0);
-  profiler::err() << "INFO: done cuptiActivityFlushAll" << std::endl;
-// }
-
-  delete manager_;
+  switch (mode_) {
+  case Mode::ActivityTimeline:
+  case Mode::Full:
+    err() << "INFO: CuptiSubscriber cleaning up activity API";
+    cuptiActivityFlushAll(0);
+    err() << "INFO: done cuptiActivityFlushAll" << std::endl;
+    profiler::err() << "INFO: CuptiSubscriber Deactivating callback API!"
+                    << std::endl;
+    CUPTI_CHECK(cuptiUnsubscribe(cuptiCallbackSubscriber_), err());
+    profiler::err() << "INFO: done deactivating callbacks!" << std::endl;
+    break;
+  default: { assert(0 && "Unexpected mode"); }
+  }
 
   if (enableZipkin_) {
     profiler::err() << "INFO: Profiler finalizing Zipkin" << std::endl;
@@ -49,8 +58,6 @@ Profiler::~Profiler() {
 
   isInitialized_ = false;
   logging::err() << "Profiler dtor almost done...\n";
-
-
 }
 
 std::ostream &Profiler::err() { return logging::err(); }
@@ -68,7 +75,7 @@ void Profiler::init() {
   // std::cerr << model::get_thread_id() << std::endl;
 
   if (isInitialized_) {
-    logging::err() << "Profiler alread initialized" << std::endl;
+    logging::err() << "Profiler already initialized" << std::endl;
     return;
   }
 
@@ -81,15 +88,11 @@ void Profiler::init() {
   if (errPath != "-") {
     logging::set_err_path(errPath.c_str());
   }
-
-  err() << "INFO: Profiler::init()" << std::endl;
-  const bool useCuptiCallback =
-      EnvironmentVariable<bool>("CPROF_USE_CUPTI_CALLBACK", true).get();
-  err() << "INFO: useCuptiCallback: " << useCuptiCallback << std::endl;
-
-  const bool useCuptiActivity =
-      EnvironmentVariable<bool>("CPROF_USE_CUPTI_ACTIVITY", true).get();
-  err() << "INFO: useCuptiActivity: " << useCuptiActivity << std::endl;
+  auto chromeTracingPath =
+      EnvironmentVariable<std::string>("CPROF_CHROME_TRACING", "").get();
+  if (outPath != "") {
+    chromeTracer_ = std::make_shared<Tracer>(outPath.c_str());
+  }
 
   enableZipkin_ = EnvironmentVariable<bool>("CPROF_ENABLE_ZIPKIN", false).get();
   err() << "INFO: enableZipkin: " << enableZipkin_ << std::endl;
@@ -101,13 +104,63 @@ void Profiler::init() {
   zipkinPort_ = EnvironmentVariable<uint32_t>("CPROF_ZIPKIN_PORT", 9411u).get();
   err() << "INFO: zipkinPort: " << zipkinPort_ << std::endl;
 
+  std::string mode =
+      EnvironmentVariable<std::string>("CPROF_MODE", "full").get();
+  err() << "INFO: mode: " << mode << std::endl;
+  if (mode == "activity_timeline") {
+    mode_ = Mode::ActivityTimeline;
+    cuptiActivityKinds_ = {
+        CUPTI_ACTIVITY_KIND_KERNEL,          CUPTI_ACTIVITY_KIND_MEMCPY,
+        CUPTI_ACTIVITY_KIND_DRIVER,          CUPTI_ACTIVITY_KIND_RUNTIME,
+        CUPTI_ACTIVITY_KIND_SYNCHRONIZATION, CUPTI_ACTIVITY_KIND_OVERHEAD};
+  } else if (mode == "full") {
+    mode_ = Mode::Full;
+    cuptiActivityKinds_ = {
+        CUPTI_ACTIVITY_KIND_KERNEL, CUPTI_ACTIVITY_KIND_MEMCPY,
+        CUPTI_ACTIVITY_KIND_ENVIRONMENT, CUPTI_ACTIVITY_KIND_CUDA_EVENT,
+        CUPTI_ACTIVITY_KIND_DRIVER, CUPTI_ACTIVITY_KIND_RUNTIME,
+        CUPTI_ACTIVITY_KIND_SYNCHRONIZATION,
+        // CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS,
+        CUPTI_ACTIVITY_KIND_OVERHEAD};
+  } else {
+    assert(0 && "Unsupported mode");
+  }
+
   err() << "INFO: scanning devices" << std::endl;
   hardware_.get_device_properties();
   err() << "INFO: done" << std::endl;
 
-  manager_ =
-      new CuptiSubscriber(useCuptiActivity, useCuptiCallback, enableZipkin_);
-  manager_->init();
+  switch (mode_) {
+  case Mode::Full:
+  case Mode::ActivityTimeline: {
+    profiler::err() << "INFO: CuptiSubscriber enabling callback API"
+                    << std::endl;
+    CUPTI_CHECK(cuptiSubscribe(&cuptiCallbackSubscriber_,
+                               (CUpti_CallbackFunc)cuptiCallbackFunction,
+                               nullptr),
+                err());
+    CUPTI_CHECK(cuptiEnableDomain(1, cuptiCallbackSubscriber_,
+                                  CUPTI_CB_DOMAIN_RUNTIME_API),
+                err());
+    CUPTI_CHECK(cuptiEnableDomain(1, cuptiCallbackSubscriber_,
+                                  CUPTI_CB_DOMAIN_DRIVER_API),
+                err());
+    profiler::err() << "INFO: done enabling callback API domains" << std::endl;
+
+    err() << "INFO: Profiler enabling activity API" << std::endl;
+    cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
+                              &attrValueSize, &attrValueBufferSize);
+    cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT,
+                              &attrValueSize, &attrValuePoolSize);
+    for (const auto &kind : cuptiActivityKinds_) {
+      CUPTI_CHECK(cuptiActivityEnable(kind), err());
+    }
+    cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
+                                   cuptiActivityBufferCompleted);
+    profiler::err() << "INFO: done enabling activity API" << std::endl;
+  }
+  default: { assert(0 && "Unhandled mode"); }
+  }
 
   if (enableZipkin_) {
     profiler::err() << "INFO: Profiler enable zipkin" << std::endl;

@@ -25,7 +25,6 @@
 #include "cprof/value.hpp"
 #include "util/backtrace.hpp"
 
-#include "cupti_subscriber.hpp"
 #include "profiler.hpp"
 #include "timer.hpp"
 

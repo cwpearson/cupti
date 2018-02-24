@@ -1,5 +1,4 @@
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
+// cstdlib
 #include <chrono>
 #include <ctime>
 #include <cxxabi.h>
@@ -8,12 +7,12 @@
 #include <iostream>
 #include <mutex>
 #include <thread>
+
 // Libraries required to write to JSON
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <sstream>
 
-#include "cupti_subscriber.hpp"
 #include "profiler.hpp"
 #include "timer.hpp"
 
@@ -34,9 +33,9 @@ void Timer::callback_add_annotations(const CUpti_CallbackData *cbInfo,
 
   if (Profiler::instance().is_zipkin_enabled()) {
     span_t current_span;
-    current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
+    current_span = Profiler::instance().launchTracer_->StartSpan(
         std::to_string(cbInfo->correlationId),
-        {FollowsFrom(&Profiler::instance().manager_->parent_span->context())});
+        {FollowsFrom(&Profiler::instance().rootSpan_->context())});
     current_span->SetTag("contextUid", std::to_string(cbInfo->contextUid));
     current_span->SetTag("functionName", functionName);
     if (cbInfo->symbolName != NULL) {
@@ -116,9 +115,9 @@ void Timer::addKernelActivityAnnotations(
 
   if (Profiler::instance().is_zipkin_enabled()) {
     span_t current_span;
-    current_span = Profiler::instance().manager_->launch_tracer->StartSpan(
+    current_span = Profiler::instance().launchTracer_->StartSpan(
         std::to_string(local_Kernel_Activity.correlationId),
-        {FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
+        {FollowsFrom(&Profiler::instance().rootSpan_->context()),
          StartTimestamp(start_time_point)});
     // Extract useful information from local_Kernel_Activity and add it to trace
     current_span->SetTag("blockX",
@@ -210,9 +209,9 @@ void Timer::addMemcpyActivityAnnotations(
       std::chrono::duration_cast<std::chrono::nanoseconds>(end_dur);
   if (Profiler::instance().is_zipkin_enabled()) {
     span_t current_span;
-    current_span = Profiler::instance().manager_->memcpy_tracer->StartSpan(
+    current_span = Profiler::instance().memcpyTracer_->StartSpan(
         std::to_string(local_Memcpy_Activity.correlationId),
-        {FollowsFrom(&Profiler::instance().manager_->parent_span->context()),
+        {FollowsFrom(&Profiler::instance().rootSpan_->context()),
          StartTimestamp(start_time_point)});
     current_span->SetTag("bytes", std::to_string(local_Memcpy_Activity.bytes));
     current_span->SetTag("contextId",

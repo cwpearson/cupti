@@ -1,11 +1,11 @@
+#include <boost/any.hpp>
 #include <iostream>
 #include <thread>
 #include <vector>
-#include <boost/any.hpp>
 
-#include "cupti_subscriber.hpp"
-#include "timer.hpp"
+#include "cupti_activity.hpp"
 #include "profiler.hpp"
+#include "timer.hpp"
 
 using profiler::err;
 
@@ -32,9 +32,8 @@ void CUPTIAPI cuptiActivityBufferRequested(uint8_t **buffer, size_t *size,
   }
 }
 
-
-void threadFunc(uint8_t * localBuffer, size_t validSize){
-  CUpti_Activity *record = NULL;  
+void threadFunc(uint8_t *localBuffer, size_t validSize) {
+  CUpti_Activity *record = NULL;
   for (int i = 0; i < BUFFER_SIZE; i++) {
     auto err = cuptiActivityGetNextRecord(localBuffer, validSize, &record);
     if (err == CUPTI_ERROR_MAX_LIMIT_REACHED) {
@@ -49,19 +48,18 @@ void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
                                            size_t validSize) {
 
   span_t activity_span;
-  if (Profiler::instance().is_zipkin_enabled()){
-    activity_span =  Profiler::instance().manager_->overhead_tracer->StartSpan("Activity API", 
-    {
-        FollowsFrom(&Profiler::instance().manager_->parent_span->context())
-    });
+  if (Profiler::instance().is_zipkin_enabled()) {
+    activity_span = Profiler::instance().overheadTracer_->StartSpan(
+        "Activity API",
+        {FollowsFrom(&Profiler::instance().rootSpan_->context())});
   }
-  // uint8_t *localBuffer;  
+  // uint8_t *localBuffer;
   // localBuffer = (uint8_t *)malloc(BUFFER_SIZE * 1024 + ALIGN_SIZE);
   // ALIGN_BUFFER(localBuffer, ALIGN_SIZE);
   // memcpy(localBuffer, buffer, validSize);
   // threadFunc()
   threadFunc(buffer, validSize);
-  if (Profiler::instance().is_zipkin_enabled()){
-    activity_span->Finish();        
+  if (Profiler::instance().is_zipkin_enabled()) {
+    activity_span->Finish();
   }
 }
