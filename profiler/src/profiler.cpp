@@ -161,6 +161,7 @@ void Profiler::init() {
     cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
                                    cuptiActivityBufferCompleted);
     profiler::err() << "INFO: done enabling activity API" << std::endl;
+    break;
   }
   default: { assert(0 && "Unhandled mode"); }
   }
