@@ -12,7 +12,9 @@ class Tracer {
 public:
   Tracer() : enabled_(false) {}
   Tracer(const std::string &path)
-      : enabled_(true), out_(std::ofstream(path)), path_(path) {}
+      : enabled_(true), out_(std::ofstream(path)), path_(path) {
+    out_ << "[\n";
+  }
   ~Tracer() { close(); }
 
   bool good() const { return out_.good(); }
@@ -50,10 +52,12 @@ public:
     {
       std::lock_guard<std::mutex> guard(out_mutex_);
       write_json(out_, pt, false);
+      out_ << ",\n";
     }
   }
 
   void close() {
+    // out_ << "]\n"; // don't need final closing brace
     if (out_.is_open()) {
       out_.close();
     }
