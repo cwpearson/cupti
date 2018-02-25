@@ -129,8 +129,8 @@ void Profiler::init() {
     mode_ = Mode::Full;
     cuptiActivityKinds_ = {
         CUPTI_ACTIVITY_KIND_KERNEL, CUPTI_ACTIVITY_KIND_MEMCPY,
-        CUPTI_ACTIVITY_KIND_ENVIRONMENT,
-        // CUPTI_ACTIVITY_KIND_CUDA_EVENT, // errors on minsky2
+        CUPTI_ACTIVITY_KIND_ENVIRONMENT, // not compatible on minsky2
+        CUPTI_ACTIVITY_KIND_CUDA_EVENT,  // errors on minsky2
         CUPTI_ACTIVITY_KIND_DRIVER, CUPTI_ACTIVITY_KIND_RUNTIME,
         CUPTI_ACTIVITY_KIND_SYNCHRONIZATION,
         // CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS, // causes a hang in nccl on
@@ -168,7 +168,13 @@ void Profiler::init() {
     err() << "INFO: Profiler enabling activity API" << std::endl;
     for (const auto &kind : cuptiActivityKinds_) {
       err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
-      CUPTI_CHECK(cuptiActivityEnable(kind), err());
+      CUptiResult code = cuptiActivityEnable(kind);
+      if (code == CUPTI_ERROR_NOT_COMPATIBLE) {
+        err() << "WARN: CUPTI_ERROR_NOT_COMPATIBLE when enabling " << kind
+              << std::endl;
+      } else {
+        CUPTI_CHECK(code, err());
+      }
     }
     CUPTI_CHECK(cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
                                                cuptiActivityBufferCompleted),
