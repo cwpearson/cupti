@@ -130,7 +130,7 @@ void Profiler::init() {
     cuptiActivityKinds_ = {
         CUPTI_ACTIVITY_KIND_KERNEL, CUPTI_ACTIVITY_KIND_MEMCPY,
         CUPTI_ACTIVITY_KIND_ENVIRONMENT, // not compatible on minsky2
-        CUPTI_ACTIVITY_KIND_CUDA_EVENT,  // errors on minsky2
+        CUPTI_ACTIVITY_KIND_CUDA_EVENT,  // FIXME:available before cuda9?
         CUPTI_ACTIVITY_KIND_DRIVER, CUPTI_ACTIVITY_KIND_RUNTIME,
         CUPTI_ACTIVITY_KIND_SYNCHRONIZATION,
         // CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS, // causes a hang in nccl on
@@ -205,6 +205,9 @@ void Profiler::init() {
       CUptiResult code = cuptiActivityEnable(kind);
       if (code == CUPTI_ERROR_NOT_COMPATIBLE) {
         err() << "WARN: CUPTI_ERROR_NOT_COMPATIBLE when enabling " << kind
+              << std::endl;
+      } else if (code == CUPTI_ERROR_INVALID_KIND) {
+        err() << "WARN: CUPTI_ERROR_INVALID_KIND when enabling " << kind
               << std::endl;
       } else {
         CUPTI_CHECK(code, err());
