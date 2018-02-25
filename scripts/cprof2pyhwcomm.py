@@ -6,7 +6,6 @@ import argparse
 import sys
 
 import networkx as nx
-import matplotlib as plt
 
 from pycprof.profile import Profile
 from pyhwcomm.machines.minsky import Minsky
@@ -32,8 +31,7 @@ program = MakeConcrete(profile, machine)
 print("done")
 executor = ReplayExecutor()
 time = executor(program, machine)
-
 print("Final time:", time)
-
-# nx.draw(p.graph)
-# plt.show()
+machine.gpu_speedup = 1.5
+time = executor(program, machine)
+print("Final time:", time)
