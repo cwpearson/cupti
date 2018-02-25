@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "cprof/model/thread.hpp"
+#include "cprof/time.hpp"
 #include "cprof/util_cupti.hpp"
 #include "util/environment_variable.hpp"
 #include "util/tracer.hpp"

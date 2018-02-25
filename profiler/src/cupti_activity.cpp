@@ -3,6 +3,7 @@
 #include <thread>
 #include <vector>
 
+#include "cprof/model/thread.hpp"
 #include "cprof/util_cupti.hpp"
 
 #include "cupti_activity.hpp"
@@ -67,6 +68,8 @@ void threadFunc(uint8_t *localBuffer, size_t validSize) {
 
   using cupti_activity_config::activity_handler;
 
+  auto start = cprof::now();
+
   CUpti_Activity *record = NULL;
   if (validSize > 0) {
     do {
@@ -82,6 +85,13 @@ void threadFunc(uint8_t *localBuffer, size_t validSize) {
       }
     } while (true);
   }
+
+  auto end = cprof::now();
+
+  Profiler::instance().chrome_tracer().complete_event(
+      "", {}, cprof::nanos(start),
+      (cprof::nanos(end) - cprof::nanos(start)) / 1e3, "profiler",
+      "cupti record handler");
 }
 
 void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,
