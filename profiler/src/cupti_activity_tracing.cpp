@@ -44,6 +44,26 @@ void handleMemcpy(const CUpti_ActivityMemcpy *record) {
       end_time_stamp.count() - start_time_point.count(), "memcpy", "tid");
 }
 
+//
+// Overhead
+//
+void handleOverhead(const CUpti_ActivityOverhead *record) {
+  assert(record);
+
+  /*Get start and end times for kernel*/
+  std::chrono::nanoseconds start_dur(record->start);
+  auto start_time_point =
+      std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
+  std::chrono::nanoseconds end_dur(record->end);
+  auto end_time_stamp =
+      std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
+
+  Profiler::instance().chrome_tracer().complete_event(
+      "", {}, start_time_point.count(),
+      end_time_stamp.count() - start_time_point.count(), "cupti overhead",
+      "tid");
+}
+
 void tracing_activityHander(const CUpti_Activity *record) {
 
   switch (record->kind) {
@@ -64,8 +84,9 @@ void tracing_activityHander(const CUpti_Activity *record) {
     break;
   }
   case CUPTI_ACTIVITY_KIND_OVERHEAD: {
-    auto activity_cast = (CUpti_ActivityOverhead *)record;
-    // addOverheadActivityAnnotations(activity_cast);
+    auto activity_cast =
+        reinterpret_cast<const CUpti_ActivityOverhead *>(record);
+    handleOverhead(activity_cast);
     break;
   }
   case CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS: {
