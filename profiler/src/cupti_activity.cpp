@@ -89,7 +89,7 @@ void threadFunc(uint8_t *localBuffer, size_t validSize) {
   auto end = cprof::now();
 
   Profiler::instance().chrome_tracer().complete_event(
-      "", {}, cprof::nanos(start),
+      "", {}, cprof::nanos(start) / 1e3,
       (cprof::nanos(end) - cprof::nanos(start)) / 1e3, "profiler",
       "cupti record handler");
 }
