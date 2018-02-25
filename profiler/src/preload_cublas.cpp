@@ -457,9 +457,9 @@ cublasSscal(cublasHandle_t handle, int n,
       call_and_set_time(api, real_cublasSscal, handle, n, alpha, x, incx);
   driver().this_thread().resume_cupti_callbacks();
 
-  profiler::atomic_out(api->json());
   api->add_output(outVal);
   api->add_input(xVal);
+  profiler::atomic_out(api->json());
 
   return ret;
 }
