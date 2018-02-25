@@ -75,7 +75,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
     api->add_input(rootBuffVal);
 
     for (auto &v : dstBuffVals) {
-      if (dstBuffVal != rootBufVal) {
+      if (dstBuffVal != rootBuffVal) {
         v.add_depends_on(rootBuffVal, api->id());
         api->add_output(v);
       }
