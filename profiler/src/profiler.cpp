@@ -202,7 +202,13 @@ void Profiler::init() {
     err() << "INFO: Profiler enabling activity API" << std::endl;
     for (const auto &kind : cuptiActivityKinds_) {
       err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
-      CUPTI_CHECK(cuptiActivityEnable(kind), err());
+      CUptiResult code = cuptiActivityEnable(kind);
+      if (code == CUPTI_ERROR_NOT_COMPATIBLE) {
+        err() << "WARN: CUPTI_ERROR_NOT_COMPATIBLE when enabling " << kind
+              << std::endl;
+      } else {
+        CUPTI_CHECK(code, err());
+      }
     }
     CUPTI_CHECK(cuptiActivityRegisterCallbacks(cuptiActivityBufferRequested,
                                                cuptiActivityBufferCompleted),
