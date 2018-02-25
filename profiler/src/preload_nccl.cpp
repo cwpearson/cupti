@@ -59,7 +59,6 @@ static void register_ncclBcast(uintptr_t buff, int count,
   assert(dstBuffVal);
   dstBuffVals.push_back(dstBuffVal);
 
-  // If the root has been found, we have enough info to add some deps
   // Have the last thread set the deps and create the api call
   int commSize;
   ncclResult_t res = ncclCommCount(comm, &commSize);
@@ -76,8 +75,10 @@ static void register_ncclBcast(uintptr_t buff, int count,
     api->add_input(rootBuffVal);
 
     for (auto &v : dstBuffVals) {
-      v.add_depends_on(rootBuffVal, api->id());
-      api->add_output(v);
+      if (dstBuffVal != rootBufVal) {
+        v.add_depends_on(rootBuffVal, api->id());
+        api->add_output(v);
+      }
     }
     profiler::atomic_out(api->json());
     dstBuffVals.clear();
