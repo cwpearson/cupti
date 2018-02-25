@@ -37,6 +37,8 @@ public:
   const AddressSpace &address_space() const noexcept;
   void set_size(const size_t size);
   bool initialized() const { return initialized_; }
+  bool operator==(const Value &rhs) const;
+  bool operator!=(const Value &rhs) const;
 };
 
 } // namespace cprof

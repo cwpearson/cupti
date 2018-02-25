@@ -51,4 +51,16 @@ void Value::set_size(const size_t size) {
   logging::atomic_out(json());
 }
 
+bool Value::operator==(const Value &rhs) const {
+  if (id_ == rhs.id_) {
+    assert(allocation_ == rhs.allocation_);
+    assert(addressSpace_ == rhs.addressSpace_);
+    assert(initialized_ == rhs.initialized_);
+    return true;
+  }
+  return false;
+}
+
+bool Value::operator!=(const Value &rhs) const { return !((*this) == rhs); }
+
 } // namespace cprof
