@@ -45,6 +45,9 @@ cublasStatus_t call_and_set_time(ApiRecordRef api, FN function, Args... args) {
 typedef cublasStatus_t (*cublasCreateFunc)(cublasHandle_t *handle);
 extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
   CUBLAS_DLSYM_BOILERPLATE(cublasCreate);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasCreate(handle);
+  }
 
   profiler::err() << "WARN: disabling CUPTI callbacks during cublasCreate call"
                   << std::endl;
@@ -62,6 +65,9 @@ extern "C" cublasStatus_t cublasCreate(cublasHandle_t *handle) {
 typedef cublasStatus_t (*cublasDestroyFunc)(cublasHandle_t handle);
 extern "C" cublasStatus_t cublasDestroy(cublasHandle_t handle) {
   CUBLAS_DLSYM_BOILERPLATE(cublasDestroy);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasDestroy(handle);
+  }
 
   driver().this_thread().pause_cupti_callbacks();
   profiler::err() << "WARN: tid=" << cprof::model::get_thread_id()
@@ -82,6 +88,10 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
             const double *A, int lda, const double *B, int ldb,
             const double *beta, double *C, int ldc) {
   CUBLAS_DLSYM_BOILERPLATE(cublasDgemm);
+  if (preload_cublas::is_passthrough()) {
+    real_cublasDgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb,
+                     beta, C, ldc);
+  }
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
@@ -134,6 +144,9 @@ cublasSaxpy(cublasHandle_t handle, int n,
             const float *x, int incx, float *y, int incy) {
 
   CUBLAS_DLSYM_BOILERPLATE(cublasSaxpy);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasSaxpy(handle, n, alpha, x, incx, y, incy);
+  }
 
   const int devId = driver().device_from_cublas_handle(handle);
   AddressSpace AS = hardware().address_space(devId);
@@ -182,6 +195,10 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
             const float *beta, /* host or device pointer */
             float *C, int ldc) {
   CUBLAS_DLSYM_BOILERPLATE(cublasSgemm);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasSgemm(handle, transa, transb, m, n, k, alpha, A, lda, B,
+                            ldb, beta, C, ldc);
+  }
 
   // FIXME - also depends on alpha, beta
   // record data, we know things about how this API works
@@ -232,6 +249,10 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
                                       int lda, const double *x, int incx,
                                       const double *beta, double *y, int incy) {
   CUBLAS_DLSYM_BOILERPLATE(cublasDgemv);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasDgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta,
+                            y, incy);
+  }
 
   // record data, we know things about how this API works
 
@@ -288,6 +309,10 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
                                       int lda, const float *x, int incx,
                                       const float *beta, float *y, int incy) {
   CUBLAS_DLSYM_BOILERPLATE(cublasSgemv);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasSgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta,
+                            y, incy);
+  }
 
   // record data, we know things about how this API works
 
@@ -337,6 +362,9 @@ typedef cublasStatus_t (*cublasSasumFunc)(cublasHandle_t, int, const float *,
 extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
                                       const float *x, int incx, float *result) {
   CUBLAS_DLSYM_BOILERPLATE(cublasSasum);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasSasum(handle, n, x, incx, result);
+  }
 
   // record data, we know things about how this API works
   auto &allocations = profiler::allocations();
@@ -404,6 +432,9 @@ cublasSscal(cublasHandle_t handle, int n,
             const float *alpha, /* host or device pointer */
             float *x, int incx) {
   CUBLAS_DLSYM_BOILERPLATE(cublasSscal);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasSscal(handle, n, alpha, x, incx);
+  }
 
   const int devId = driver().device_from_cublas_handle(handle);
   AddressSpace AS = hardware().address_space(devId);
@@ -442,6 +473,9 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
                                      int incy, float *result) {
 
   CUBLAS_DLSYM_BOILERPLATE(cublasSdot);
+  if (preload_cublas::is_passthrough()) {
+    return real_cublasSdot(handle, n, x, incx, y, incy, result);
+  }
 
   // record data, we know things about how this API works
   auto &allocations = profiler::allocations();
