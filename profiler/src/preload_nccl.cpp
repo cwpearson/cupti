@@ -55,7 +55,8 @@ static void register_ncclBcast(uintptr_t buff, int count,
   std::lock_guard<std::mutex> guard(access);
 
   auto dstBuffAlloc = profiler::allocations().find(buff, numBytes, dstAS);
-  const auto &dstBuffVal = dstBuffAlloc.new_value(buff, numBytes, true);
+  const auto &dstBuffVal = dstBuffAlloc.new_value(
+      buff, numBytes, true /*initialized*/, "ncclBcast", 0);
   assert(dstBuffVal);
   dstBuffVals.push_back(dstBuffVal);
 
@@ -75,6 +76,8 @@ static void register_ncclBcast(uintptr_t buff, int count,
     api->add_input(rootBuffVal);
 
     for (auto &v : dstBuffVals) {
+      v.set_creator_id(api->id());
+      profiler::atomic_out(v.json());
       if (dstBuffVal != rootBuffVal) {
         v.add_depends_on(rootBuffVal, api->id());
         api->add_output(v);
@@ -104,7 +107,8 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
   sendBuffVals.push_back(sendBuffVal);
 
   auto recvBuffAlloc = profiler::allocations().find(recvbuff, numBytes, AS);
-  auto recvBuffVal = recvBuffAlloc.new_value(recvbuff, numBytes, true);
+  auto recvBuffVal =
+      recvBuffAlloc.new_value(recvbuff, numBytes, true, "ncclAllReduce", 0);
   recvBuffVals.push_back(recvBuffVal);
 
   // Once all values have been found, the last thread to enter allreduce can
@@ -120,15 +124,19 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
     auto api = std::make_shared<ApiRecord>("ncclAllReduce",
                                            profiler::driver().device(comm));
 
+    for (auto &v : recvBuffVals) {
+      api->add_output(v);
+      v.set_creator_id(api->id());
+      profiler::atomic_out(v.json());
+    }
+
     for (const auto &sendVal : sendBuffVals) {
       api->add_input(sendVal);
       for (const auto &recvVal : recvBuffVals) {
         recvVal.add_depends_on(sendVal, api->id());
       }
     }
-    for (const auto &v : recvBuffVals) {
-      api->add_output(v);
-    }
+
     profiler::atomic_out(api->json());
     sendBuffVals.clear();
     recvBuffVals.clear();

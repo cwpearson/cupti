@@ -61,7 +61,8 @@ public:
                             const cprof::model::Location &al);
 
   Value new_value(const uintptr_t pos, const size_t size,
-                  const AddressSpace &as, const bool initialized);
+                  const AddressSpace &as, const bool initialized,
+                  const std::string &creationReason, const size_t &creatorId);
 
   Value find_value(const uintptr_t pos, const size_t size,
                    const AddressSpace &as);
@@ -73,7 +74,8 @@ public:
     // ensure the existing value exists
     auto orig = find_value(v.pos(), v.size(), v.address_space());
     assert(orig);
-    return new_value(v.pos(), v.size(), v.address_space(), initialized);
+    return new_value(v.pos(), v.size(), v.address_space(), initialized,
+                     v.creation_reason(), v.creator_id());
   }
 
   Allocations() {}

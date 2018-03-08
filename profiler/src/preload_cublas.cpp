@@ -404,9 +404,10 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
   auto api = std::make_shared<ApiRecord>("cublasSasum", devId);
 
   // Make a new value
-  auto rVal =
-      rAlloc.new_value((uintptr_t)result, sizeof(float), true /*initialized*/);
+  auto rVal = rAlloc.new_value((uintptr_t)result, sizeof(float),
+                               true /*initialized*/, "cublasSasum", api->id());
   rVal.add_depends_on(xVal, api->id());
+  profiler::atomic_out(rVal.json());
 
   driver().this_thread().pause_cupti_callbacks();
   profiler::err() << "WARN: tid=" << cprof::model::get_thread_id()
@@ -520,10 +521,11 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
       "cublasSdot", driver().device_from_cublas_handle(handle));
 
   // Make a new value
-  auto rVal =
-      rAlloc.new_value((uintptr_t)result, sizeof(float), true /*initialized*/);
+  auto rVal = rAlloc.new_value((uintptr_t)result, sizeof(float),
+                               true /*initialized*/, "cublasSdot", api->id());
   rVal.add_depends_on(xVal, api->id());
   rVal.add_depends_on(yVal, api->id());
+  profiler::atomic_out(rVal.json());
 
   api->add_output(rVal);
   api->add_input(xVal);

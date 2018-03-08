@@ -75,7 +75,8 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
   auto newAlloc = insert(ar);
 
   // dump the value in this allocation
-  auto val = newAlloc.new_value(pos, size, false);
+  auto val =
+      newAlloc.new_value(pos, size, false, "new_allocation", newAlloc.id());
   logging::debug() << "Emitting value during new allocation\n";
   logging::atomic_out(val.json());
   return newAlloc;
@@ -102,14 +103,15 @@ Value Allocations::find_value(const uintptr_t pos, const size_t size,
 }
 
 Value Allocations::new_value(const uintptr_t pos, const size_t size,
-                             const AddressSpace &as, const bool initialized) {
+                             const AddressSpace &as, const bool initialized,
+                             const std::string &creationReason,
+                             const size_t &creatorId) {
   std::lock_guard<std::mutex> guard(access_mutex_);
 
   // Find the allocation
   auto alloc = unsafe_find(pos, size, as);
   assert(alloc && "Allocation should be valid");
-
-  return alloc.new_value(pos, size, initialized);
+  return alloc.new_value(pos, size, initialized, creationReason, creatorId);
 }
 
 } // namespace cprof

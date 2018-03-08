@@ -309,7 +309,8 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
 
   // always create a new dst value
   assert(srcVal);
-  auto dstVal = dstAlloc.new_value(dst, dstCount, srcVal.initialized());
+  auto dstVal = dstAlloc.new_value(dst, dstCount, srcVal.initialized(),
+                                   "cuda memcpy", api->id());
   assert(dstVal);
   dstVal.add_depends_on(srcVal, api->id());
   // dstVal->record_meta_append(cbInfo->functionName); // FIXME

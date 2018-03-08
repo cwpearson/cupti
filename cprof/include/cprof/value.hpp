@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "cprof/address_space.hpp"
@@ -20,14 +21,24 @@ private:
   AddressSpace addressSpace_;
   bool initialized_;
   size_t id_;
+  std::string creationReason_;
+  size_t creatorId_;
 
 public:
   Value(size_t id, const uintptr_t pos, const size_t size,
         const size_t &allocation, const AddressSpace &addressSpace,
-        const bool initialized)
+        const bool initialized, const std::string &creationReason,
+        const size_t creatorId)
       : Extent(pos, size), allocation_(allocation), addressSpace_(addressSpace),
-        initialized_(initialized), id_(id) {}
-  Value() : Value(0, 0, 0, 0, AddressSpace::Unknown(), false) {}
+        initialized_(initialized), id_(id), creationReason_(creationReason),
+        creatorId_(creatorId) {}
+  Value(size_t id, const uintptr_t pos, const size_t size,
+        const size_t &allocation, const AddressSpace &addressSpace,
+        const bool initialized)
+      : Value(id, pos, size, allocation, addressSpace, initialized, "", 0) {}
+  Value()
+      : Value(0, 0, 0, 0, AddressSpace::Unknown(), false, "DEFAULT_VALUE_CTOR",
+              0) {}
 
   void add_depends_on(const Value &V, const uint64_t apiId) const;
   std::string json() const;
@@ -39,6 +50,9 @@ public:
   bool initialized() const { return initialized_; }
   bool operator==(const Value &rhs) const;
   bool operator!=(const Value &rhs) const;
+  const std::string &creation_reason() const { return creationReason_; }
+  const size_t &creator_id() const { return creatorId_; }
+  void set_creator_id(const size_t &id) { creatorId_ = id; }
 };
 
 } // namespace cprof

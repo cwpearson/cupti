@@ -37,6 +37,9 @@ std::string Value::json() const {
   pt.put("val.allocation", allocation_);
   pt.put("val.address_space", addressSpace_.json());
   pt.put("val.initialized", initialized_);
+  pt.put("val.creation_reason", creationReason_);
+  pt.put("val.creator_id", creatorId_);
+
   std::stringstream buf;
   write_json(buf, pt, false);
   return buf.str();
@@ -48,7 +51,7 @@ const AddressSpace &Value::address_space() const noexcept {
 
 void Value::set_size(const size_t size) {
   logging::err() << "WARN: not updating size in Value" << std::endl;
-  logging::atomic_out(json());
+  // logging::atomic_out(json());
 }
 
 bool Value::operator==(const Value &rhs) const {

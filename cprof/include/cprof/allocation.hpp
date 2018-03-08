@@ -54,7 +54,9 @@ public:
 
   std::string json() const;
 
-  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized);
+  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized,
+                         const std::string &creationReason,
+                         const size_t &creatorId);
   cprof::Value value(const uintptr_t pos) const;
 
   pos_type pos() const noexcept { return lower_; }
@@ -95,8 +97,10 @@ public:
   explicit operator bool() const noexcept;
   bool operator==(const Allocation &rhs) const noexcept;
 
-  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized) {
-    return ar_->new_value(pos, size, initialized);
+  cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized,
+                         const std::string &creationReason,
+                         const size_t creationId) {
+    return ar_->new_value(pos, size, initialized, creationReason, creationId);
   }
   cprof::Value value(const uintptr_t pos) const { return ar_->value(pos); }
 };

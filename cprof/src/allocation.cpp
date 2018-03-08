@@ -24,13 +24,14 @@ std::string AllocationRecord::json() const {
 }
 
 cprof::Value AllocationRecord::new_value(uintptr_t pos, size_t size,
-                                         const bool initialized) {
+                                         const bool initialized,
+                                         const std::string &creationReason,
+                                         const size_t &creatorId) {
   val_ = next_val_++;
   val_initialized_ = initialized;
   val_size_ = size;
   cprof::Value newVal(val_, pos, val_size_, uintptr_t(this), address_space_,
-                      val_initialized_);
-  logging::atomic_out(newVal.json());
+                      val_initialized_, creationReason, creatorId);
   return newVal;
 }
 
