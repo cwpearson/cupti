@@ -106,8 +106,10 @@ extern "C" cudnnStatus_t cudnnActivationForward(
   auto api = std::make_shared<ApiRecord>("cudnnActivationForward", devId);
 
   // FIXME - also depends on alpha, beta
-  auto yVal = yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true);
+  auto yVal = yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true,
+                               "cudnnActivationForward", api->id());
   yVal.add_depends_on(xVal, api->id());
+  profiler::atomic_out(yVal.json());
 
   profiler::err()
       << "WARN: disabling CUPTI callbacks during cudnnActivationForward call"
@@ -214,10 +216,12 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
       "cudnnActivationBackward",
       profiler::driver().device_from_cudnn_handle(handle));
 
-  auto dxVal = dxAlloc.new_value((uintptr_t)dx, tensorSize(dxDesc), true);
+  auto dxVal = dxAlloc.new_value((uintptr_t)dx, tensorSize(dxDesc), true,
+                                 "cudnnActivationBackward", api->id());
   dxVal.add_depends_on(xVal, api->id());
   dxVal.add_depends_on(yVal, api->id());
   dxVal.add_depends_on(dyVal, api->id());
+  profiler::atomic_out(dxVal.json());
 
   profiler::err()
       << "WARN: disabling CUPTI callbacks during cudnnActivationBackward call"
@@ -333,9 +337,11 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
   auto api = std::make_shared<ApiRecord>(
       "cudnnConvolutionBackwardBias",
       profiler::driver().device_from_cudnn_handle(handle));
-  auto dbVal = dbAlloc.new_value((uintptr_t)db, tensorSize(dbDesc),
-                                 true /*initialized*/);
+  auto dbVal =
+      dbAlloc.new_value((uintptr_t)db, tensorSize(dbDesc), true /*initialized*/,
+                        "cudnnConvolutionBackwardBias", api->id());
   dbVal.add_depends_on(dyVal, api->id());
+  profiler::atomic_out(dbVal.json());
 
   // Do the actual call
   profiler::err() << "WARN: disabling CUPTI callbacks during "
@@ -525,8 +531,10 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
   assert(yAlloc && "y allocation should be on device");
 
   auto yVal =
-      yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true /*initialized*/);
+      yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true /*initialized*/,
+                       "cudnnSoftmaxForward", api->id());
   yVal.add_depends_on(xVal, api->id());
+  profiler::atomic_out(yVal.json());
 
   // Do the actual call
   profiler::err()
@@ -577,8 +585,10 @@ extern "C" cudnnStatus_t cudnnPoolingForward(
   auto yAlloc = allocations.find((uintptr_t)y, ySize, AS);
   assert(yAlloc && "y allocation should be on device");
 
-  auto yVal = yAlloc.new_value((uintptr_t)y, ySize, true /*initialized*/);
+  auto yVal = yAlloc.new_value((uintptr_t)y, ySize, true /*initialized*/,
+                               "cudnnPoolingForwardFunc", api->id());
   yVal.add_depends_on(xVal, api->id());
+  profiler::atomic_out(yVal.json());
 
   // Do the actual call
   profiler::err()
