@@ -3,6 +3,7 @@
 #include <thread>
 #include <vector>
 
+#include "cprof/chrome_tracing/complete_event.hpp"
 #include "cprof/model/thread.hpp"
 #include "cprof/util_cupti.hpp"
 
@@ -29,8 +30,8 @@ void set_device_buffer_size(const size_t bytes) {
 void set_device_buffer_pool_limit(const size_t npools) {
   attrDeviceBufferPoolLimit = npools;
 }
-const size_t local_buffer_size() { return localBufferSize; }
-const size_t align_size() { return 8; }
+size_t local_buffer_size() { return localBufferSize; }
+size_t align_size() { return 8; }
 size_t *attr_device_buffer_size() { return &attrDeviceBufferSize; }
 size_t *attr_device_buffer_pool_limit() { return &attrDeviceBufferPoolLimit; }
 
@@ -88,10 +89,11 @@ void threadFunc(uint8_t *localBuffer, size_t validSize) {
 
   auto end = cprof::now();
 
-  Profiler::instance().chrome_tracer().complete_event(
-      "", {}, cprof::nanos(start) / 1e3,
-      (cprof::nanos(end) - cprof::nanos(start)) / 1e3, "profiler",
-      "cupti record handler");
+  auto event = cprof::chrome_tracing::CompleteEventNs(
+      "", {}, cprof::nanos(start), (cprof::nanos(end) - cprof::nanos(start)),
+      "profiler", "cupti record handler");
+
+  Profiler::instance().chrome_tracer().write_event(event);
 }
 
 void CUPTIAPI cuptiActivityBufferCompleted(CUcontext ctx, uint32_t streamId,

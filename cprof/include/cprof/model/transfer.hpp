@@ -23,9 +23,7 @@ public:
   Transfer();
   Transfer(CUpti_ActivityMemcpy *record);
 
-  double start_ms() const;
   double start_ns() const;
-  double dur_ms() const;
   double dur_ns() const;
 
   std::string json() const;

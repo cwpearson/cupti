@@ -5,7 +5,6 @@
 #include "cprof/time.hpp"
 #include "cprof/util_cupti.hpp"
 #include "util/environment_variable.hpp"
-#include "util/tracer.hpp"
 
 #include "cupti_activity_tracing.hpp"
 #include "cupti_callback.hpp"
@@ -29,7 +28,9 @@ std::ostream &err() { return Profiler::instance().err(); }
  *
  * Should not handle any initialization. Defer that to the init() method.
  */
-Profiler::Profiler() : chromeTracer_(new Tracer()), isInitialized_(false) {}
+Profiler::Profiler()
+    : chromeTracer_(new cprof::chrome_tracing::Tracer()),
+      isInitialized_(false) {}
 
 Profiler::~Profiler() {
   logging::err() << "Profiler dtor\n";
@@ -92,7 +93,8 @@ void Profiler::init() {
     auto chromeTracingPath =
         EnvironmentVariable<std::string>("CPROF_CHROME_TRACING", "").get();
     if (chromeTracingPath != "") {
-      chromeTracer_ = std::make_shared<Tracer>(chromeTracingPath.c_str());
+      chromeTracer_ = std::make_shared<cprof::chrome_tracing::Tracer>(
+          chromeTracingPath.c_str());
     }
   }
 

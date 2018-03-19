@@ -9,11 +9,11 @@
 #include <zipkin.hpp>
 
 #include "cprof/allocations.hpp"
+#include "cprof/chrome_tracing/tracer.hpp"
 #include "cprof/model/driver.hpp"
 #include "cprof/model/hardware.hpp"
 #include "util/environment_variable.hpp"
 #include "util/logging.hpp"
-#include "util/tracer.hpp"
 
 #include "cupti_activity.hpp"
 #include "timer.hpp"
@@ -50,7 +50,7 @@ public:
   bool is_mode_timeline() const { return mode_ == Mode::ActivityTimeline; }
   bool is_mode_full() const { return mode_ == Mode::Full; }
 
-  Tracer &chrome_tracer() { return *chromeTracer_; }
+  cprof::chrome_tracing::Tracer &chrome_tracer() { return *chromeTracer_; }
 
   std::ostream &err();
   std::ostream &out();
@@ -80,7 +80,7 @@ private:
   std::vector<CUpti_ActivityKind> cuptiActivityKinds_;
 
   Timer timer_;
-  std::shared_ptr<Tracer> chromeTracer_;
+  std::shared_ptr<cprof::chrome_tracing::Tracer> chromeTracer_;
 
   bool isInitialized_;
   CUpti_SubscriberHandle cuptiCallbackSubscriber_;

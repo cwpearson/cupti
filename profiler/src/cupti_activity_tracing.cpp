@@ -2,6 +2,8 @@
 
 #include "cupti_activity_tracing.hpp"
 
+#include "cprof/chrome_tracing/complete_event.hpp"
+
 //
 // KERNEL
 //
@@ -19,9 +21,11 @@ void handleKernel(const CUpti_ActivityKernel3 *record) {
   auto end_time_stamp =
       std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
 
-  Profiler::instance().chrome_tracer().complete_event(
+  auto event = cprof::chrome_tracing::CompleteEventNs(
       name, {}, start_time_point.count(),
       end_time_stamp.count() - start_time_point.count(), "profiler", "kernel");
+
+  Profiler::instance().chrome_tracer().write_event(event);
 }
 
 //
@@ -39,11 +43,11 @@ void handleMemcpy(const CUpti_ActivityMemcpy *record) {
   auto end_time_stamp =
       std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
 
-  Profiler::instance().chrome_tracer().complete_event(
+  auto event = cprof::chrome_tracing::CompleteEventNs(
       std::to_string(record->bytes), {}, start_time_point.count(),
       end_time_stamp.count() - start_time_point.count(), "profiler", "memcpy");
 
-  
+  Profiler::instance().chrome_tracer().write_event(event);
 }
 
 //
@@ -60,10 +64,12 @@ void handleOverhead(const CUpti_ActivityOverhead *record) {
   auto end_time_stamp =
       std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
 
-  Profiler::instance().chrome_tracer().complete_event(
+  auto event = cprof::chrome_tracing::CompleteEventNs(
       "", {}, start_time_point.count(),
       end_time_stamp.count() - start_time_point.count(), "profiler",
       "cupti overhead");
+
+  Profiler::instance().chrome_tracer().write_event(event);
 }
 
 void tracing_activityHander(const CUpti_Activity *record) {
