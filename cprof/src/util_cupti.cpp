@@ -92,6 +92,9 @@ from_cupti_activity_memcpy_kind(const uint8_t copyKind) {
   }
 }
 
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
 CuptiActivityMemoryKind from_cupti_activity_memory_kind(const uint8_t memKind) {
   switch (memKind) {
   case CUPTI_ACTIVITY_MEMORY_KIND_UNKNOWN:
@@ -106,14 +109,10 @@ CuptiActivityMemoryKind from_cupti_activity_memory_kind(const uint8_t memKind) {
     return CuptiActivityMemoryKind::ARRAY;
   case CUPTI_ACTIVITY_MEMORY_KIND_MANAGED:
     return CuptiActivityMemoryKind::MANAGED;
-#if __CUDACC_VER_MAJOR__ > 8
-  case CUPTI_ACTIVITY_MEMORY_KIND_DEVICE_STATIC:
-    return CuptiActivityMemoryKind::DEVICE_STATIC;
-  case CUPTI_ACTIVITY_MEMORY_KIND_MANAGED_STATIC:
-    return CuptiActivityMemoryKind::MANAGED_STATIC;
-#else
-#warning CUDACC <= 8.0, not using some CuptiActivityKinds
-#endif
+  // case CUPTI_ACTIVITY_MEMORY_KIND_DEVICE_STATIC:
+  //   return CuptiActivityMemoryKind::DEVICE_STATIC;
+  // case CUPTI_ACTIVITY_MEMORY_KIND_MANAGED_STATIC:
+  //   return CuptiActivityMemoryKind::MANAGED_STATIC;
   default:
     return CuptiActivityMemoryKind::INVALID;
   }

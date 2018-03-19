@@ -24,7 +24,7 @@ void CompleteEvent::ts_from_ns(const double timestamp) {
   ts_from_us(timestamp / 1e3);
 }
 void CompleteEvent::dur_from_ns(const double duration) {
-  duration_from_us(duration / 1e3);
+  dur_from_us(duration / 1e3);
 }
 
 std::string CompleteEvent::json() const {
