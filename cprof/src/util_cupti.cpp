@@ -106,10 +106,10 @@ CuptiActivityMemoryKind from_cupti_activity_memory_kind(const uint8_t memKind) {
     return CuptiActivityMemoryKind::ARRAY;
   case CUPTI_ACTIVITY_MEMORY_KIND_MANAGED:
     return CuptiActivityMemoryKind::MANAGED;
-  case CUPTI_ACTIVITY_MEMORY_KIND_DEVICE_STATIC:
-    return CuptiActivityMemoryKind::DEVICE_STATIC;
-  case CUPTI_ACTIVITY_MEMORY_KIND_MANAGED_STATIC:
-    return CuptiActivityMemoryKind::MANAGED_STATIC;
+  // case CUPTI_ACTIVITY_MEMORY_KIND_DEVICE_STATIC:
+  //   return CuptiActivityMemoryKind::DEVICE_STATIC;
+  // case CUPTI_ACTIVITY_MEMORY_KIND_MANAGED_STATIC:
+  //   return CuptiActivityMemoryKind::MANAGED_STATIC;
   default:
     return CuptiActivityMemoryKind::INVALID;
   }
