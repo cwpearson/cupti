@@ -54,6 +54,14 @@ CompleteEvent CompleteEventNs(const std::string &name,
                               const double timestamp, const double duration,
                               const std::string &pid, const std::string &tid);
 
+/* \brief Construct a complete event with times given in ns
+ *
+ */
+CompleteEvent CompleteEventUs(const std::string &name,
+                              const std::vector<std::string> &categories,
+                              const double timestamp, const double duration,
+                              const std::string &pid, const std::string &tid);
+
 } // namespace chrome_tracing
 } // namespace cprof
 

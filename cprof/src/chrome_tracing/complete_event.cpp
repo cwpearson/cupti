@@ -63,5 +63,15 @@ CompleteEvent CompleteEventNs(const std::string &name,
   return event;
 }
 
+CompleteEvent CompleteEventUs(const std::string &name,
+                              const std::vector<std::string> &categories,
+                              const double timestamp, const double duration,
+                              const std::string &pid, const std::string &tid) {
+  CompleteEvent event(name, categories, pid, tid);
+  event.ts_from_us(timestamp);
+  event.dur_from_us(duration);
+  return event;
+}
+
 } // namespace chrome_tracing
 } // namespace cprof
