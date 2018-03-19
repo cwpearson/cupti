@@ -36,15 +36,16 @@ Profiler::~Profiler() {
   logging::err() << "Profiler dtor\n";
 
   switch (mode_) {
-  case Mode::ActivityTimeline:
   case Mode::Full:
-    err() << "INFO: CuptiSubscriber cleaning up activity API";
-    cuptiActivityFlushAll(0);
-    err() << "INFO: done cuptiActivityFlushAll" << std::endl;
     profiler::err() << "INFO: CuptiSubscriber Deactivating callback API!"
                     << std::endl;
     CUPTI_CHECK(cuptiUnsubscribe(cuptiCallbackSubscriber_), err());
     profiler::err() << "INFO: done deactivating callbacks!" << std::endl;
+  case Mode::ActivityTimeline:
+    err() << "INFO: CuptiSubscriber cleaning up activity API" << std::endl;
+    cuptiActivityFlushAll(0);
+    err() << "INFO: done cuptiActivityFlushAll" << std::endl;
+
     break;
   default: { assert(0 && "Unexpected mode"); }
   }
