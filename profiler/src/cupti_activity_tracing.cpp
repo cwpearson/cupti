@@ -42,6 +42,8 @@ void handleMemcpy(const CUpti_ActivityMemcpy *record) {
   Profiler::instance().chrome_tracer().complete_event(
       std::to_string(record->bytes), {}, start_time_point.count(),
       end_time_stamp.count() - start_time_point.count(), "profiler", "memcpy");
+
+  
 }
 
 //
