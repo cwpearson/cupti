@@ -30,8 +30,18 @@ public:
                 const std::vector<std::string> &categories,
                 const std::string &pid, const std::string &tid);
 
+  /*! \brief Set timestamp from provided nanoseconds.
+   */
   void ts_from_ns(const double timestamp);
+  /*! \brief Set duration from provided nanoseconds.
+   */
   void dur_from_ns(const double duration);
+  /*! \brief Set timestamp from provided microseconds.
+   */
+  void ts_from_us(const double timestamp);
+  /*! \brief Set duration from provided microseconds.
+   */
+  void dur_from_us(const double duration);
 
   std::string json() const;
 };

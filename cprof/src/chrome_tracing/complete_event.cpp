@@ -16,10 +16,16 @@ CompleteEvent::CompleteEvent(const std::string &name,
     : name_(name), categories_(categories), pid_(pid), tid_(tid), timestamp_(0),
       duration_(0) {}
 
-void CompleteEvent::ts_from_ns(const double timestamp) {
+void CompleteEvent::ts_from_us(const double timestamp) {
   timestamp_ = timestamp;
 }
-void CompleteEvent::dur_from_ns(const double duration) { duration_ = duration; }
+void CompleteEvent::dur_from_us(const double duration) { duration_ = duration; }
+void CompleteEvent::ts_from_ns(const double timestamp) {
+  ts_from_us(timestamp / 1e3);
+}
+void CompleteEvent::dur_from_ns(const double duration) {
+  duration_from_us(duration / 1e3);
+}
 
 std::string CompleteEvent::json() const {
   using boost::property_tree::ptree;
