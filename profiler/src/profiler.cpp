@@ -80,8 +80,14 @@ void Profiler::init() {
     logging::err() << "Profiler already initialized" << std::endl;
     return;
   }
+  isInitialized_ = true;
 
   // Configure logging
+  auto quiet = enableZipkin_ =
+      EnvironmentVariable<bool>("CPROF_QUIET", false).get();
+  if (quiet) {
+    logging::disable();
+  }
   auto outPath = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();
   if (outPath != "-") {
     logging::set_out_path(outPath.c_str());
@@ -259,8 +265,6 @@ void Profiler::init() {
 
     rootSpan_ = rootTracer_->StartSpan("Root");
   }
-
-  isInitialized_ = true;
 }
 
 Profiler &Profiler::instance() {

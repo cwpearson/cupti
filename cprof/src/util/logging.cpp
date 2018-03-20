@@ -20,6 +20,9 @@ std::ostream &set_out_path(const std::string &path) {
 std::ostream &set_err_path(const std::string &path) {
   return globalLogger().set_err_path(path);
 }
+
+void disable() { globalLogger().disable(); }
+
 void atomic_out(const std::string &s) { globalLogger().atomic_out(s); }
 void atomic_err(const std::string &s) { globalLogger().atomic_err(s); }
 } // namespace logging
