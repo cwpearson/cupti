@@ -22,6 +22,7 @@ std::ostream &set_err_path(const std::string &path) {
 }
 
 void disable() { globalLogger().disable(); }
+void enable() { globalLogger().enable(); }
 
 void atomic_out(const std::string &s) { globalLogger().atomic_out(s); }
 void atomic_err(const std::string &s) { globalLogger().atomic_err(s); }
