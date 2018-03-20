@@ -1,13 +1,13 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include "cprof/model/transfer.hpp"
+#include "cprof/activity/transfer.hpp"
 
 using boost::property_tree::ptree;
 using boost::property_tree::write_json;
 
 namespace cprof {
-namespace model {
+namespace activity {
 
 std::string to_string(const Transfer::Kind &kind) {
   switch (kind) {
@@ -22,7 +22,7 @@ std::string to_string(const Transfer::Kind &kind) {
 
 Transfer::Transfer() : kind_(Transfer::Kind::INVALID) {}
 
-Transfer::Transfer(CUpti_ActivityMemcpy *record) : Transfer() {
+Transfer::Transfer(const CUpti_ActivityMemcpy *record) : Transfer() {
 
   static_assert(sizeof(uint8_t) == sizeof(record->dstKind),
                 "unexpected data type for dstKind");
@@ -33,16 +33,23 @@ Transfer::Transfer(CUpti_ActivityMemcpy *record) : Transfer() {
 
   assert(record && "invalid record");
 
+  // unused record fields
+  // void * reserved0
+
   bytes_ = record->bytes;
+  duration_ = std::chrono::nanoseconds(record->end - record->start);
+  start_ = time_point_t(std::chrono::nanoseconds(record->start));
+
   cudaDeviceId_ = record->deviceId;
   kind_ = Kind::CUPTI_MEMCPY;
-
   cudaMemcpyKind_ = from_cupti_activity_memcpy_kind(record->copyKind);
   srcKind_ = from_cupti_activity_memory_kind(record->srcKind);
   dstKind_ = from_cupti_activity_memory_kind(record->dstKind);
-
-  duration_ = std::chrono::nanoseconds(record->end - record->start);
-  start_ = time_point_t(std::chrono::nanoseconds(record->start));
+  contextId_ = record->contextId;
+  correlationId_ = record->correlationId;
+  flags_ = record->flags;
+  runtimeCorrelationId_ = record->runtimeCorrelationId;
+  streamId_ = record->streamId;
 }
 
 double Transfer::start_ns() const {
@@ -58,7 +65,6 @@ double Transfer::dur_ns() const {
 }
 
 std::string Transfer::json() const {
-
   ptree pt;
   pt.put("transfer.cuda_device_id", cudaDeviceId_);
   pt.put("transfer.kind", to_string(kind_));
@@ -67,6 +73,9 @@ std::string Transfer::json() const {
   pt.put("transfer.dst_kind", to_string(dstKind_));
   pt.put("transfer.start", start_ns());
   pt.put("transfer.dur", dur_ns());
+  pt.put("transfer.stream_id", streamId_);
+  pt.put("transfer.correlation_id", correlationId_);
+  pt.put("transfer.runtime_correlation_id", runtimeCorrelationId_);
   for (const auto &p : kv_) {
     const std::string &key = p.first;
     const std::string &val = p.second;
@@ -77,5 +86,10 @@ std::string Transfer::json() const {
   return buf.str();
 }
 
-} // namespace model
+cprof::chrome_tracing::CompleteEvent Transfer::chrome_complete_event() const {
+  return cprof::chrome_tracing::CompleteEventNs(
+      std::to_string(bytes_), {}, start_ns(), dur_ns(), "profiler", "memcpy");
+}
+
+} // namespace activity
 } // namespace cprof

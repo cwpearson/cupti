@@ -1,31 +1,20 @@
 #include <string>
 
-#include "cupti_activity_tracing.hpp"
-
+#include "cprof/activity/compute.hpp"
+#include "cprof/activity/transfer.hpp"
 #include "cprof/chrome_tracing/complete_event.hpp"
+
+#include "cupti_activity_tracing.hpp"
 
 //
 // KERNEL
 //
 void handleKernel(const CUpti_ActivityKernel3 *record) {
   assert(record);
-  const char *name = record->name;
-
-  const uint32_t correlationId = record->correlationId;
-
-  /*Get start and end times for kernel*/
-  std::chrono::nanoseconds start_dur(record->start);
-  auto start_time_point =
-      std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
-  std::chrono::nanoseconds end_dur(record->end);
-  auto end_time_stamp =
-      std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
-
-  auto event = cprof::chrome_tracing::CompleteEventUs(
-      name, {}, start_time_point.count(),
-      end_time_stamp.count() - start_time_point.count(), "profiler", "kernel");
-
-  Profiler::instance().chrome_tracer().write_event(event);
+  auto activity = cprof::activity::Compute(record);
+  Profiler::instance().chrome_tracer().write_event(
+      activity.chrome_complete_event());
+  profiler::atomic_out(activity.json());
 }
 
 //
@@ -33,21 +22,10 @@ void handleKernel(const CUpti_ActivityKernel3 *record) {
 //
 void handleMemcpy(const CUpti_ActivityMemcpy *record) {
   assert(record);
-  const uint32_t correlationId = record->correlationId;
-
-  /*Get start and end times for kernel*/
-  std::chrono::nanoseconds start_dur(record->start);
-  auto start_time_point =
-      std::chrono::duration_cast<std::chrono::microseconds>(start_dur);
-  std::chrono::nanoseconds end_dur(record->end);
-  auto end_time_stamp =
-      std::chrono::duration_cast<std::chrono::microseconds>(end_dur);
-
-  auto event = cprof::chrome_tracing::CompleteEventUs(
-      std::to_string(record->bytes), {}, start_time_point.count(),
-      end_time_stamp.count() - start_time_point.count(), "profiler", "memcpy");
-
-  Profiler::instance().chrome_tracer().write_event(event);
+  auto transfer = cprof::activity::Transfer(record);
+  Profiler::instance().chrome_tracer().write_event(
+      transfer.chrome_complete_event());
+  profiler::atomic_out(transfer.json());
 }
 
 //

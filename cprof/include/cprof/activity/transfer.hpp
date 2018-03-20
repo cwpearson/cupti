@@ -1,5 +1,5 @@
-#ifndef CPROF_MODEL_TRANSFER_HPP
-#define CPROF_MODEL_TRANSFER_HPP
+#ifndef CPROF_ACTIVITY_TRANSFER_HPP
+#define CPROF_ACTIVITY_TRANSFER_HPP
 
 #include <cassert>
 #include <chrono>
@@ -8,10 +8,11 @@
 
 #include <cupti.h>
 
+#include "cprof/chrome_tracing/complete_event.hpp"
 #include "cprof/util_cupti.hpp"
 
 namespace cprof {
-namespace model {
+namespace activity {
 
 class Transfer {
 public:
@@ -21,37 +22,35 @@ public:
   enum class Kind { CUPTI_MEMCPY, INVALID };
 
   Transfer();
-  Transfer(CUpti_ActivityMemcpy *record);
+  explicit Transfer(const CUpti_ActivityMemcpy *record);
 
   double start_ns() const;
   double dur_ns() const;
 
   std::string json() const;
+  cprof::chrome_tracing::CompleteEvent chrome_complete_event() const;
 
 private:
+  // General fields
   size_t bytes_;
+  duration_t duration_;
+  time_point_t start_;
+  std::map<std::string, std::string> kv_;
+
+  // CUDA-specific fields (FIXME: move to derived class)
   uint32_t cudaDeviceId_;
   Kind kind_;
   cprof::CuptiActivityMemcpyKind cudaMemcpyKind_;
   cprof::CuptiActivityMemoryKind srcKind_;
   cprof::CuptiActivityMemoryKind dstKind_;
-
-  duration_t duration_;
-  time_point_t start_;
-
-  std::map<std::string, std::string> kv_;
-
-  //// unused CUPTI_ActivityMemcpy fields
-  // uint32_t contextId_;
-  // uint32_t correlationId_;
-  // uint8_t flags_;
-  // CUpti_ActivityKind kind_;
-  // void *reserved0_;
-  // uint32_t runtimeCorrelationId_;
-  // uint32_t streamId_;
+  uint32_t contextId_;
+  uint32_t correlationId_;
+  uint8_t flags_;
+  uint32_t runtimeCorrelationId_;
+  uint32_t streamId_;
 };
 
-} // namespace model
+} // namespace activity
 } // namespace cprof
 
 #endif
