@@ -3,3 +3,6 @@ OPENTRACING_ROOT ?= $(HOME)/software/opentracing-cpp
 
 # If zipkin-cpp-opentracing is in an unusual place
 ZIPKIN_OPENTRACING_ROOT ?= $(HOME)/software/zipkin-cpp-opentracing
+
+# The verion of NCCL installed on the system
+NCCL_VERSION ?= 2

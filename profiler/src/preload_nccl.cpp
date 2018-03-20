@@ -195,12 +195,23 @@ extern "C" ncclResult_t ncclCommInitRank(ncclComm_t *comm, int ndev,
   return ret;
 }
 
+#if NCCL_VERSION_MAJOR == 2
 typedef ncclResult_t (*ncclBcastFunc)(void *buff, size_t count,
                                       ncclDataType_t datatype, int root,
                                       ncclComm_t comm, cudaStream_t stream);
 extern "C" ncclResult_t ncclBcast(void *buff, size_t count,
                                   ncclDataType_t datatype, int root,
                                   ncclComm_t comm, cudaStream_t stream) {
+#elif NCCL_VERSION_MAJOR == 1
+typedef ncclResult_t (*ncclBcastFunc)(void *buff, int count,
+                                      ncclDataType_t datatype, int root,
+                                      ncclComm_t comm, cudaStream_t stream);
+extern "C" ncclResult_t ncclBcast(void *buff, int count,
+                                  ncclDataType_t datatype, int root,
+                                  ncclComm_t comm, cudaStream_t stream) {
+#else
+#error expecting NCCL_VERSION_MJAOR to be defined
+#endif
   NCCL_DLSYM_BOILERPLATE(ncclBcast);
 
   if (preload_nccl::is_passthrough()) {
@@ -230,6 +241,7 @@ extern "C" ncclResult_t ncclBcast(void *buff, size_t count,
   return ret;
 }
 
+#if NCCL_VERSION_MAJOR == 2
 typedef ncclResult_t (*ncclAllReduceFunc)(const void *sendbuff, void *recvbuff,
                                           size_t count, ncclDataType_t datatype,
                                           ncclRedOp_t op, ncclComm_t comm,
@@ -239,6 +251,19 @@ extern "C" ncclResult_t ncclAllReduce(const void *sendbuff, void *recvbuff,
                                       size_t count, ncclDataType_t datatype,
                                       ncclRedOp_t op, ncclComm_t comm,
                                       cudaStream_t stream) {
+#elif NCCL_VERSION_MAJOR == 1
+typedef ncclResult_t (*ncclAllReduceFunc)(const void *sendbuff, void *recvbuff,
+                                          int count, ncclDataType_t datatype,
+                                          ncclRedOp_t op, ncclComm_t comm,
+                                          cudaStream_t stream);
+
+extern "C" ncclResult_t ncclAllReduce(const void *sendbuff, void *recvbuff,
+                                      int count, ncclDataType_t datatype,
+                                      ncclRedOp_t op, ncclComm_t comm,
+                                      cudaStream_t stream) {
+#else
+#error expecting NCCL_VERSION_MAJOR to be defined
+#endif
   NCCL_DLSYM_BOILERPLATE(ncclAllReduce);
 
   if (preload_nccl::is_passthrough()) {
