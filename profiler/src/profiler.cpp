@@ -86,7 +86,7 @@ void Profiler::init() {
   auto quiet = enableZipkin_ =
       EnvironmentVariable<bool>("CPROF_QUIET", false).get();
   if (quiet) {
-    logging::disable();
+    logging::disable_err();
   }
   auto outPath = EnvironmentVariable<std::string>("CPROF_OUT", "-").get();
   if (outPath != "-") {

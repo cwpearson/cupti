@@ -4,13 +4,11 @@
 #include <fstream>
 #include <iostream>
 
-void Logger::disable() { enabled_ = false; }
-
-void Logger::enable() { enabled_ = true; }
+void Logger::enable_out(const bool enable) { outEnabled_ = enable; }
+void Logger::enable_err(const bool enable) { errEnabled_ = enable; }
 
 std::ostream &Logger::out() {
-
-  if (enabled_) {
+  if (outEnabled_) {
     if (out_) {
       return *out_;
     } else {
@@ -21,7 +19,7 @@ std::ostream &Logger::out() {
   }
 }
 std::ostream &Logger::err() {
-  if (enabled_) {
+  if (errEnabled_) {
     if (err_)
       return *err_;
     else
@@ -42,14 +40,14 @@ std::ostream &Logger::set_out_path(const std::string &path) {
 }
 
 void Logger::atomic_out(const std::string &s) {
-  if (enabled_) {
+  if (outEnabled_) {
     std::lock_guard<std::mutex> guard(outMutex_);
     out() << s;
   }
 }
 
 void Logger::atomic_err(const std::string &s) {
-  if (enabled_) {
+  if (errEnabled_) {
     std::lock_guard<std::mutex> guard(errMutex_);
     err() << s;
   }

@@ -21,8 +21,10 @@ std::ostream &set_err_path(const std::string &path) {
   return globalLogger().set_err_path(path);
 }
 
-void disable() { globalLogger().disable(); }
-void enable() { globalLogger().enable(); }
+void disable_out() { globalLogger().enable_out(false); }
+void enable_out() { globalLogger().enable_out(true); }
+void disable_err() { globalLogger().enable_err(false); }
+void enable_err() { globalLogger().enable_err(true); }
 
 void atomic_out(const std::string &s) { globalLogger().atomic_out(s); }
 void atomic_err(const std::string &s) { globalLogger().atomic_err(s); }

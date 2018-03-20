@@ -15,12 +15,14 @@ private:
   std::mutex outMutex_, errMutex_;
 
   NullStream nullStream_;
-  bool enabled_;
+  bool outEnabled_;
+  bool errEnabled_;
 
 public:
-  Logger() : err_(nullptr), out_(nullptr), enabled_(true) {}
-  void disable();
-  void enable();
+  Logger()
+      : err_(nullptr), out_(nullptr), outEnabled_(true), errEnabled_(true) {}
+  void enable_out(const bool enable);
+  void enable_err(const bool enable);
 
   std::ostream &err();
   std::ostream &out();
