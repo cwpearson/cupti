@@ -41,7 +41,7 @@ static size_t ncclSizeOf(const ncclDataType_t t) noexcept {
   }
 }
 
-static void register_ncclBcast(uintptr_t buff, int count,
+static void register_ncclBcast(uintptr_t buff, size_t count,
                                ncclDataType_t datatype, int root,
                                ncclComm_t comm) {
   static std::mutex access;
@@ -87,7 +87,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
 }
 
 static void register_ncclAllReduce(const uintptr_t sendbuff,
-                                   const uintptr_t recvbuff, int count,
+                                   const uintptr_t recvbuff, size_t count,
                                    ncclDataType_t datatype, ncclComm_t comm) {
   static std::mutex access;
   static std::vector<Value> sendBuffVals, recvBuffVals;
@@ -195,10 +195,10 @@ extern "C" ncclResult_t ncclCommInitRank(ncclComm_t *comm, int ndev,
   return ret;
 }
 
-typedef ncclResult_t (*ncclBcastFunc)(void *buff, int count,
+typedef ncclResult_t (*ncclBcastFunc)(void *buff, size_t count,
                                       ncclDataType_t datatype, int root,
                                       ncclComm_t comm, cudaStream_t stream);
-extern "C" ncclResult_t ncclBcast(void *buff, int count,
+extern "C" ncclResult_t ncclBcast(void *buff, size_t count,
                                   ncclDataType_t datatype, int root,
                                   ncclComm_t comm, cudaStream_t stream) {
   NCCL_DLSYM_BOILERPLATE(ncclBcast);
@@ -231,12 +231,12 @@ extern "C" ncclResult_t ncclBcast(void *buff, int count,
 }
 
 typedef ncclResult_t (*ncclAllReduceFunc)(const void *sendbuff, void *recvbuff,
-                                          int count, ncclDataType_t datatype,
+                                          size_t count, ncclDataType_t datatype,
                                           ncclRedOp_t op, ncclComm_t comm,
                                           cudaStream_t stream);
 
 extern "C" ncclResult_t ncclAllReduce(const void *sendbuff, void *recvbuff,
-                                      int count, ncclDataType_t datatype,
+                                      size_t count, ncclDataType_t datatype,
                                       ncclRedOp_t op, ncclComm_t comm,
                                       cudaStream_t stream) {
   NCCL_DLSYM_BOILERPLATE(ncclAllReduce);
