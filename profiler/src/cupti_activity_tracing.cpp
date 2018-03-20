@@ -11,10 +11,10 @@
 //
 void handleKernel(const CUpti_ActivityKernel3 *record) {
   assert(record);
-  auto activity = cprof::activity::Compute(record);
+  auto compute = cprof::activity::Compute(record);
   Profiler::instance().chrome_tracer().write_event(
-      activity.chrome_complete_event());
-  profiler::atomic_out(activity.json());
+      compute.chrome_complete_event());
+  profiler::atomic_out(compute.json());
 }
 
 //

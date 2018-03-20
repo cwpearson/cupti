@@ -29,7 +29,11 @@ Compute::Compute(const CUpti_ActivityKernel3 *record) : Compute() {
   start_ = time_point_t(std::chrono::nanoseconds(record->start));
   duration_ = std::chrono::nanoseconds(record->end - record->start);
 
-  completed_ = time_point_t(std::chrono::nanoseconds(record->completed));
+  if (record->completed == CUPTI_TIMESTAMP_UNKNOWN) {
+    completed_ = time_point_t(std::chrono::nanoseconds(0));
+  } else {
+    completed_ = time_point_t(std::chrono::nanoseconds(record->completed));
+  }
   cudaDeviceId_ = record->deviceId;
   contextId_ = record->contextId;
   correlationId_ = record->correlationId;
@@ -77,9 +81,15 @@ std::string Compute::json() const {
 }
 
 cprof::chrome_tracing::CompleteEvent Compute::chrome_complete_event() const {
-  return cprof::chrome_tracing::CompleteEventNs(name_, {}, start_ns(),
-                                                completed_ns() - start_ns(),
-                                                "profiler", "compute");
+
+  if (completed_ns() >= start_ns()) {
+    return cprof::chrome_tracing::CompleteEventNs(name_, {}, start_ns(),
+                                                  completed_ns() - start_ns(),
+                                                  "profiler", "compute");
+  } else {
+    return cprof::chrome_tracing::CompleteEventNs(
+        name_, {}, start_ns(), dur_ns(), "profiler", "compute");
+  }
 }
 
 } // namespace activity
