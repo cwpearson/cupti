@@ -74,7 +74,6 @@ void Profiler::atomic_out(const std::string &s) {
  * valid, since they've already been constructed.
  */
 void Profiler::init() {
-  // std::cerr << model::get_thread_id() << std::endl;
 
   if (isInitialized_) {
     logging::err() << "Profiler already initialized" << std::endl;
@@ -83,7 +82,7 @@ void Profiler::init() {
   isInitialized_ = true;
 
   // Configure logging
-  auto quiet = enableZipkin_ =
+  auto quiet =
       EnvironmentVariable<bool>("CPROF_QUIET", false).get();
   if (quiet) {
     logging::disable_err();
@@ -104,7 +103,6 @@ void Profiler::init() {
           chromeTracingPath.c_str());
     }
   }
-
   {
     auto n = EnvironmentVariable<uint32_t>("CPROF_CUPTI_DEVICE_BUFFER_SIZE", 0)
                  .get();
@@ -192,7 +190,9 @@ void Profiler::init() {
     break;
   case Mode::Full: {
 
+    std::cerr << "adding handler...\n";
     cupti_activity_config::add_activity_handler(out_activityHander);
+    std::cerr << "done";
 
     // Enable CUPTI Callback API
     profiler::err() << "INFO: CuptiSubscriber enabling callback API"
