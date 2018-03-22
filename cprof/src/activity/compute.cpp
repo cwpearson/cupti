@@ -37,19 +37,19 @@ Compute::Compute(const CUpti_ActivityKernel3 *record) : Compute() {
   name_ = record->name;
 }
 
-double Compute::start_ns() const {
+uint64_t Compute::start_ns() const {
   auto startNs = std::chrono::time_point_cast<std::chrono::nanoseconds>(start_);
   auto startEpoch = startNs.time_since_epoch();
   auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(startEpoch);
   return value.count();
 }
 
-double Compute::dur_ns() const {
+uint64_t Compute::dur_ns() const {
   auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_);
   return value.count();
 }
 
-double Compute::completed_ns() const {
+uint64_t Compute::completed_ns() const {
   auto cNs = std::chrono::time_point_cast<std::chrono::nanoseconds>(completed_);
   auto cEpoch = cNs.time_since_epoch();
   auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(cEpoch);

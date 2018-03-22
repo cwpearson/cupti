@@ -51,14 +51,14 @@ Transfer::Transfer(const CUpti_ActivityMemcpy *record) : Transfer() {
   streamId_ = record->streamId;
 }
 
-double Transfer::start_ns() const {
+uint64_t Transfer::start_ns() const {
   auto startNs = std::chrono::time_point_cast<std::chrono::nanoseconds>(start_);
   auto startEpoch = startNs.time_since_epoch();
   auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(startEpoch);
   return value.count();
 }
 
-double Transfer::dur_ns() const {
+uint64_t Transfer::dur_ns() const {
   auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_);
   return value.count();
 }

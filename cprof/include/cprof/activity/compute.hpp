@@ -24,9 +24,9 @@ public:
   Compute();
   explicit Compute(const CUpti_ActivityKernel3 *record);
 
-  double start_ns() const;
-  double dur_ns() const;
-  double completed_ns() const;
+  size_t start_ns() const;
+  size_t dur_ns() const;
+  size_t completed_ns() const;
 
   std::string to_json_string() const;
   cprof::chrome_tracing::CompleteEvent chrome_complete_event() const;
