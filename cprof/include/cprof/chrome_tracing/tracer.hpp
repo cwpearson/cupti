@@ -2,6 +2,7 @@
 #define CPROF_CHROMETRACER_TRACER_HPP
 
 #include <fstream>
+#include <memory>
 #include <mutex>
 #include <string>
 
@@ -15,12 +16,12 @@ class Tracer {
 public:
   Tracer() : enabled_(false) {}
   Tracer(const std::string &path)
-      : enabled_(true), out_(std::ofstream(path)), path_(path) {
-    out_ << "[\n";
+      : enabled_(true), out_(new std::ofstream(path)), path_(path) {
+    (*out_) << "[\n";
   }
   ~Tracer() { close(); }
 
-  bool good() const { return out_.good(); }
+  bool good() const { return out_ && out_->good(); }
   const std::string &path() const { return path_; }
 
   template <typename T> void write_event(const T &event) {
@@ -29,20 +30,20 @@ public:
     }
     {
       std::lock_guard<std::mutex> guard(out_mutex_);
-      out_ << event.json() << ",\n";
+      (*out_) << event.json() << ",\n";
     }
   }
 
   void close() {
     // out_ << "]\n"; // don't need final closing brace
-    if (out_.is_open()) {
-      out_.close();
+    if (out_->is_open()) {
+      out_->close();
     }
   }
 
 private:
   bool enabled_;
-  std::ofstream out_;
+  std::shared_ptr<std::ofstream> out_;
   std::string path_;
   std::mutex out_mutex_;
 };
