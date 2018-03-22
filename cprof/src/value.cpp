@@ -33,7 +33,7 @@ const AddressSpace &Value::address_space() const noexcept {
 
 void Value::set_size(const size_t size) {
   logging::err() << "WARN: not updating size in Value" << std::endl;
-  logging::atomic_out(to_json_string());
+  logging::atomic_out(to_json_string() + "\n");
 }
 
 bool Value::operator==(const Value &rhs) const {

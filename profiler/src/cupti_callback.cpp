@@ -159,7 +159,7 @@ static void handleCudaLaunch(void *userdata, Allocations &allocations,
       }
       api->add_output(newVal);
     }
-    profiler::atomic_out(api->to_json_string());
+    profiler::atomic_out(api->to_json_string() + "\n");
     profiler::driver().this_thread().configured_call().valid_ = false;
     profiler::driver().this_thread().configured_call().args_.clear();
   } else {
@@ -203,7 +203,7 @@ static void handleCudaLaunchKernel(void *userdata, Allocations &allocations,
           cbInfo->functionName, cbInfo->symbolName,
           profiler::driver().this_thread().current_device());
 
-      profiler::atomic_out(api->to_json_string());
+      profiler::atomic_out(api->to_json_string() + "\n");
     }
 
   } else {
@@ -317,7 +317,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   api->add_kv("kind", kind.str());
   api->add_kv("srcCount", srcCount);
   api->add_kv("dstCount", dstCount);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   if (Profiler::instance().is_zipkin_enabled()) {
     auto b = std::chrono::time_point_cast<std::chrono::nanoseconds>(

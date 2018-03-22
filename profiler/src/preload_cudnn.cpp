@@ -119,7 +119,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
 
   api->add_output(yVal);
   api->add_input(xVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -167,7 +167,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   api->add_output(dstVal);
   api->add_input(aVal);
   api->add_input(cVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -227,7 +227,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   api->add_input(xVal);
   api->add_input(yVal);
   api->add_input(dyVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -287,7 +287,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   api->add_input(dyVal);
   api->add_input(workSpaceVal);
   api->add_input(dxVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -339,7 +339,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
 
   api->add_output(dbVal);
   api->add_input(dyVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -405,7 +405,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   api->add_input(dyVal);
   api->add_input(workSpaceVal);
   api->add_input(dwVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -473,7 +473,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   api->add_input(wVal);
   api->add_input(workSpaceVal);
   api->add_input(yVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -523,7 +523,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
 
   api->add_output(yVal);
   api->add_input(xVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -574,7 +574,7 @@ extern "C" cudnnStatus_t cudnnPoolingForward(
 
   api->add_output(yVal);
   api->add_input(xVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
   return ret;
 }
 

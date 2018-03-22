@@ -25,8 +25,8 @@ cprof::Allocations &allocations();
 Timer &timer();
 
 std::ostream &out();
-void atomic_out(const std::string &s);
 std::ostream &err();
+void atomic_out(const std::string &s);
 } // namespace profiler
 
 class Profiler {

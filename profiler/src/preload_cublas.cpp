@@ -127,7 +127,7 @@ cublasDgemm(cublasHandle_t handle, cublasOperation_t transa,
   api->add_input(aVal);
   api->add_input(bVal);
   api->add_input(cVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -173,7 +173,7 @@ cublasSaxpy(cublasHandle_t handle, int n,
   api->add_output(outVal);
   api->add_input(xVal);
   api->add_input(yVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -229,7 +229,7 @@ cublasSgemm(cublasHandle_t handle, cublasOperation_t transa,
   api->add_input(aVal);
   api->add_input(bVal);
   api->add_input(cVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -286,7 +286,7 @@ extern "C" cublasStatus_t cublasDgemv(cublasHandle_t handle,
   api->add_input(aVal);
   api->add_input(xVal);
   api->add_input(yVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -345,7 +345,7 @@ extern "C" cublasStatus_t cublasSgemv(cublasHandle_t handle,
   api->add_input(aVal);
   api->add_input(xVal);
   api->add_input(yVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -411,7 +411,7 @@ extern "C" cublasStatus_t cublasSasum(cublasHandle_t handle, int n,
 
   api->add_output(rVal);
   api->add_input(xVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -451,7 +451,7 @@ cublasSscal(cublasHandle_t handle, int n,
 
   api->add_output(outVal);
   api->add_input(xVal);
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -527,6 +527,6 @@ extern "C" cublasStatus_t cublasSdot(cublasHandle_t handle, int n,
   auto ret = call_and_set_time(api, real_cublasSdot, handle, n, x, incx, y,
                                incy, result);
   driver().this_thread().resume_cupti_callbacks();
-  profiler::atomic_out(api->to_json_string());
+  profiler::atomic_out(api->to_json_string() + "\n");
   return ret;
 }

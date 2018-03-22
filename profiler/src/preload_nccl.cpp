@@ -79,7 +79,7 @@ static void register_ncclBcast(uintptr_t buff, int count,
         api->add_output(v);
       }
     }
-    profiler::atomic_out(api->to_json_string());
+    profiler::atomic_out(api->to_json_string() + "\n");
     dstBuffVals.clear();
     rootBuffVal = Value();
   }
@@ -125,7 +125,7 @@ static void register_ncclAllReduce(const uintptr_t sendbuff,
     for (const auto &v : recvBuffVals) {
       api->add_output(v);
     }
-    profiler::atomic_out(api->to_json_string());
+    profiler::atomic_out(api->to_json_string() + "\n");
     sendBuffVals.clear();
     recvBuffVals.clear();
   }

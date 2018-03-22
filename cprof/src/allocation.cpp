@@ -30,7 +30,7 @@ cprof::Value AllocationRecord::new_value(uintptr_t pos, size_t size,
   val_size_ = size;
   cprof::Value newVal(val_, pos, val_size_, uintptr_t(this), address_space_,
                       val_initialized_);
-  logging::atomic_out(newVal.to_json_string());
+  logging::atomic_out(newVal.to_json_string() + "\n");
   return newVal;
 }
 

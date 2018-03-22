@@ -50,7 +50,7 @@ Allocation Allocations::insert(const AllocationRecord &ar) {
 
   auto &allocs = addrSpaceAllocs_[ar.address_space()];
   auto i = allocs.insert_join(ar).first;
-  logging::atomic_out(i->second->to_json_string());
+  logging::atomic_out(i->second->to_json_string() + "\n");
   return Allocation(*i);
 }
 
@@ -71,7 +71,7 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
   // dump the value in this allocation
   auto val = newAlloc.new_value(pos, size, false);
   logging::debug() << "Emitting value during new allocation\n";
-  logging::atomic_out(val.to_json_string());
+  logging::atomic_out(val.to_json_string() + "\n");
   return newAlloc;
 }
 
