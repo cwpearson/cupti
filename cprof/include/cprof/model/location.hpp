@@ -3,10 +3,14 @@
 
 #include <string>
 
+#include <nlohmann/json.hpp>
+
 namespace cprof {
 namespace model {
 
 class Location {
+  using json = nlohmann::json;
+
 private:
   enum class Type {
     Unknown,
@@ -40,7 +44,8 @@ public:
     }
   }
 
-  std::string json() const;
+  json to_json() const;
+  std::string to_json_string() const;
 };
 
 } // namespace model

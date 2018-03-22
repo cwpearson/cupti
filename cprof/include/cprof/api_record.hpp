@@ -69,7 +69,7 @@ public:
   id_type id() const { return id_; }
   const std::string &name() const { return apiName_; }
 
-  std::string json() const;
+  std::string to_json_string() const;
 
   bool is_runtime() const { return domain_ == CUPTI_CB_DOMAIN_RUNTIME_API; }
   CUpti_CallbackDomain domain() const { return domain_; }

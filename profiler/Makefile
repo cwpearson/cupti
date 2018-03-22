@@ -51,7 +51,7 @@ endif
 CXXFLAGS += $(CXX_DEFINES)
 
 CPROF_LIB=$(CPROF_ROOT)/lib
-INC += -isystem$(CPROF_ROOT)/include
+INC += -isystem$(CPROF_ROOT)/include -isystem$(CPROF_ROOT)/external/include
 LIB += -L$(CPROF_LIB) -lcprof -Wl,-rpath=$(CPROF_LIB)
 
 # Set CUDA-related variables

@@ -1,13 +1,7 @@
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
 #include <cassert>
 
 #include "cprof/allocations.hpp"
 
-using boost::property_tree::ptree;
-using boost::property_tree::read_json;
-using boost::property_tree::write_json;
 using cprof::model::Location;
 using cprof::model::Memory;
 
@@ -56,7 +50,7 @@ Allocation Allocations::insert(const AllocationRecord &ar) {
 
   auto &allocs = addrSpaceAllocs_[ar.address_space()];
   auto i = allocs.insert_join(ar).first;
-  logging::atomic_out(i->second->json());
+  logging::atomic_out(i->second->to_json_string() + "\n");
   return Allocation(*i);
 }
 
@@ -77,7 +71,7 @@ Allocation Allocations::new_allocation(uintptr_t pos, size_t size,
   // dump the value in this allocation
   auto val = newAlloc.new_value(pos, size, false);
   logging::debug() << "Emitting value during new allocation\n";
-  logging::atomic_out(val.json());
+  logging::atomic_out(val.to_json_string() + "\n");
   return newAlloc;
 }
 

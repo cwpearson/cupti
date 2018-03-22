@@ -1,21 +1,27 @@
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
 #include "cprof/model/memory.hpp"
 
-std::string cprof::model::to_string(const Memory &m) {
+using json = nlohmann::json;
+
+json cprof::model::to_json(const Memory &m) {
+  json j;
   switch (m) {
   case Memory::Unknown:
-    return "unknown";
+    j["type"] = "unknown";
+    break;
   case Memory::Pageable:
-    return "pageable";
+    j["type"] = "pageable";
+    break;
   case Memory::Pagelocked:
-    return "pagelocked";
+    j["type"] = "pagelocked";
+    break;
   case Memory::Unified3:
-    return "unified3";
+    j["type"] = "unified3";
+    break;
   case Memory::Unified6:
-    return "unified6";
+    j["type"] = "unified6";
+    break;
   default:
     assert(0 && "Unexpected memory type");
   }
+  return j;
 }

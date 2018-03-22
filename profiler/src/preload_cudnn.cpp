@@ -107,7 +107,6 @@ extern "C" cudnnStatus_t cudnnActivationForward(
 
   // FIXME - also depends on alpha, beta
   auto yVal = yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true);
-  yVal.add_depends_on(xVal, api->id());
 
   profiler::err()
       << "WARN: disabling CUPTI callbacks during cudnnActivationForward call"
@@ -120,7 +119,7 @@ extern "C" cudnnStatus_t cudnnActivationForward(
 
   api->add_output(yVal);
   api->add_input(xVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -155,8 +154,6 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   auto api = std::make_shared<ApiRecord>("cudnnAddTensor", devId);
 
   auto dstVal = allocations.duplicate_value(cVal, true);
-  dstVal.add_depends_on(aVal, api->id());
-  dstVal.add_depends_on(cVal, api->id());
 
   profiler::err() << "WARN: thread " << cprof::model::get_thread_id()
                   << " disabling CUPTI callbacks during cudnnAddTensor call"
@@ -170,7 +167,7 @@ extern "C" cudnnStatus_t cudnnAddTensor(cudnnHandle_t handle, const void *alpha,
   api->add_output(dstVal);
   api->add_input(aVal);
   api->add_input(cVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -215,9 +212,6 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
       profiler::driver().device_from_cudnn_handle(handle));
 
   auto dxVal = dxAlloc.new_value((uintptr_t)dx, tensorSize(dxDesc), true);
-  dxVal.add_depends_on(xVal, api->id());
-  dxVal.add_depends_on(yVal, api->id());
-  dxVal.add_depends_on(dyVal, api->id());
 
   profiler::err()
       << "WARN: disabling CUPTI callbacks during cudnnActivationBackward call"
@@ -233,7 +227,7 @@ extern "C" cudnnStatus_t cudnnActivationBackward(
   api->add_input(xVal);
   api->add_input(yVal);
   api->add_input(dyVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -277,10 +271,6 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
 
   // Create output value
   auto outVal = allocations.duplicate_value(dxVal, true);
-  outVal.add_depends_on(wVal, api->id());
-  outVal.add_depends_on(dyVal, api->id());
-  outVal.add_depends_on(workSpaceVal, api->id());
-  outVal.add_depends_on(dxVal, api->id());
 
   // Do the actual call
   profiler::err() << "WARN: disabling CUPTI callbacks during "
@@ -297,7 +287,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardData(
   api->add_input(dyVal);
   api->add_input(workSpaceVal);
   api->add_input(dxVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -335,7 +325,6 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
       profiler::driver().device_from_cudnn_handle(handle));
   auto dbVal = dbAlloc.new_value((uintptr_t)db, tensorSize(dbDesc),
                                  true /*initialized*/);
-  dbVal.add_depends_on(dyVal, api->id());
 
   // Do the actual call
   profiler::err() << "WARN: disabling CUPTI callbacks during "
@@ -350,7 +339,7 @@ cudnnConvolutionBackwardBias(cudnnHandle_t handle, const void *alpha,
 
   api->add_output(dbVal);
   api->add_input(dyVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -397,10 +386,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
 
   // See if there is an existing output value to take info from
   auto outVal = allocations.duplicate_value(dwVal, true);
-  outVal.add_depends_on(xVal, api->id());
-  outVal.add_depends_on(dyVal, api->id());
-  outVal.add_depends_on(workSpaceVal, api->id());
-  outVal.add_depends_on(dwVal, api->id());
+
   profiler::err() << "[cudnnConvolutionBackwardFilter] " << outVal
                   << " deps on " << xVal << " " << dyVal << " " << workSpaceVal
                   << " " << dwVal << std::endl;
@@ -419,7 +405,7 @@ extern "C" cudnnStatus_t cudnnConvolutionBackwardFilter(
   api->add_input(dyVal);
   api->add_input(workSpaceVal);
   api->add_input(dwVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -467,10 +453,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
 
   // See if there is an existing output value to take info from
   auto outVal = allocations.duplicate_value(yVal, true);
-  outVal.add_depends_on(xVal, api->id());
-  outVal.add_depends_on(wVal, api->id());
-  outVal.add_depends_on(workSpaceVal, api->id());
-  outVal.add_depends_on(yVal, api->id());
+
   profiler::err() << "[cudnnConvolutionForward] " << outVal << " deps on "
                   << yVal << " " << xVal << " " << wVal << " " << workSpaceVal
                   << std::endl;
@@ -490,7 +473,7 @@ cudnnConvolutionForward(cudnnHandle_t handle, const void *alpha,
   api->add_input(wVal);
   api->add_input(workSpaceVal);
   api->add_input(yVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -526,7 +509,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
 
   auto yVal =
       yAlloc.new_value((uintptr_t)y, tensorSize(yDesc), true /*initialized*/);
-  yVal.add_depends_on(xVal, api->id());
+
 
   // Do the actual call
   profiler::err()
@@ -540,7 +523,7 @@ extern "C" cudnnStatus_t cudnnSoftmaxForward(
 
   api->add_output(yVal);
   api->add_input(xVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
 
   return ret;
 }
@@ -578,7 +561,6 @@ extern "C" cudnnStatus_t cudnnPoolingForward(
   assert(yAlloc && "y allocation should be on device");
 
   auto yVal = yAlloc.new_value((uintptr_t)y, ySize, true /*initialized*/);
-  yVal.add_depends_on(xVal, api->id());
 
   // Do the actual call
   profiler::err()
@@ -592,7 +574,7 @@ extern "C" cudnnStatus_t cudnnPoolingForward(
 
   api->add_output(yVal);
   api->add_input(xVal);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string() + "\n");
   return ret;
 }
 

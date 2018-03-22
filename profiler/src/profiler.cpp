@@ -67,7 +67,6 @@ std::ostream &Profiler::out() { return logging::out(); }
 void Profiler::atomic_out(const std::string &s) {
   return logging::atomic_out(s);
 }
-
 /*! \brief Profiler() initialize a profiler object
  *
  * Handle initialization here so that calls to Profiler member functions are

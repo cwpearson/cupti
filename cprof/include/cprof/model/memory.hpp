@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <string>
 
+#include <nlohmann/json.hpp>
+
 namespace cprof {
 namespace model {
 
@@ -15,7 +17,7 @@ enum class Memory {
   Unified6    ///< CUDA unified memory >sm_60
 };
 
-std::string to_string(const Memory &m);
+nlohmann::json to_json(const Memory &m);
 
 } // namespace model
 } // namespace cprof
