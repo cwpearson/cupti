@@ -14,7 +14,6 @@ static void handleKernel(const CUpti_ActivityKernel3 *record) {
   auto compute = cprof::activity::Compute(record);
   Profiler::instance().chrome_tracer().write_event(
       compute.chrome_complete_event());
-  profiler::atomic_out(compute.json());
 }
 
 //
@@ -25,7 +24,6 @@ static void handleMemcpy(const CUpti_ActivityMemcpy *record) {
   auto transfer = cprof::activity::Transfer(record);
   Profiler::instance().chrome_tracer().write_event(
       transfer.chrome_complete_event());
-  profiler::atomic_out(transfer.json());
 }
 
 //

@@ -12,7 +12,7 @@
 static void handleKernel(const CUpti_ActivityKernel3 *record) {
   assert(record);
   auto compute = cprof::activity::Compute(record);
-  profiler::atomic_out(compute.json());
+  profiler::atomic_out(compute.to_json_string());
 }
 
 //
@@ -21,7 +21,7 @@ static void handleKernel(const CUpti_ActivityKernel3 *record) {
 static void handleMemcpy(const CUpti_ActivityMemcpy *record) {
   assert(record);
   auto transfer = cprof::activity::Transfer(record);
-  profiler::atomic_out(transfer.json());
+  profiler::atomic_out(transfer.to_json_string());
 }
 
 void out_activityHander(const CUpti_Activity *record) {

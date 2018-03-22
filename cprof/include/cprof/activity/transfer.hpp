@@ -27,7 +27,7 @@ public:
   double start_ns() const;
   double dur_ns() const;
 
-  std::string json() const;
+  std::string to_json_string() const;
   cprof::chrome_tracing::CompleteEvent chrome_complete_event() const;
 
 private:

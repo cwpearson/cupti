@@ -1,5 +1,4 @@
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
+#include "nlohmann/json.hpp"
 
 #include "cprof/activity/transfer.hpp"
 
@@ -64,26 +63,21 @@ double Transfer::dur_ns() const {
   return value.count();
 }
 
-std::string Transfer::json() const {
-  ptree pt;
-  pt.put("transfer.cuda_device_id", cudaDeviceId_);
-  pt.put("transfer.kind", to_string(kind_));
-  pt.put("transfer.cuda_memcpy_kind", to_string(cudaMemcpyKind_));
-  pt.put("transfer.src_kind", to_string(srcKind_));
-  pt.put("transfer.dst_kind", to_string(dstKind_));
-  pt.put("transfer.start", start_ns());
-  pt.put("transfer.dur", dur_ns());
-  pt.put("transfer.stream_id", streamId_);
-  pt.put("transfer.correlation_id", correlationId_);
-  pt.put("transfer.runtime_correlation_id", runtimeCorrelationId_);
-  for (const auto &p : kv_) {
-    const std::string &key = p.first;
-    const std::string &val = p.second;
-    pt.put("transfer." + key, val);
-  }
-  std::ostringstream buf;
-  write_json(buf, pt, false);
-  return buf.str();
+std::string Transfer::to_json_string() const {
+  using json = nlohmann::json;
+  json j;
+  j["transfer"]["cuda_device_id"] = cudaDeviceId_;
+  j["transfer"]["kind"] = to_string(kind_);
+  j["transfer"]["cuda_memcpy_kind"] = to_string(cudaMemcpyKind_);
+  j["transfer"]["src_kind"] = to_string(srcKind_);
+  j["transfer"]["dst_kind"] = to_string(dstKind_);
+  j["transfer"]["start"] = start_ns();
+  j["transfer"]["dur"] = dur_ns();
+  j["transfer"]["stream_id"] = streamId_;
+  j["transfer"]["correlation_id"] = correlationId_;
+  j["transfer"]["runtime_correlation_id"] = runtimeCorrelationId_;
+  j["transfer"]["kv"] = json(kv_);
+  return j.dump();
 }
 
 cprof::chrome_tracing::CompleteEvent Transfer::chrome_complete_event() const {

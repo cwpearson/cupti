@@ -1,10 +1,6 @@
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
+#include <nlohmann/json.hpp>
 
 #include "cprof/activity/compute.hpp"
-
-using boost::property_tree::ptree;
-using boost::property_tree::write_json;
 
 namespace cprof {
 namespace activity {
@@ -60,24 +56,19 @@ double Compute::completed_ns() const {
   return value.count();
 }
 
-std::string Compute::json() const {
-  ptree pt;
-  pt.put("compute.cuda_device_id", cudaDeviceId_);
-  pt.put("compute.kind", to_string(kind_));
-  pt.put("compute.name", name_);
-  pt.put("compute.start", start_ns());
-  pt.put("compute.dur", dur_ns());
-  pt.put("compute.completed", completed_ns());
-  pt.put("compute.stream_id", streamId_);
-  pt.put("compute.correlation_id", correlationId_);
-  for (const auto &p : kv_) {
-    const std::string &key = p.first;
-    const std::string &val = p.second;
-    pt.put("compute." + key, val);
-  }
-  std::ostringstream buf;
-  write_json(buf, pt, false);
-  return buf.str();
+std::string Compute::to_json_string() const {
+  using json = nlohmann::json;
+  json j;
+  j["compute"]["cuda_device_id"] = cudaDeviceId_;
+  j["compute"]["kind"] = to_string(kind_);
+  j["compute"]["name"] = name_;
+  j["compute"]["start"] = start_ns();
+  j["compute"]["dur"] = dur_ns();
+  j["compute"]["completed"] = completed_ns();
+  j["compute"]["stream_id"] = streamId_;
+  j["compute"]["correlation_id"] = correlationId_;
+  j["compute"]["kv"] = json(kv_);
+  return j.dump();
 }
 
 cprof::chrome_tracing::CompleteEvent Compute::chrome_complete_event() const {
