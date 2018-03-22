@@ -82,8 +82,7 @@ void Profiler::init() {
   isInitialized_ = true;
 
   // Configure logging
-  auto quiet =
-      EnvironmentVariable<bool>("CPROF_QUIET", false).get();
+  auto quiet = EnvironmentVariable<bool>("CPROF_QUIET", false).get();
   if (quiet) {
     logging::disable_err();
   }
@@ -128,23 +127,10 @@ void Profiler::init() {
   err() << "INFO: mode: " << mode << std::endl;
   if (mode == "activity_timeline") {
     mode_ = Mode::ActivityTimeline;
-    cuptiActivityKinds_ = {
-        CUPTI_ACTIVITY_KIND_KERNEL,          CUPTI_ACTIVITY_KIND_MEMCPY,
-        CUPTI_ACTIVITY_KIND_DRIVER,          CUPTI_ACTIVITY_KIND_RUNTIME,
-        CUPTI_ACTIVITY_KIND_SYNCHRONIZATION, CUPTI_ACTIVITY_KIND_OVERHEAD};
   } else if (mode == "full") {
     mode_ = Mode::Full;
-    cuptiActivityKinds_ = {
-        CUPTI_ACTIVITY_KIND_KERNEL, CUPTI_ACTIVITY_KIND_MEMCPY,
-        CUPTI_ACTIVITY_KIND_ENVIRONMENT, // not compatible on minsky2
-        CUPTI_ACTIVITY_KIND_CUDA_EVENT,  // FIXME:available before cuda9?
-        CUPTI_ACTIVITY_KIND_DRIVER, CUPTI_ACTIVITY_KIND_RUNTIME,
-        CUPTI_ACTIVITY_KIND_SYNCHRONIZATION,
-        // CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS, // causes a hang in nccl on
-        // minsky2
-        CUPTI_ACTIVITY_KIND_OVERHEAD};
   } else {
-    assert(0 && "Unsupported mode");
+    assert(0 && "unexpected mode string");
   }
 
   // Set CUPTI parameters
@@ -172,6 +158,10 @@ void Profiler::init() {
     preload_cudnn::set_passthrough(true);
 
     // Enable CUPTI Activity API
+    cuptiActivityKinds_ = {
+        CUPTI_ACTIVITY_KIND_KERNEL,          CUPTI_ACTIVITY_KIND_MEMCPY,
+        CUPTI_ACTIVITY_KIND_DRIVER,          CUPTI_ACTIVITY_KIND_RUNTIME,
+        CUPTI_ACTIVITY_KIND_SYNCHRONIZATION, CUPTI_ACTIVITY_KIND_OVERHEAD};
     err() << "INFO: Profiler enabling activity API" << std::endl;
     for (const auto &kind : cuptiActivityKinds_) {
       err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
@@ -210,6 +200,15 @@ void Profiler::init() {
     profiler::err() << "INFO: done enabling callback API domains" << std::endl;
 
     // Enable CUPTI Activity API
+    cuptiActivityKinds_ = {
+        CUPTI_ACTIVITY_KIND_KERNEL, CUPTI_ACTIVITY_KIND_MEMCPY,
+        CUPTI_ACTIVITY_KIND_ENVIRONMENT, // not compatible on minsky2
+        CUPTI_ACTIVITY_KIND_CUDA_EVENT,  // FIXME:available before cuda9?
+        CUPTI_ACTIVITY_KIND_DRIVER, CUPTI_ACTIVITY_KIND_RUNTIME,
+        CUPTI_ACTIVITY_KIND_SYNCHRONIZATION,
+        // CUPTI_ACTIVITY_KIND_GLOBAL_ACCESS, // causes a hang in nccl on
+        // minsky2
+        CUPTI_ACTIVITY_KIND_OVERHEAD};
     err() << "INFO: Profiler enabling activity API" << std::endl;
     for (const auto &kind : cuptiActivityKinds_) {
       err() << "DEBU: Enabling cuptiActivityKind " << kind << std::endl;
