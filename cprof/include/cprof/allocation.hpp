@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <boost/icl/interval_set.hpp>
+#include <nlohmann/json.hpp>
 
 #include "address_space.hpp"
 #include "cprof/model/location.hpp"
@@ -52,7 +53,8 @@ public:
                          cprof::model::Location::Unknown()) {}
   AllocationRecord() : AllocationRecord(0, 0) {}
 
-  std::string json() const;
+  nlohmann::json to_json() const;
+  std::string to_json_string() const;
 
   cprof::Value new_value(uintptr_t pos, size_t size, const bool initialized);
   cprof::Value value(const uintptr_t pos) const;
@@ -80,7 +82,7 @@ public:
   Allocation(std::shared_ptr<AllocationRecord> p) : ar_(p) {}
   Allocation() : Allocation(nullptr) {}
 
-  std::string json() const;
+  std::string to_json_string() const;
 
   pos_type pos() const noexcept;
   size_t size() const noexcept;

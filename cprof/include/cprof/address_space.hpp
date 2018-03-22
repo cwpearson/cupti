@@ -4,7 +4,11 @@
 #include <map>
 #include <string>
 
+#include <nlohmann/json.hpp>
+
 class AddressSpace {
+  using json = nlohmann::json;
+
 public:
   enum class Type {
     Unknown,
@@ -34,7 +38,8 @@ public:
 
   bool maybe_equal(const AddressSpace &other) const;
 
-  std::string json() const;
+  json to_json() const;
+  std::string to_json_string() const;
   std::string str() const;
 
   static AddressSpace Host() { return AddressSpace(AddressSpace::Type::Host); }

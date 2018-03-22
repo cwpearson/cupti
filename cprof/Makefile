@@ -24,7 +24,7 @@ CPP_OBJECTS = $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(CPP_SRCS))
 CPP_DEPS=$(patsubst $(BUILDDIR)/%.o,$(DEPSDIR)/%.d,$(CPP_OBJECTS))
 DEPS = $(CPP_DEPS)
 
-INC += -Iinclude
+INC += -Iinclude -isystemexternal/include
 LIB += -L$(LIBDIR)
 
 ifdef BOOST_ROOT

@@ -56,7 +56,7 @@ Allocation Allocations::insert(const AllocationRecord &ar) {
 
   auto &allocs = addrSpaceAllocs_[ar.address_space()];
   auto i = allocs.insert_join(ar).first;
-  logging::atomic_out(i->second->json());
+  logging::atomic_out(i->second->to_json_string());
   return Allocation(*i);
 }
 

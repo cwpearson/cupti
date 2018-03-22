@@ -35,7 +35,7 @@ std::string Value::json() const {
   pt.put("val.pos", pos_);
   pt.put("val.size", size_);
   pt.put("val.allocation", allocation_);
-  pt.put("val.address_space", addressSpace_.json());
+  pt.put("val.address_space", addressSpace_.to_json_string());
   pt.put("val.initialized", initialized_);
   std::stringstream buf;
   write_json(buf, pt, false);
