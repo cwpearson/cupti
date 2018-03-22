@@ -42,13 +42,25 @@ std::string ApiRecord::to_json_string() const {
 
   using cprof::nanos;
 
+  std::vector<Value::id_t> inputIds(inputs_.size());
+  std::vector<Value::id_t> outputIds(outputs_.size());
+
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    inputIds[i] = inputs_[i].id();
+  }
+
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    outputIds[i] = outputs_[i].id();
+  }
+
+
   json j;
   j["api"]["id"] = id();
   j["api"]["name"] = apiName_;
   j["api"]["device"] = device_;
   j["api"]["symbolname"] = kernelName_;
-  j["api"]["inputs"] = json(inputs_);
-  j["api"]["outputs"] = json(outputs_);
+  j["api"]["inputs"] = json(inputIds);
+  j["api"]["outputs"] = json(outputIds);
   j["api"]["wall_start"] = nanos(wallStart_);
   j["api"]["wall_end"] = nanos(wallEnd_);
   j["api"]["correlation_id"] = correlationId_;

@@ -14,8 +14,10 @@
 namespace cprof {
 
 class Value : public Extent {
-
   using json = nlohmann::json;
+
+public:
+  typedef size_t id_t;
 
 private:
   friend class Allocations;
@@ -23,7 +25,7 @@ private:
   size_t allocation_;
   AddressSpace addressSpace_;
   bool initialized_;
-  size_t id_;
+  id_t id_;
 
 public:
   Value(size_t id, const uintptr_t pos, const size_t size,
@@ -37,7 +39,7 @@ public:
   std::string to_json_string() const;
 
   explicit operator bool() const noexcept { return id_ != 0; }
-  size_t id() const { return id_; }
+  id_t id() const { return id_; }
   const AddressSpace &address_space() const noexcept;
   void set_size(const size_t size);
   bool initialized() const { return initialized_; }
