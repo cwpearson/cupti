@@ -9,7 +9,7 @@
 //
 // KERNEL
 //
-void handleKernel(const CUpti_ActivityKernel3 *record) {
+static void handleKernel(const CUpti_ActivityKernel3 *record) {
   assert(record);
   auto compute = cprof::activity::Compute(record);
   Profiler::instance().chrome_tracer().write_event(
@@ -20,7 +20,7 @@ void handleKernel(const CUpti_ActivityKernel3 *record) {
 //
 // MEMCPY
 //
-void handleMemcpy(const CUpti_ActivityMemcpy *record) {
+static void handleMemcpy(const CUpti_ActivityMemcpy *record) {
   assert(record);
   auto transfer = cprof::activity::Transfer(record);
   Profiler::instance().chrome_tracer().write_event(
@@ -31,7 +31,7 @@ void handleMemcpy(const CUpti_ActivityMemcpy *record) {
 //
 // Overhead
 //
-void handleOverhead(const CUpti_ActivityOverhead *record) {
+static void handleOverhead(const CUpti_ActivityOverhead *record) {
   assert(record);
 
   /*Get start and end times for kernel*/

@@ -12,8 +12,9 @@ size_t *attr_device_buffer_size();
 size_t *attr_device_buffer_pool_limit();
 size_t *attr_value_size(const CUpti_ActivityAttribute &attr);
 
+void add_activity_handler(ActivityHandler fn);
 void set_activity_handler(ActivityHandler fn);
-ActivityHandler activity_handler();
+void call_activity_handlers(const CUpti_Activity *record);
 } // namespace cupti_activity_config
 
 typedef void (*BufReqFun)(uint8_t **buffer, size_t *size,

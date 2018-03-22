@@ -6,6 +6,7 @@
 #include "cprof/util_cupti.hpp"
 #include "util/environment_variable.hpp"
 
+#include "cupti_activity_out.hpp"
 #include "cupti_activity_tracing.hpp"
 #include "cupti_callback.hpp"
 #include "preload_cublas.hpp"
@@ -164,8 +165,8 @@ void Profiler::init() {
 
   switch (mode_) {
   case Mode::ActivityTimeline:
-    // Set handler function
-    cupti_activity_config::set_activity_handler(tracing_activityHander);
+    // Set handler functions
+    cupti_activity_config::add_activity_handler(tracing_activityHander);
 
     // disable preloads
     preload_nccl::set_passthrough(true);
@@ -190,6 +191,8 @@ void Profiler::init() {
 
     break;
   case Mode::Full: {
+
+    cupti_activity_config::add_activity_handler(out_activityHander);
 
     // Enable CUPTI Callback API
     profiler::err() << "INFO: CuptiSubscriber enabling callback API"
