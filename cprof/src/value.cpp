@@ -1,5 +1,3 @@
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <map>
 #include <mutex>
 #include <sstream>
@@ -7,9 +5,7 @@
 #include "cprof/allocations.hpp"
 #include "cprof/value.hpp"
 
-using boost::property_tree::ptree;
-using boost::property_tree::read_json;
-using boost::property_tree::write_json;
+using json = nlohmann::json;
 
 std::ostream &operator<<(std::ostream &os, const cprof::Value &dt) {
   os << dt.id();
@@ -18,29 +14,18 @@ std::ostream &operator<<(std::ostream &os, const cprof::Value &dt) {
 
 namespace cprof {
 
-void Value::add_depends_on(const Value &v, const uint64_t apiId) const {
-  ptree pt;
-  pt.put("dep.dst_id", v.id());
-  pt.put("dep.src_id", id());
-  pt.put("dep.tid", cprof::model::get_thread_id());
-  pt.put("dep.api_cause", apiId);
-  std::stringstream buf;
-  write_json(buf, pt, false);
-  logging::atomic_out(buf.str());
+json Value::to_json() const {
+  json j;
+  j["val"]["id"] = id_;
+  j["val"]["pos"] = pos_;
+  j["val"]["size"] = size_;
+  j["val"]["allocation"] = allocation_;
+  j["val"]["address_space"] = addressSpace_.to_json();
+  j["val"]["initialized"] = initialized_;
+  return j;
 }
 
-std::string Value::json() const {
-  ptree pt;
-  pt.put("val.id", id_);
-  pt.put("val.pos", pos_);
-  pt.put("val.size", size_);
-  pt.put("val.allocation", allocation_);
-  pt.put("val.address_space", addressSpace_.to_json_string());
-  pt.put("val.initialized", initialized_);
-  std::stringstream buf;
-  write_json(buf, pt, false);
-  return buf.str();
-}
+std::string Value::to_json_string() const { return to_json().dump(); }
 
 const AddressSpace &Value::address_space() const noexcept {
   return addressSpace_;
@@ -48,7 +33,7 @@ const AddressSpace &Value::address_space() const noexcept {
 
 void Value::set_size(const size_t size) {
   logging::err() << "WARN: not updating size in Value" << std::endl;
-  logging::atomic_out(json());
+  logging::atomic_out(to_json_string());
 }
 
 bool Value::operator==(const Value &rhs) const {
@@ -62,5 +47,7 @@ bool Value::operator==(const Value &rhs) const {
 }
 
 bool Value::operator!=(const Value &rhs) const { return !((*this) == rhs); }
+
+void to_json(json &j, const Value &v) { j = v.to_json(); }
 
 } // namespace cprof

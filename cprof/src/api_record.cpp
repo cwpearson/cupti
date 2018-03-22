@@ -1,12 +1,10 @@
 #include <cassert>
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
+#include <nlohmann/json.hpp>
 
 #include "cprof/api_record.hpp"
 
-using boost::property_tree::ptree;
-using boost::property_tree::write_json;
+using json = nlohmann::json;
 using cprof::Value;
 
 std::atomic<ApiRecord::id_type> ApiRecord::next_id_(0);
@@ -40,36 +38,20 @@ void ApiRecord::set_wall_time(const cprof::time_point_t &start,
   set_wall_end(end);
 }
 
-static ptree to_json(const std::vector<Value> &v) {
-  ptree array;
-  for (const auto &e : v) {
-    ptree elem;
-    elem.put("", e.id());
-    array.push_back(std::make_pair("", elem));
-  }
-  return array;
-}
-
-std::string ApiRecord::json() const {
+std::string ApiRecord::to_json_string() const {
 
   using cprof::nanos;
 
-  ptree pt;
-  pt.put("api.id", id());
-  pt.put("api.name", apiName_);
-  pt.put("api.device", device_);
-  pt.put("api.symbolname", kernelName_);
-  pt.add_child("api.inputs", to_json(inputs_));
-  pt.add_child("api.outputs", to_json(outputs_));
-  pt.put("api.wall_start", nanos(wallStart_));
-  pt.put("api.wall_end", nanos(wallEnd_));
-  pt.put("api.correlation_id", correlationId_);
-  for (const auto &p : kv_) {
-    const std::string &key = p.first;
-    const std::string &val = p.second;
-    pt.put("api." + key, val);
-  }
-  std::ostringstream buf;
-  write_json(buf, pt, false);
-  return buf.str();
+  json j;
+  j["api"]["id"] = id();
+  j["api"]["name"] = apiName_;
+  j["api"]["device"] = device_;
+  j["api"]["symbolname"] = kernelName_;
+  j["api"]["inputs"] = json(inputs_);
+  j["api"]["outputs"] = json(outputs_);
+  j["api"]["wall_start"] = nanos(wallStart_);
+  j["api"]["wall_end"] = nanos(wallEnd_);
+  j["api"]["correlation_id"] = correlationId_;
+  j["api"]["kv"] = json(kv_);
+  return j.dump();
 }

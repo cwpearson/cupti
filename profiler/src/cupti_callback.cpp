@@ -156,11 +156,10 @@ static void handleCudaLaunch(void *userdata, Allocations &allocations,
       for (const auto &depVal : kernelArgIds) {
         profiler::err() << "INFO: launch: val id=" << newVal.id() << " deps on "
                         << depVal.id() << std::endl;
-        newVal.add_depends_on(depVal, api->id());
       }
       api->add_output(newVal);
     }
-    profiler::atomic_out(api->json());
+    profiler::atomic_out(api->to_json_string());
     profiler::driver().this_thread().configured_call().valid_ = false;
     profiler::driver().this_thread().configured_call().args_.clear();
   } else {
@@ -204,7 +203,7 @@ static void handleCudaLaunchKernel(void *userdata, Allocations &allocations,
           cbInfo->functionName, cbInfo->symbolName,
           profiler::driver().this_thread().current_device());
 
-      profiler::atomic_out(api->json());
+      profiler::atomic_out(api->to_json_string());
     }
 
   } else {
@@ -311,7 +310,6 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   assert(srcVal);
   auto dstVal = dstAlloc.new_value(dst, dstCount, srcVal.initialized());
   assert(dstVal);
-  dstVal.add_depends_on(srcVal, api->id());
   // dstVal->record_meta_append(cbInfo->functionName); // FIXME
 
   api->add_input(srcVal);
@@ -319,7 +317,7 @@ void record_memcpy(const CUpti_CallbackData *cbInfo, Allocations &allocations,
   api->add_kv("kind", kind.str());
   api->add_kv("srcCount", srcCount);
   api->add_kv("dstCount", dstCount);
-  profiler::atomic_out(api->json());
+  profiler::atomic_out(api->to_json_string());
 
   if (Profiler::instance().is_zipkin_enabled()) {
     auto b = std::chrono::time_point_cast<std::chrono::nanoseconds>(
